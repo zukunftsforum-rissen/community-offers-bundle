@@ -1,0 +1,29 @@
+{
+    "name": "zukunftsforum-rissen/community-offers-bundle",
+    "type": "contao-bundle",
+    "description": "A Contao bundle for managing community offers",
+    "keywords": ["contao", "bundle", "community", "offers"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Zukunftsforum Rissen",
+            "homepage": "https://github.com/zukunftsforum-rissen"
+        }
+    ],
+    "require": {
+        "php": "^8.1",
+        "contao/core-bundle": "^5.0",
+        "symfony/framework-bundle": "^6.4 || ^7.0"
+    },
+    "require-dev": {
+        "contao/manager-plugin": "^2.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "ZukunftsforumRissen\\CommunityOffersBundle\\": "src/"
+        }
+    },
+    "extra": {
+        "contao-manager-plugin": "ZukunftsforumRissen\\CommunityOffersBundle\\ContaoManager\\Plugin"
+    }
+}

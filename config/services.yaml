@@ -1,0 +1,11 @@
+parameters:
+  enable_debug_logging: "true"
+  enable_logging: "true"
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    Zukunftsforu\CommunityOffersBundle\Service\LoggingService: ~
+

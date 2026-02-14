@@ -1,0 +1,21 @@
+{
+    "name": "zukunftsforu/community-offers-bundle",
+    "type": "contao-bundle",
+    "require": {
+        "contao/core-bundle": "^5.0"
+    },
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Zukunftsforu\\CommunityOffersBundle\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Ernst Jendritzki"
+        }
+    ],
+    "extra": {
+        "contao-manager-plugin": "Zukunftsforu\\CommunityOffersBundle\\ContaoManager\\Plugin"
+    }
+}

@@ -1,4 +1,4 @@
 # config/routes.yaml
-zukunftsforu_community_offers_bundle.controller:
+community_offers_controllers:
     resource: ../src/Controller
     type: attribute

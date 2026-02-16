@@ -1,5 +1,5 @@
 {
-    "name": "zukunftsforu/community-offers-bundle",
+"name": "zukunftsforum-rissen/community-offers-bundle",
     "type": "contao-bundle",
     "require": {
         "contao/core-bundle": "^5.0"
@@ -7,7 +7,12 @@
     "license": "MIT",
     "autoload": {
         "psr-4": {
-            "Zukunftsforu\\CommunityOffersBundle\\": "src/"
+            "ZukunftsforumRissen\\CommunityOffersBundle\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "ZukunftsforumRissen\\CommunityOffersBundle\\Tests\\": "tests/"
         }
     },
     "authors": [
@@ -16,6 +21,22 @@
         }
     ],
     "extra": {
-        "contao-manager-plugin": "Zukunftsforu\\CommunityOffersBundle\\ContaoManager\\Plugin"
+        "contao-manager-plugin": "ZukunftsforumRissen\\CommunityOffersBundle\\ContaoManager\\Plugin"
+    },
+    "require-dev": {
+        "contao/easy-coding-standard": "^6.13",
+        "contao/manager-plugin": "^2.0",
+        "phpstan/phpstan": "^1.10",
+        "phpstan/phpstan-phpunit": "^1.4",
+        "phpstan/phpstan-symfony": "^1.4",
+        "phpunit/phpunit": "^9.5"
+    },
+    "config": {
+        "allow-plugins": {
+            "contao-components/installer": true,
+            "php-http/discovery": true,
+            "dealerdirect/phpcodesniffer-composer-installer": true,
+            "contao/manager-plugin": true
+        }
     }
 }

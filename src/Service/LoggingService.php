@@ -1,44 +1,42 @@
 <?php
+
 // src/Service/LoggingService.php
 
 declare(strict_types=1);
 
-namespace Zukunftsforu\CommunityOffersBundle\Service;
+namespace ZukunftsforumRissen\CommunityOffersBundle\Service;
 
-use Monolog\Handler\StreamHandler;
-use Monolog\Logger;
-use Monolog\Level;
-use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Monolog\Formatter\LineFormatter;
+use Monolog\Handler\StreamHandler;
+use Monolog\Level;
+use Monolog\Logger;
+use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 
 class LoggingService
 {
     private Logger $logger;
-    private Logger $loggerStart;
-    private bool $loggingEnabled;
-    private bool $debugLoggingEnabled;
-    private string $moduleName = '';
 
-    public function __construct(
-        private ParameterBagInterface $params
-    ) {
-        $this->loggingEnabled = $params->get('enable_logging') === "true";
-        $this->debugLoggingEnabled = $params->get('enable_debug_logging') === "true";
+    private Logger $loggerStart;
+
+    private bool $loggingEnabled;
+
+    private bool $debugLoggingEnabled;
+
+    public function __construct(ParameterBagInterface $params)
+    {
+        $this->loggingEnabled = 'true' === $params->get('enable_logging');
+        $this->debugLoggingEnabled = 'true' === $params->get('enable_debug_logging');
     }
 
     /**
-     * Initialize logging
-     * To be called first before using the logging methods
-     * 
-     * @param string $moduleName 
-     * @param string $fileName optional (if not set, default filename is 'app') 
-     * @return void 
+     * Initialize logging To be called first before using the logging methods.
+     *
+     * @param string $fileName optional (if not set, default filename is 'app')
      */
     public function initiateLogging(string $moduleName, string $fileName = ''): void
     {
-        $this->moduleName = $moduleName;
-        $logFileName = $fileName ? $fileName : 'app';
-        $logFile = __DIR__ . '/../../var/logs/' . $logFileName . '.log';
+        $logFileName = $fileName ?: 'app';
+        $logFile = __DIR__.'/../../var/logs/'.$logFileName.'.log';
         $streamHandler = new StreamHandler($logFile, Level::Debug);
 
         $this->logger = new Logger($moduleName);
@@ -62,27 +60,91 @@ class LoggingService
         $this->loggerStart->debug('START START START');
     }
 
+    /**
+     * Log a message idented by "Start Start Start" To be called at the entrance point
+     * of a module.
+     *
+     * @param string               $message
+     * @param array<string, mixed> $context
+     */
+    public function start($message, $context = []): void
+    {
+        $this->loggerStart->debug($message, $context);
+    }
 
-    private function formatContext(array $context): string
+    /**
+     * @param string               $message
+     * @param array<string, mixed> $context
+     */
+    public function debug($message, $context = []): void
+    {
+        $this->log('debug', $message, $context);
+    }
+
+    /**
+     * @param string               $message
+     * @param array<string, mixed> $context
+     */
+    public function info($message, $context = []): void
+    {
+        $this->log('info', $message, $context);
+    }
+
+    /**
+     * @param string               $message
+     * @param array<string, mixed> $context
+     */
+    public function error($message, $context = []): void
+    {
+        $this->log('error', $message, $context);
+    }
+
+    /**
+     * @param string               $message
+     * @param array<string, mixed> $context
+     */
+    public function critical($message, $context = []): void
+    {
+        $this->log('critical', $message, $context);
+    }
+
+    public function logCurrentMethod(): void
+    {
+        $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
+        $currentMethod = $backtrace[1]['function'] ?? 'unknown';
+
+        $this->logger->debug("  Current method: $currentMethod");
+    }
+
+    /**
+     * @param array<string, mixed> $context
+     */
+    private function formatContext($context): string
     {
         $formattedContext = '';
+
         foreach ($context as $key => $value) {
-            $formattedContext .= sprintf("    %s: %s", $key, json_encode($value, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+            $formattedContext .= \sprintf('    %s: %s', $key, json_encode($value, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
         }
+
         return $formattedContext;
     }
 
-
-    private function log(string $level, string $message, array $context = []): void
+    /**
+     * @param string               $level
+     * @param string               $message
+     * @param array<string, mixed> $context
+     */
+    private function log($level, $message, $context = []): void
     {
-        if (!$this->loggingEnabled && $level !== 'critical') {
+        if (!$this->loggingEnabled && 'critical' !== $level) {
             return;
         }
 
         $formattedContext = $this->formatContext($context);
-        $logMessage = '    ' . $message;
+        $logMessage = '    '.$message;
         if (!empty($formattedContext)) {
-            $logMessage .= "\n" . $formattedContext;
+            $logMessage .= "\n".$formattedContext;
         }
 
         switch ($level) {
@@ -103,73 +165,5 @@ class LoggingService
             default:
                 $this->logger->notice($logMessage);
         }
-    }
-
-
-    /**
-     * Log a message idented by "Start Start Start" 
-     * To be called at the entrance point of a module
-     *  
-     * @param string $message 
-     * @param array $context 
-     * @return void 
-     */
-    public function start(string $message, array $context = []): void
-    {
-        $this->loggerStart->debug($message, $context);
-    }
-
-
-    /**
-     * @param string $message 
-     * @param array $context 
-     * @return void 
-     */
-    public function debug(string $message, array $context = []): void
-    {
-        $this->log('debug', $message, $context);
-    }
-
-
-    /**
-     * @param string $message 
-     * @param array $context 
-     * @return void 
-     */
-    public function info(string $message, array $context = []): void
-    {
-        $this->log('info', $message, $context);
-    }
-
-
-    /**
-     * @param string $message 
-     * @param array $context 
-     * @return void 
-     */
-    public function error(string $message, array $context = []): void
-    {
-        $this->log('error', $message, $context);
-    }
-
-
-    /**
-     * @param string $message 
-     * @param array $context 
-     * @return void 
-     */
-    public function critical(string $message, array $context = []): void
-    {
-        $this->log('critical', $message, $context);
-    }
-
-
-    /** @return void  */
-    public function logCurrentMethod(): void
-    {
-        $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
-        $currentMethod = $backtrace[1]['function'] ?? 'unknown';
-
-        $this->logger->debug("  Current method: $currentMethod");
     }
 }

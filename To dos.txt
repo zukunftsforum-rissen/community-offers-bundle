@@ -1,0 +1,2 @@
+Logging:
+Audit sollte idealerweise später zusätzlich in eine DB-Tabelle, damit man es im Backend filtern kann. Aber als erster Schritt ist File-Log ok.

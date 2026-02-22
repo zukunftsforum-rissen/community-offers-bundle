@@ -1,0 +1,66 @@
+<?php
+
+declare(strict_types=1);
+
+namespace ZukunftsforumRissen\CommunityOffersBundle\EventListener;
+
+use Contao\CoreBundle\DependencyInjection\Attribute\AsHook;
+use Contao\CoreBundle\InsertTag\InsertTagParser;
+use Contao\Form;
+use Contao\FrontendUser;
+use Contao\Widget;
+use Symfony\Bundle\SecurityBundle\Security;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\AccessService;
+
+#[AsHook('loadFormField')]
+class LoadFormFieldListener
+{
+    public function __construct(
+        private readonly Security $security,
+        private readonly AccessService $accessService,
+        private readonly InsertTagParser $insertTagParser,
+    ) {}
+
+    public function __invoke(Widget $widget, string $formId, array $formData, Form $form): Widget
+    {
+        // Contao übergibt "auto_<FORMULAR-ID>"
+        if ($formId !== 'auto_additional_access_request') {
+            return $widget;
+        }
+
+        $user = $this->security->getUser();
+        if (!$user instanceof FrontendUser) {
+            return $widget;
+        }
+
+        // Textfield for User's Name.
+        if (($widget->name ?? null) === 'fullName') {
+            $widget->value = trim(($user->firstname ?? '') . ' ' . ($user->lastname ?? ''));
+            $widget->readonly = true;
+            $widget->disabled = true; // optional: verhindert Mitsenden
+            return $widget;
+        }
+
+        // Checkbox-Optionen für bereits vorhandene Areas entfernen
+        if ($widget->name === 'requestedAreas') {
+
+            $granted = $this->accessService->getGrantedAreasForMemberId((int) $user->id);
+
+            if (!\is_array($widget->options)) {
+                return $widget;
+            }
+
+            $widget->options = array_values(array_filter(
+                $widget->options,
+                static function ($opt) use ($granted): bool {
+                    if (!\is_array($opt) || !isset($opt['value'])) {
+                        return true;
+                    }
+                    return !\in_array((string) $opt['value'], $granted, true);
+                }
+            ));
+        }
+
+        return $widget;
+    }
+}

@@ -4,132 +4,296 @@ declare(strict_types=1);
 
 namespace ZukunftsforumRissen\CommunityOffersBundle\Controller\Api;
 
+use Contao\FrontendUser;
+use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\AccessRequestService;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\AccessService;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService;
 
 #[Route('/api/door', defaults: ['_scope' => 'frontend', '_token_check' => false])]
 class AccessController
 {
-    public function __construct(private readonly Security $security) {}
+    public function __construct(
+        private readonly Security $security,
+        private readonly AccessService $accessService,
+        private readonly AccessRequestService $accessRequestService,
+        private readonly LoggingService $logging,
+        private readonly CacheItemPoolInterface $cache, // 👈 NEU (cache.app)
+    ) {}
 
-    /**
-     * Returns information about the currently authenticated user.
-     * This endpoint provides details about the user's authentication status, including their identifier and roles if they are authenticated. If the user is not authenticated, it simply indicates that the user is not authenticated. This can be useful for frontend applications to determine the user's state and adjust the UI accordingly.
-     * Test with a GET request to /api/door/whoami. The response will indicate whether the user is authenticated and provide their identifier and roles if they are.
-     * 
-     *  @return JsonResponse  */
+
     #[Route('/whoami', name: 'community_offers_whoami', methods: ['GET'])]
-    public function whoami(): JsonResponse
+    public function whoami(Request $request): JsonResponse
     {
+        $this->logging->initiateLogging('door', 'community-offers');
+        $this->logging->start('whoami');
+
         $user = $this->security->getUser();
 
-        if (!$user) {
+        if (!$user instanceof FrontendUser) {
+            $this->logging->info('whoami.anon', [
+                'ip' => $request->getClientIp(),
+                'ua' => $request->headers->get('User-Agent'),
+            ]);
+
             return new JsonResponse([
                 'authenticated' => false,
-            ], 200);
+                'areas' => [],
+            ]);
         }
+
+        $memberId = (int) $user->id;
+        $areas = $this->accessService->getGrantedAreasForMemberId($memberId);
+
+        $requests = $this->accessRequestService
+            ->getPendingRequestsForEmail((string) $user->email);
+
+        $this->logging->debug('whoami.auth', [
+            'memberId' => $memberId,
+            'areas' => $areas,
+            'requests' => $requests,
+            'ip' => $request->getClientIp(),
+        ]);
 
         return new JsonResponse([
             'authenticated' => true,
-            'identifier' => $user->getUserIdentifier(),
-            'roles' => $user->getRoles(),
+            'member' => [
+                'id' => $memberId,
+                'firstname' => $user->firstname ?? null,
+                'lastname'  => $user->lastname ?? null,
+                'email'     => $user->email ?? null,
+            ],
+            'areas' => $areas,
+            'requests' => $requests,
+        ]);
+    }
+
+    #[Route('/request/{slug}', name: 'community_offers_request_access', methods: ['POST'])]
+    #[IsGranted('IS_AUTHENTICATED_REMEMBERED')]
+    public function request(Request $request, string $slug): JsonResponse
+    {
+        $this->logging->initiateLogging('door', 'community-offers');
+        $this->logging->start('request_access', ['slug' => $slug]);
+
+        $user = $this->security->getUser();
+        if (!$user instanceof FrontendUser) {
+            $this->logging->info('request_access.unauthenticated', [
+                'slug' => $slug,
+                'ip' => $request->getClientIp(),
+            ]);
+
+            return new JsonResponse(['success' => false, 'message' => 'Not authenticated'], 401);
+        }
+
+        $known = $this->accessService->getKnownAreas();
+        if (!in_array($slug, $known, true)) {
+            $this->logging->info('request_access.unknown_area', [
+                'memberId' => (int) $user->id,
+                'slug' => $slug,
+                'ip' => $request->getClientIp(),
+            ]);
+
+            return new JsonResponse(['success' => false, 'message' => 'Unknown area'], 404);
+        }
+
+        $memberId = (int) $user->id;
+        $granted = $this->accessService->getGrantedAreasForMemberId($memberId);
+
+        if (in_array($slug, $granted, true)) {
+            $this->logging->info('request_access.already_granted', [
+                'memberId' => $memberId,
+                'slug' => $slug,
+            ]);
+
+            return new JsonResponse(['success' => false, 'message' => 'Already granted'], 400);
+        }
+
+        try {
+            $result = $this->accessRequestService->sendOrResendDoiForArea(
+                firstname: (string) ($user->firstname ?? ''),
+                lastname: (string) ($user->lastname ?? ''),
+                email: (string) ($user->email ?? ''),
+                area: $slug,
+            );
+        } catch (\Throwable $e) {
+            $this->logging->error('request_access.exception', [
+                'memberId' => $memberId,
+                'slug' => $slug,
+                'error' => $e->getMessage(),
+            ]);
+
+            return new JsonResponse(['success' => false, 'message' => 'Internal error'], 500);
+        }
+
+        $this->logging->info('request_access.result', [
+            'memberId' => $memberId,
+            'slug' => $slug,
+            'code' => $result['code'] ?? 'unknown',
+            'ip' => $request->getClientIp(),
+        ]);
+
+        if (($result['code'] ?? '') === 'pending_confirmed') {
+            return new JsonResponse([
+                'success' => false,
+                'message' => 'Anfrage ist bereits bestätigt und wartet auf Freigabe.',
+            ], 409);
+        }
+
+        if (($result['code'] ?? '') === 'cooldown') {
+            return new JsonResponse([
+                'success' => false,
+                'message' => 'Bitte warte kurz, bevor du erneut anforderst.',
+                'retryAfterSeconds' => (int) ($result['retryAfterSeconds'] ?? 300),
+            ], 429);
+        }
+
+        if (($result['code'] ?? '') === 'invalid_email') {
+            return new JsonResponse([
+                'success' => false,
+                'message' => 'Invalid email',
+            ], 400);
+        }
+
+        if (($result['code'] ?? '') !== 'ok') {
+            return new JsonResponse([
+                'success' => false,
+                'message' => 'Could not create request',
+            ], 500);
+        }
+
+        // Optional (für Punkt 2 UX): retryAfterSeconds mitgeben
+        return new JsonResponse([
+            'success' => true,
+            'message' => 'DOI email sent',
+            'retryAfterSeconds' => 600,
         ], 200);
     }
 
     #[Route('/open/{slug}', name: 'community_offers_open_door', methods: ['POST'])]
     #[IsGranted('IS_AUTHENTICATED_REMEMBERED')]
-    public function open(string $slug): JsonResponse
+    public function open(Request $request, string $slug): JsonResponse
     {
-        return new JsonResponse([
-            'success' => true,
-            'door' => $slug,
+        $this->logging->initiateLogging('door', 'community-offers');
+        $this->logging->start('door_open', ['slug' => $slug]);
+
+        $user = $this->security->getUser();
+
+        if (!$user instanceof FrontendUser) {
+            $this->logging->info('door.open.unauthenticated', [
+                'slug' => $slug,
+                'ip' => $request->getClientIp(),
+                'ua' => $request->headers->get('User-Agent'),
+            ]);
+
+            return new JsonResponse(['success' => false], 401);
+        }
+
+        $knownAreas = $this->accessService->getKnownAreas();
+        if (!in_array($slug, $knownAreas, true)) {
+            $this->logging->info('door.open.unknown_area', [
+                'memberId' => (int) $user->id,
+                'slug' => $slug,
+                'ip' => $request->getClientIp(),
+            ]);
+
+            return new JsonResponse(['success' => false, 'message' => 'Unknown area'], 404);
+        }
+
+        $memberId = (int) $user->id;
+        $areas = $this->accessService->getGrantedAreasForMemberId($memberId);
+
+        if (!in_array($slug, $areas, true)) {
+            $this->logging->info('door.open.forbidden', [
+                'memberId' => $memberId,
+                'slug' => $slug,
+                'ip' => $request->getClientIp(),
+                'ua' => $request->headers->get('User-Agent'),
+            ]);
+
+            return new JsonResponse(['success' => false, 'message' => 'Forbidden'], 403);
+        }
+
+        // ✅ Rate limit: 3/min pro Member+Area (cache.app)
+        $key = sprintf('door_open_m%d_%s', $memberId, $slug);
+
+        $item = $this->cache->getItem($key);
+        $data = $item->isHit() ? $item->get() : null;
+
+        $now = time();
+        $limit = 3;
+        $windowSeconds = 60;
+
+        if (!is_array($data) || !isset($data['count'], $data['resetAt'])) {
+            $data = ['count' => 0, 'resetAt' => $now + $windowSeconds];
+        }
+
+        if ($now >= (int) $data['resetAt']) {
+            // neues Fenster
+            $data = ['count' => 0, 'resetAt' => $now + $windowSeconds];
+        }
+
+        if ((int) $data['count'] >= $limit) {
+            $retryAfterSeconds = max(1, (int) $data['resetAt'] - $now);
+
+            $this->logging->info('door.open.rate_limited', [
+                'memberId' => $memberId,
+                'slug' => $slug,
+                'retryAfterSeconds' => $retryAfterSeconds,
+                'ip' => $request->getClientIp(),
+            ]);
+
+            return new JsonResponse([
+                'success' => false,
+                'message' => 'Zu viele Versuche – bitte kurz warten.',
+                'retryAfterSeconds' => $retryAfterSeconds,
+            ], 429);
+        }
+
+        // verbrauchen
+        $data['count'] = (int) $data['count'] + 1;
+
+        // Cache speichern (läuft automatisch nach Ablauf raus)
+        $item->set($data);
+        $item->expiresAfter(max(1, (int) $data['resetAt'] - $now));
+        $this->cache->save($item);
+
+        $this->logging->info('door.open.attempt', [
+            'memberId' => $memberId,
+            'slug' => $slug,
+            'ip' => $request->getClientIp(),
+            'ua' => $request->headers->get('User-Agent'),
         ]);
+
+        try {
+            $ok = $this->accessService->openDoor($slug);
+        } catch (\Throwable $e) {
+            $this->logging->critical('door.open.exception', [
+                'memberId' => $memberId,
+                'slug' => $slug,
+                'error' => $e->getMessage(),
+            ]);
+
+            return new JsonResponse([
+                'success' => false,
+                'door' => $slug,
+                'message' => 'Internal error',
+            ], 500);
+        }
+
+        $this->logging->info('door.open.result', [
+            'memberId' => $memberId,
+            'slug' => $slug,
+            'result' => $ok ? 'granted' : 'error',
+        ]);
+
+        return new JsonResponse([
+            'success' => $ok,
+            'door' => $slug,
+        ], $ok ? 200 : 500);
     }
 }
-
-
-
-
-// Liefert immer 403, egal ob eingeloggt
-// #[Route('/api/door')]
-// class AccessController
-// {
-//     public function __construct(
-//         private readonly AccessService $accessService,
-//         private readonly Security $security,
-//     ) {}
-
-//     #[Route('/open/{slug}', name: 'community_offers_open_door', methods: ['POST'])]
-//     #[IsGranted('ROLE_MEMBER')]
-//     public function open(string $slug): JsonResponse
-//     {
-//         $user = $this->security->getUser(); // eingeloggter FE-User (Objekt)
-
-//         $success = $this->accessService->openDoor($slug);
-
-//         return new JsonResponse([
-//             'success' => $success,
-//             'door' => $slug,
-//             'user' => $user?->getUserIdentifier(), // meist username / email
-//         ]);
-//     }
-// }
-
-/**
- * Opens a door based on the provided slug.
- * This endpoint is designed to trigger the opening of a door identified by its slug. In a real implementation, this would include authentication and authorization checks to ensure that only authorized users can open the door. Additionally, it would interact with hardware or a service responsible for controlling the door mechanism.
- * Teste mit einem POST-Request an /api/door/open/{slug}, wobei {slug} durch die Kennung der Tür ersetzt wird, die geöffnet werden soll. Die Antwort gibt an, ob der Vorgang erfolgreich war.
- * Example usage: in terminal:
- * curl -X POST https://zukunftwohnen.ddev.site/api/door/open/workshop
-
- * Response:
- * {
- * "success": true,
- *  "door": "main-entrance"
- * }
- * 
- * @param string $slug 
- * @param Request $request 
- * @return JsonResponse 
- */
-//     #[Route('/open/{slug}', name: 'community_offers_open_door', methods: ['POST'])]
-//     public function open(string $slug, Request $request): JsonResponse
-//     {
-//         $success = $this->accessService->openDoor($slug);
-
-//         return new JsonResponse([
-//             'success' => $success,
-//             'door' => $slug
-//         ]);
-//     }
-// }
-
-/** @package ZukunftsforumRissen\CommunityOffersBundle\Controller\Api 
- * 
- * This controller serves as a simple API endpoint for testing purposes. It can be expanded in the future to include more complex API functionalities related to community offers.
- * The '/ping' endpoint can be used to verify that the API is up and running, returning a JSON response indicating success.
- * Example usage:
- * GET /api/ping
- * Response:
- * {
- *  "success": true,
- * "message": "Community Offers API is working"
- * }
- * 
- * im Browser: http://localhost:8000/api/ping
- * 
- */
-// #[Route('/api')]
-// class AccessController
-// {
-//     #[Route('/ping', name: 'community_offers_ping', methods: ['GET'])]
-//     public function ping(): JsonResponse
-//     {
-//         return new JsonResponse([
-//             'success' => true,
-//             'message' => 'Community Offers API is working'
-//         ]);
-//     }
-// }

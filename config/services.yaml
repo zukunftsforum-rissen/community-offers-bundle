@@ -1,7 +1,16 @@
 parameters:
-    enable_debug_logging: true
-    enable_logging: true
-
+    enable_logging: "%env(bool:ENABLE_LOGGING)%"
+    enable_debug_logging: "%env(bool:ENABLE_DEBUG_LOGGING)%"
+    community_offers.mail_from: "%env(COMMUNITY_OFFERS_MAIL_FROM)%"
+    community_offers.mail_reply_to: "%env(COMMUNITY_OFFERS_MAIL_REPLY_TO)%"
+    community_offers.app_url: "%env(COMMUNITY_OFFERS_APP_URL)%"
+    community_offers.reset_password_url: "%env(COMMUNITY_OFFERS_RESET_PASSWORD_URL)%"
+    community_offers.area_groups:
+        workshop: 1
+        sharing: 2
+        depot: 3
+        swap-house: 4
+        
 services:
     _defaults:
         autowire: true
@@ -10,3 +19,23 @@ services:
     ZukunftsforumRissen\CommunityOffersBundle\:
         resource: ../src/
         exclude: ../src/{DependencyInjection,Entity,Tests}
+
+    ZukunftsforumRissen\CommunityOffersBundle\Backend\AccessRequestBackend:
+        tags:
+            - {
+                  name: contao.callback,
+                  table: tl_co_access_request,
+                  target: config.onload_callback,
+                  method: handleActions,
+              }
+
+    ZukunftsforumRissen\CommunityOffersBundle\Service\ApprovalMailer:
+        arguments:
+            $from: "%community_offers.mail_from%"
+            $replyTo: "%community_offers.mail_reply_to%"
+            $appUrl: "%community_offers.app_url%"
+            $resetPasswordUrl: "%community_offers.reset_password_url%"
+
+    ZukunftsforumRissen\CommunityOffersBundle\Service\AccessService:
+        arguments:
+            $areaGroups: "%community_offers.area_groups%"

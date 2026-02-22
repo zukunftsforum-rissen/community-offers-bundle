@@ -1,4 +1,4 @@
 # config/routes.yaml
 community_offers_controllers:
-    resource: ../src/Controller
+    resource: '../src/Controller/'
     type: attribute

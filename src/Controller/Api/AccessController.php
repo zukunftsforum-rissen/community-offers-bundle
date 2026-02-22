@@ -13,6 +13,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\AccessRequestService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\AccessService;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorAuditLogger;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService;
 
 #[Route('/api/door', defaults: ['_scope' => 'frontend', '_token_check' => false])]
@@ -23,7 +24,8 @@ class AccessController
         private readonly AccessService $accessService,
         private readonly AccessRequestService $accessRequestService,
         private readonly LoggingService $logging,
-        private readonly CacheItemPoolInterface $cache, // 👈 NEU (cache.app)
+        private readonly CacheItemPoolInterface $cache,
+        private readonly DoorAuditLogger $audit,
     ) {}
 
 
@@ -174,6 +176,7 @@ class AccessController
         ], 200);
     }
 
+    
     #[Route('/open/{slug}', name: 'community_offers_open_door', methods: ['POST'])]
     #[IsGranted('IS_AUTHENTICATED_REMEMBERED')]
     public function open(Request $request, string $slug): JsonResponse
@@ -181,9 +184,12 @@ class AccessController
         $this->logging->initiateLogging('door', 'community-offers');
         $this->logging->start('door_open', ['slug' => $slug]);
 
+        $this->audit->audit('door_open', $slug, 'attempt');
+
         $user = $this->security->getUser();
 
         if (!$user instanceof FrontendUser) {
+            $this->audit->audit('door_open', $slug, 'unauthenticated');
             $this->logging->info('door.open.unauthenticated', [
                 'slug' => $slug,
                 'ip' => $request->getClientIp(),
@@ -195,6 +201,7 @@ class AccessController
 
         $knownAreas = $this->accessService->getKnownAreas();
         if (!in_array($slug, $knownAreas, true)) {
+            $this->audit->audit('door_open', $slug, 'unknown_area');
             $this->logging->info('door.open.unknown_area', [
                 'memberId' => (int) $user->id,
                 'slug' => $slug,
@@ -208,6 +215,7 @@ class AccessController
         $areas = $this->accessService->getGrantedAreasForMemberId($memberId);
 
         if (!in_array($slug, $areas, true)) {
+            $this->audit->audit('door_open', $slug, 'forbidden');
             $this->logging->info('door.open.forbidden', [
                 'memberId' => $memberId,
                 'slug' => $slug,
@@ -271,6 +279,7 @@ class AccessController
 
         try {
             $ok = $this->accessService->openDoor($slug);
+            $this->audit->audit('door_open', $slug, $ok ? 'granted' : 'error');
         } catch (\Throwable $e) {
             $this->logging->critical('door.open.exception', [
                 'memberId' => $memberId,

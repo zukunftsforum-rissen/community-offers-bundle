@@ -7,6 +7,7 @@ namespace ZukunftsforumRissen\CommunityOffersBundle\Service;
 use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\MemberModel;
 use Contao\StringUtil;
+use ZukunftsforumRissen\CommunityOffersBundle\Door\DoorGatewayInterface;
 
 class AccessService
 {
@@ -15,7 +16,8 @@ class AccessService
      */
     public function __construct(
         private readonly ContaoFramework $framework,
-        private readonly array $areaGroups
+        private readonly array $areaGroups,
+        private readonly DoorGatewayInterface $doorGateway
     ) {}
 
 
@@ -45,12 +47,15 @@ class AccessService
     }
 
 
-    public function openDoor(string $slug): bool
+    public function openDoor(string $area, int $memberId): bool
     {
-        // TODO: später Rechteprüfung
-        // TODO: später Hardware-Trigger
+        // Hier NICHT die Rechte prüfen (das macht der Controller bereits),
+        // aber wir validieren, dass die Area existiert.
+        if (!array_key_exists($area, $this->areaGroups)) {
+            return false;
+        }
 
-        return true; // Prototyp
+        return $this->doorGateway->open($area, $memberId);
     }
 
     /**
@@ -61,7 +66,7 @@ class AccessService
         return array_values(array_map('strval', array_keys($this->areaGroups)));
     }
 
-    
+
     public function getGroupIdsForAreas(array $areas): array
     {
         $ids = [];

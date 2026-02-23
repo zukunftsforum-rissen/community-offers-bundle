@@ -10,7 +10,7 @@ parameters:
         sharing: 2
         depot: 3
         swap-house: 4
-        
+
 services:
     _defaults:
         autowire: true
@@ -39,3 +39,8 @@ services:
     ZukunftsforumRissen\CommunityOffersBundle\Service\AccessService:
         arguments:
             $areaGroups: "%community_offers.area_groups%"
+
+
+        # Default-Gateway (Dev/Prod erstmal Mock, später austauschen)
+    ZukunftsforumRissen\CommunityOffersBundle\Door\DoorGatewayInterface:
+        alias: ZukunftsforumRissen\CommunityOffersBundle\Door\MockDoorGateway

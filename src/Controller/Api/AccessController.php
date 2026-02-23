@@ -176,85 +176,43 @@ class AccessController
         ], 200);
     }
 
-    
     #[Route('/open/{slug}', name: 'community_offers_open_door', methods: ['POST'])]
     #[IsGranted('IS_AUTHENTICATED_REMEMBERED')]
     public function open(Request $request, string $slug): JsonResponse
     {
-        $this->logging->initiateLogging('door', 'community-offers');
-        $this->logging->start('door_open', ['slug' => $slug]);
-
-        $this->audit->audit('door_open', $slug, 'attempt');
-
         $user = $this->security->getUser();
 
         if (!$user instanceof FrontendUser) {
-            $this->audit->audit('door_open', $slug, 'unauthenticated');
-            $this->logging->info('door.open.unauthenticated', [
-                'slug' => $slug,
-                'ip' => $request->getClientIp(),
-                'ua' => $request->headers->get('User-Agent'),
-            ]);
-
-            return new JsonResponse(['success' => false], 401);
-        }
-
-        $knownAreas = $this->accessService->getKnownAreas();
-        if (!in_array($slug, $knownAreas, true)) {
-            $this->audit->audit('door_open', $slug, 'unknown_area');
-            $this->logging->info('door.open.unknown_area', [
-                'memberId' => (int) $user->id,
-                'slug' => $slug,
-                'ip' => $request->getClientIp(),
-            ]);
-
-            return new JsonResponse(['success' => false, 'message' => 'Unknown area'], 404);
+            return new JsonResponse(['success' => false, 'message' => 'Not authenticated'], 401);
         }
 
         $memberId = (int) $user->id;
+
+        // Rechte prüfen (nur wenn AccessService das kann)
         $areas = $this->accessService->getGrantedAreasForMemberId($memberId);
-
         if (!in_array($slug, $areas, true)) {
-            $this->audit->audit('door_open', $slug, 'forbidden');
-            $this->logging->info('door.open.forbidden', [
-                'memberId' => $memberId,
-                'slug' => $slug,
-                'ip' => $request->getClientIp(),
-                'ua' => $request->headers->get('User-Agent'),
-            ]);
-
             return new JsonResponse(['success' => false, 'message' => 'Forbidden'], 403);
         }
 
-        // ✅ Rate limit: 3/min pro Member+Area (cache.app)
-        $key = sprintf('door_open_m%d_%s', $memberId, $slug);
-
-        $item = $this->cache->getItem($key);
-        $data = $item->isHit() ? $item->get() : null;
-
-        $now = time();
+        // --- Rate limit: 3/min Member+Area ---
         $limit = 3;
         $windowSeconds = 60;
+        $now = time();
+
+        $rateKey = sprintf('door_open_m%d_%s', $memberId, $slug); // keine ":" !
+        $rateItem = $this->cache->getItem($rateKey);
+        $data = $rateItem->isHit() ? $rateItem->get() : null;
 
         if (!is_array($data) || !isset($data['count'], $data['resetAt'])) {
             $data = ['count' => 0, 'resetAt' => $now + $windowSeconds];
         }
 
         if ($now >= (int) $data['resetAt']) {
-            // neues Fenster
             $data = ['count' => 0, 'resetAt' => $now + $windowSeconds];
         }
 
         if ((int) $data['count'] >= $limit) {
             $retryAfterSeconds = max(1, (int) $data['resetAt'] - $now);
-
-            $this->logging->info('door.open.rate_limited', [
-                'memberId' => $memberId,
-                'slug' => $slug,
-                'retryAfterSeconds' => $retryAfterSeconds,
-                'ip' => $request->getClientIp(),
-            ]);
-
             return new JsonResponse([
                 'success' => false,
                 'message' => 'Zu viele Versuche – bitte kurz warten.',
@@ -262,43 +220,52 @@ class AccessController
             ], 429);
         }
 
-        // verbrauchen
         $data['count'] = (int) $data['count'] + 1;
+        $rateItem->set($data);
+        $rateItem->expiresAfter(max(1, (int) $data['resetAt'] - $now));
+        $this->cache->save($rateItem);
 
-        // Cache speichern (läuft automatisch nach Ablauf raus)
-        $item->set($data);
-        $item->expiresAfter(max(1, (int) $data['resetAt'] - $now));
-        $this->cache->save($item);
+        // --- C3 Locks: Member+Area + global Area ---
+        $lockSeconds = 5;
+        $until = $now + $lockSeconds;
 
-        $this->logging->info('door.open.attempt', [
-            'memberId' => $memberId,
-            'slug' => $slug,
-            'ip' => $request->getClientIp(),
-            'ua' => $request->headers->get('User-Agent'),
-        ]);
-
-        try {
-            $ok = $this->accessService->openDoor($slug);
-            $this->audit->audit('door_open', $slug, $ok ? 'granted' : 'error');
-        } catch (\Throwable $e) {
-            $this->logging->critical('door.open.exception', [
-                'memberId' => $memberId,
-                'slug' => $slug,
-                'error' => $e->getMessage(),
-            ]);
-
+        $memberLockKey = sprintf('door_lock_member_m%d_%s', $memberId, $slug);
+        $memberLock = $this->cache->getItem($memberLockKey);
+        if ($memberLock->isHit()) {
+            $payload = $memberLock->get();
+            $retry = is_array($payload) && isset($payload['until']) ? ((int)$payload['until'] - $now) : $lockSeconds;
             return new JsonResponse([
                 'success' => false,
-                'door' => $slug,
-                'message' => 'Internal error',
-            ], 500);
+                'message' => 'Tür wurde gerade geöffnet.',
+                'retryAfterSeconds' => max(1, $retry),
+            ], 429);
         }
 
-        $this->logging->info('door.open.result', [
-            'memberId' => $memberId,
-            'slug' => $slug,
-            'result' => $ok ? 'granted' : 'error',
-        ]);
+        $areaLockKey = sprintf('door_lock_area_%s', $slug);
+        $areaLock = $this->cache->getItem($areaLockKey);
+        if ($areaLock->isHit()) {
+            $payload = $areaLock->get();
+            $retry = is_array($payload) && isset($payload['until']) ? ((int)$payload['until'] - $now) : $lockSeconds;
+            return new JsonResponse([
+                'success' => false,
+                'message' => 'Tür ist gerade in Benutzung.',
+                'retryAfterSeconds' => max(1, $retry),
+            ], 429);
+        }
+
+        // --- Tür öffnen (hier später Hardware) ---
+        $ok = $this->accessService->openDoor($slug, $memberId);
+
+        // Locks nur bei Erfolg setzen
+        if ($ok) {
+            $memberLock->set(['until' => $until]);
+            $memberLock->expiresAfter($lockSeconds);
+            $this->cache->save($memberLock);
+
+            $areaLock->set(['until' => $until]);
+            $areaLock->expiresAfter($lockSeconds);
+            $this->cache->save($areaLock);
+        }
 
         return new JsonResponse([
             'success' => $ok,

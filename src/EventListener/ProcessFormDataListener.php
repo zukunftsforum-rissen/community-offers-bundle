@@ -17,13 +17,14 @@ class ProcessFormDataListener
         private readonly AccessRequestService $accessRequestService,
         private readonly Security $security,
         private readonly AccessService $accessService,
-    ) {}
+    ) {
+    }
 
     public function __invoke(array $submittedData, array $formData, array $files, array $labels): void
     {
         $formId = (string) ($formData['formID'] ?? '');
 
-        if ($formId !== 'access_request' && $formId !== 'additional_access_request') {
+        if ('access_request' !== $formId && 'additional_access_request' !== $formId) {
             return;
         }
 
@@ -35,7 +36,7 @@ class ProcessFormDataListener
         $requestedAreas = array_values(array_filter(array_map('strval', $requestedAreas)));
 
         // ===== Zusatzformular: Member-Daten aus Session =====
-        if ($formId === 'additional_access_request') {
+        if ('additional_access_request' === $formId) {
             $user = $this->security->getUser();
 
             if (!$user instanceof FrontendUser) {
@@ -48,7 +49,7 @@ class ProcessFormDataListener
             $requestedAreas = array_values(array_diff($requestedAreas, $granted));
 
             // Wenn nichts mehr übrig bleibt, keine Anfrage erzeugen
-            if ($requestedAreas === []) {
+            if ([] === $requestedAreas) {
                 return;
             }
 
@@ -68,12 +69,12 @@ class ProcessFormDataListener
 
         // ===== Erstantrag: Daten aus Formular =====
         $firstname = (string) ($submittedData['firstname'] ?? '');
-        $lastname  = (string) ($submittedData['lastname'] ?? '');
-        $email     = (string) ($submittedData['email'] ?? '');
+        $lastname = (string) ($submittedData['lastname'] ?? '');
+        $email = (string) ($submittedData['email'] ?? '');
 
         $street = (string) ($submittedData['street'] ?? '');
         $postal = (string) ($submittedData['postal'] ?? '');
-        $city   = (string) ($submittedData['city'] ?? '');
+        $city = (string) ($submittedData['city'] ?? '');
         $mobile = (string) ($submittedData['mobile'] ?? '');
 
         $this->accessRequestService->createRequestAndSendDoiMail(

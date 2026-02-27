@@ -19,12 +19,13 @@ class LoadFormFieldListener
         private readonly Security $security,
         private readonly AccessService $accessService,
         private readonly InsertTagParser $insertTagParser,
-    ) {}
+    ) {
+    }
 
     public function __invoke(Widget $widget, string $formId, array $formData, Form $form): Widget
     {
         // Contao übergibt "auto_<FORMULAR-ID>"
-        if ($formId !== 'auto_additional_access_request') {
+        if ('auto_additional_access_request' !== $formId) {
             return $widget;
         }
 
@@ -35,15 +36,15 @@ class LoadFormFieldListener
 
         // Textfield for User's Name.
         if (($widget->name ?? null) === 'fullName') {
-            $widget->value = trim(($user->firstname ?? '') . ' ' . ($user->lastname ?? ''));
+            $widget->value = trim(($user->firstname ?? '').' '.($user->lastname ?? ''));
             $widget->readonly = true;
             $widget->disabled = true; // optional: verhindert Mitsenden
+
             return $widget;
         }
 
         // Checkbox-Optionen für bereits vorhandene Areas entfernen
-        if ($widget->name === 'requestedAreas') {
-
+        if ('requestedAreas' === $widget->name) {
             $granted = $this->accessService->getGrantedAreasForMemberId((int) $user->id);
 
             if (!\is_array($widget->options)) {
@@ -56,8 +57,9 @@ class LoadFormFieldListener
                     if (!\is_array($opt) || !isset($opt['value'])) {
                         return true;
                     }
+
                     return !\in_array((string) $opt['value'], $granted, true);
-                }
+                },
             ));
         }
 

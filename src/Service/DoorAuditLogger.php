@@ -16,18 +16,14 @@ class DoorAuditLogger
         private readonly ContaoFramework $framework,
         private readonly RequestStack $requestStack,
         private readonly Security $security,
-    ) {}
+    ) {
+    }
 
     /**
-     * @param array<string,mixed> $context
+     * @param array<string, mixed> $context
      */
-    public function audit(
-        string $action,
-        string $area,
-        string $result,
-        string $message = '',
-        array $context = [],
-    ): void {
+    public function audit(string $action, string $area, string $result, string $message = '', array $context = []): void
+    {
         $this->framework->initialize();
 
         $req = $this->requestStack->getCurrentRequest();
@@ -38,11 +34,11 @@ class DoorAuditLogger
         $memberId = $user instanceof FrontendUser ? (int) $user->id : 0;
 
         Database::getInstance()
-            ->prepare("
+            ->prepare('
                 INSERT INTO tl_co_door_log
                 (tstamp, memberId, area, action, result, ip, userAgent, message, context)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ")
+            ')
             ->execute(
                 time(),
                 $memberId,
@@ -53,6 +49,7 @@ class DoorAuditLogger
                 mb_substr($ua, 0, 255),
                 mb_substr($message, 0, 255),
                 $context ? json_encode($context, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : null,
-            );
+            )
+        ;
     }
 }

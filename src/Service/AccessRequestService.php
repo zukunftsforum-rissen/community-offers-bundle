@@ -20,26 +20,20 @@ class AccessRequestService
         private readonly RouterInterface $router,
         private readonly MailerInterface $mailer,
         private readonly ContaoFramework $framework,
-    ) {}
+    ) {
+    }
 
     /**
      * @param list<string> $requestedAreas
+     *
      * @return 'ok'|'invalid_email'|'already_open'
      */
-    public function tryCreateRequestAndSendDoiMail(
-        string $firstname,
-        string $lastname,
-        string $email,
-        string $street,
-        string $postal,
-        string $city,
-        string $mobile,
-        array $requestedAreas
-    ): string {
+    public function tryCreateRequestAndSendDoiMail(string $firstname, string $lastname, string $email, string $street, string $postal, string $city, string $mobile, array $requestedAreas): string
+    {
         $this->framework->initialize();
 
         $firstname = $this->cleanString($firstname, 100);
-        $lastname  = $this->cleanString($lastname, 100);
+        $lastname = $this->cleanString($lastname, 100);
 
         $email = $this->cleanEmail($email);
         if (!$email) {
@@ -48,15 +42,17 @@ class AccessRequestService
 
         $street = $this->cleanString($street, 255);
         $postal = $this->cleanString($postal, 16);
-        $city   = $this->cleanString($city, 255);
+        $city = $this->cleanString($city, 255);
         $mobile = $this->cleanPhone($mobile);
 
         $requestedAreas = $this->cleanAreas($requestedAreas);
 
-        // Blockt parallel laufende (unfreigegebene) Anfragen über das Formular – bleibt wie bisher:
+        // Blockt parallel laufende (unfreigegebene) Anfragen über das Formular –
+        // bleibt wie bisher:
         $existing = Database::getInstance()
             ->prepare("SELECT id FROM tl_co_access_request WHERE email=? AND approved='' LIMIT 1")
-            ->execute($email);
+            ->execute($email)
+        ;
 
         if ($existing->numRows > 0) {
             return 'already_open';
@@ -87,7 +83,8 @@ class AccessRequestService
                 '',
                 '',
                 $expiresAt,
-            );
+            )
+        ;
 
         $this->sendDoiMail(
             firstname: $firstname,
@@ -107,16 +104,8 @@ class AccessRequestService
     /**
      * @param list<string> $requestedAreas
      */
-    public function createRequestAndSendDoiMail(
-        string $firstname,
-        string $lastname,
-        string $email,
-        string $street,
-        string $postal,
-        string $city,
-        string $mobile,
-        array $requestedAreas
-    ): void {
+    public function createRequestAndSendDoiMail(string $firstname, string $lastname, string $email, string $street, string $postal, string $city, string $mobile, array $requestedAreas): void
+    {
         $this->tryCreateRequestAndSendDoiMail(
             $firstname,
             $lastname,
@@ -125,7 +114,7 @@ class AccessRequestService
             $postal,
             $city,
             $mobile,
-            $requestedAreas
+            $requestedAreas,
         );
     }
 
@@ -138,7 +127,8 @@ class AccessRequestService
         $row = Database::getInstance()
             ->prepare('SELECT * FROM tl_co_access_request WHERE token=? LIMIT 1')
             ->execute($tokenHash)
-            ->fetchAssoc();
+            ->fetchAssoc()
+        ;
 
         if (!$row) {
             return false;
@@ -154,24 +144,24 @@ class AccessRequestService
 
         Database::getInstance()
             ->prepare("UPDATE tl_co_access_request SET emailConfirmed='1', tstamp=? WHERE id=?")
-            ->execute(time(), (int) $row['id']);
+            ->execute(time(), (int) $row['id'])
+        ;
 
         return true;
     }
 
     /**
-     * Pending-Status für whoami():
-     * [
+     * Pending-Status für whoami(): [
      *   'depot' => ['state' => 'pending_unconfirmed', 'retryAfterSeconds' => 420],
      *   'swap-house' => ['state' => 'pending_confirmed'],
-     * ]
+     * ].
      */
     public function getPendingRequestsForEmail(string $email): array
     {
         $this->framework->initialize();
 
         $email = $this->cleanEmail($email) ?? '';
-        if ($email === '') {
+        if ('' === $email) {
             return [];
         }
 
@@ -187,7 +177,8 @@ class AccessRequestService
                 ORDER BY id DESC
                 LIMIT 50
             ")
-            ->execute($email);
+            ->execute($email)
+        ;
 
         while ($res->next()) {
             $areas = StringUtil::deserialize($res->requestedAreas, true);
@@ -196,7 +187,7 @@ class AccessRequestService
             foreach ($areas as $area) {
                 // nur erlaubte Areas berücksichtigen
                 $areaClean = $this->cleanAreas([$area]);
-                if ($areaClean === []) {
+                if ([] === $areaClean) {
                     continue;
                 }
                 $area = $areaClean[0];
@@ -206,7 +197,7 @@ class AccessRequestService
                     continue;
                 }
 
-                if ((string) $res->emailConfirmed === '') {
+                if ('' === (string) $res->emailConfirmed) {
                     $age = time() - (int) $res->tstamp;
                     $remaining = $cooldown - $age;
                     $remaining = $remaining > 0 ? $remaining : 0;
@@ -230,21 +221,17 @@ class AccessRequestService
      * App-Flow: Anfrage für genau eine Area.
      * - pending_confirmed: keine erneute Mail (wartet auf Admin)
      * - pending_unconfirmed: Cooldown, danach Resend möglich
-     * - sonst: neue Anfrage + DOI-Mail
+     * - sonst: neue Anfrage + DOI-Mail.
      *
-     * @return array{code:string,retryAfterSeconds?:int}
-     *   code: ok|pending_confirmed|cooldown|invalid_email
+     * @return array{code:string, retryAfterSeconds?:int}
+     *                                                    code: ok|pending_confirmed|cooldown|invalid_email
      */
-    public function sendOrResendDoiForArea(
-        string $firstname,
-        string $lastname,
-        string $email,
-        string $area
-    ): array {
+    public function sendOrResendDoiForArea(string $firstname, string $lastname, string $email, string $area): array
+    {
         $this->framework->initialize();
 
         $firstname = $this->cleanString($firstname, 100);
-        $lastname  = $this->cleanString($lastname, 100);
+        $lastname = $this->cleanString($lastname, 100);
 
         $email = $this->cleanEmail($email);
         if (!$email) {
@@ -252,7 +239,7 @@ class AccessRequestService
         }
 
         $areaList = $this->cleanAreas([$area]);
-        if ($areaList === []) {
+        if ([] === $areaList) {
             // unbekannte Area -> wird im Controller schon 404, hier nur Safety
             return ['code' => 'invalid_email'];
         }
@@ -268,7 +255,8 @@ class AccessRequestService
                 ORDER BY id DESC
                 LIMIT 50
             ")
-            ->execute($email);
+            ->execute($email)
+        ;
 
         $matchId = null;
         $matchTstamp = null;
@@ -278,7 +266,7 @@ class AccessRequestService
             $areas = StringUtil::deserialize($res->requestedAreas, true);
             $areas = array_map('strval', $areas);
 
-            if (!in_array($area, $areas, true)) {
+            if (!\in_array($area, $areas, true)) {
                 continue;
             }
 
@@ -289,12 +277,12 @@ class AccessRequestService
         }
 
         // bestätigt, aber noch nicht freigegeben -> nicht erneut senden
-        if ($matchId !== null && $matchConfirmed !== '') {
+        if (null !== $matchId && '' !== $matchConfirmed) {
             return ['code' => 'pending_confirmed'];
         }
 
         // unbestätigt -> Cooldown / Resend
-        if ($matchId !== null && $matchConfirmed === '') {
+        if (null !== $matchId && '' === $matchConfirmed) {
             $age = time() - (int) $matchTstamp;
             $remaining = self::ADDITIONAL_REQUEST_COOLDOWN - $age;
 
@@ -313,7 +301,8 @@ class AccessRequestService
                     SET tstamp=?, token=?, tokenExpiresAt=?, emailConfirmed=''
                     WHERE id=?
                 ")
-                ->execute(time(), $tokenHash, $expiresAt, $matchId);
+                ->execute(time(), $tokenHash, $expiresAt, $matchId)
+            ;
 
             $this->sendDoiMail(
                 firstname: $firstname,
@@ -356,7 +345,8 @@ class AccessRequestService
                 '',
                 '',
                 $expiresAt,
-            );
+            )
+        ;
 
         $this->sendDoiMail(
             firstname: $firstname,
@@ -389,20 +379,11 @@ class AccessRequestService
             'swap-house' => 'Tauschhaus',
         ];
 
-        return implode(', ', array_map(static fn($a) => $map[$a] ?? $a, $areas));
+        return implode(', ', array_map(static fn ($a) => $map[$a] ?? $a, $areas));
     }
 
-    private function sendDoiMail(
-        string $firstname,
-        string $lastname,
-        string $email,
-        string $token,
-        array $requestedAreas,
-        string $street,
-        string $postal,
-        string $city,
-        string $mobile,
-    ): void {
+    private function sendDoiMail(string $firstname, string $lastname, string $email, string $token, array $requestedAreas, string $street, string $postal, string $city, string $mobile): void
+    {
         $confirmUrl = $this->router->generate(
             'community_offers_access_confirm',
             ['token' => $token],
@@ -410,28 +391,29 @@ class AccessRequestService
         );
 
         $text = <<<TXT
-Hallo {$firstname} {$lastname},
+            Hallo {$firstname} {$lastname},
 
-bitte bestätigen Sie Ihre E-Mail-Adresse, indem Sie diesen Link öffnen:
+            bitte bestätigen Sie Ihre E-Mail-Adresse, indem Sie diesen Link öffnen:
 
-{$confirmUrl}
+            {$confirmUrl}
 
-Ihre Anfrage:
-- Adresse: {$street}, {$postal} {$city}
-- Mobil: {$mobile}
-- Sie möchten nutzen: {$this->formatAreas($requestedAreas)}
+            Ihre Anfrage:
+            - Adresse: {$street}, {$postal} {$city}
+            - Mobil: {$mobile}
+            - Sie möchten nutzen: {$this->formatAreas($requestedAreas)}
 
-Wenn Sie diese Anfrage nicht gestellt haben, können Sie diese E-Mail ignorieren.
+            Wenn Sie diese Anfrage nicht gestellt haben, können Sie diese E-Mail ignorieren.
 
-Viele Grüße
-Zukunftwohnen / Zukunftsforum Rissen
-TXT;
+            Viele Grüße
+            Zukunftwohnen / Zukunftsforum Rissen
+            TXT;
 
         $mail = (new Email())
             ->from('admin@zukunftwohnen.zukunftsforum-rissen.de')
             ->to($email)
             ->subject('Bitte bestätigen Sie Ihre E-Mail-Adresse')
-            ->text($text);
+            ->text($text)
+        ;
 
         $this->mailer->send($mail);
     }
@@ -448,6 +430,7 @@ TXT;
     private function cleanEmail(string $email): string|null
     {
         $email = mb_strtolower(trim($email));
+
         return filter_var($email, FILTER_VALIDATE_EMAIL) ?: null;
     }
 
@@ -461,6 +444,7 @@ TXT;
 
     /**
      * @param array<mixed> $areas
+     *
      * @return list<string>
      */
     private function cleanAreas(array $areas): array
@@ -469,7 +453,7 @@ TXT;
 
         return array_values(array_filter(
             array_map('strval', $areas),
-            static fn(string $area): bool => \in_array($area, $allowed, true),
+            static fn (string $area): bool => \in_array($area, $allowed, true),
         ));
     }
 }

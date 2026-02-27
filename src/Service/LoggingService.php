@@ -19,7 +19,9 @@ class LoggingService
     private Logger $loggerStart;
 
     private bool $loggingEnabled;
+
     private bool $debugLoggingEnabled;
+
     private string $logDir;
 
     public function __construct(ParameterBagInterface $params)
@@ -28,7 +30,7 @@ class LoggingService
         $this->debugLoggingEnabled = 'true' === $params->get('enable_debug_logging');
 
         $projectDir = rtrim((string) $params->get('kernel.project_dir'), '/');
-        $this->logDir = $projectDir . '/var/logs/';
+        $this->logDir = $projectDir.'/var/logs/';
     }
 
     /**
@@ -39,7 +41,7 @@ class LoggingService
     public function initiateLogging(string $moduleName, string $fileName = ''): void
     {
         $logFileName = $fileName ?: 'app';
-        $logFile = $this->logDir . $logFileName . '.log';
+        $logFile = $this->logDir.$logFileName.'.log';
         $streamHandler = new StreamHandler($logFile, Level::Debug);
 
         $this->logger = new Logger($moduleName);
@@ -145,9 +147,9 @@ class LoggingService
         }
 
         $formattedContext = $this->formatContext($context);
-        $logMessage = '    ' . $message;
+        $logMessage = '    '.$message;
         if (!empty($formattedContext)) {
-            $logMessage .= "\n" . $formattedContext;
+            $logMessage .= "\n".$formattedContext;
         }
 
         switch ($level) {

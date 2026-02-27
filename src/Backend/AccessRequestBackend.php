@@ -19,27 +19,27 @@ class AccessRequestBackend extends Backend
     public function __construct(
         private readonly ApprovalMailer $approvalMailer,
         private readonly AccessService $accessService,
-    ) {}
-
+    ) {
+    }
 
     /**
-     * Handle backend actions.
-     * Diese Methode prüft, ob eine Aktion (hier: "approve") ausgeführt werden soll. Wenn ja, führt sie die entsprechenden Schritte aus (Member anlegen/aktualisieren, Antrag freigeben).
-     *
-     * @return void
+     * Handle backend actions. Diese Methode prüft, ob eine Aktion (hier: "approve")
+     * ausgeführt werden soll. Wenn ja, führt sie die entsprechenden Schritte aus
+     * (Member anlegen/aktualisieren, Antrag freigeben).
      */
     public function handleActions(): void
     {
-        if (Input::get('key') !== 'approve') {
+        if ('approve' !== Input::get('key')) {
             return;
         }
 
         $id = (int) Input::get('id');
 
         $row = Database::getInstance()
-            ->prepare("SELECT * FROM tl_co_access_request WHERE id=?")
+            ->prepare('SELECT * FROM tl_co_access_request WHERE id=?')
             ->execute($id)
-            ->fetchAssoc();
+            ->fetchAssoc()
+        ;
 
         if (!$row || !$row['emailConfirmed'] || $row['approved']) {
             $this->redirect('contao?do=co_access_request');
@@ -51,15 +51,15 @@ class AccessRequestBackend extends Backend
         $member = MemberModel::findOneBy('email', $email);
 
         $isNew = false;
-        if ($member === null) {
+        if (null === $member) {
             $member = new MemberModel();
             $isNew = true;
 
             // Minimaler Satz Pflichtwerte für neuen Member
             $member->tstamp = time();
-            $member->email  = $email;
+            $member->email = $email;
 
-            $member->username = $email;  // $email ist bereits lowercased/trimmed
+            $member->username = $email; // $email ist bereits lowercased/trimmed
 
             // Login aktivieren (Contao-Standard)
             $member->login = '1';
@@ -69,13 +69,13 @@ class AccessRequestBackend extends Backend
         }
 
         // immer aktualisieren (auch bei existing)
-        $member->tstamp    = time();
+        $member->tstamp = time();
         $member->firstname = (string) $row['firstname'];
-        $member->lastname  = (string) $row['lastname'];
-        $member->street    = (string) $row['street'];
-        $member->postal    = (string) $row['postal'];
-        $member->city      = (string) $row['city'];
-        $member->mobile    = (string) $row['mobile'];
+        $member->lastname = (string) $row['lastname'];
+        $member->street = (string) $row['street'];
+        $member->postal = (string) $row['postal'];
+        $member->city = (string) $row['city'];
+        $member->mobile = (string) $row['mobile'];
 
         // Gruppen zuweisen (merge statt überschreiben? – siehe unten)
         $areas = StringUtil::deserialize($row['requestedAreas'], true);
@@ -97,7 +97,8 @@ class AccessRequestBackend extends Backend
         // 🔹 Antrag als approved markieren
         Database::getInstance()
             ->prepare("UPDATE tl_co_access_request SET approved='1', tstamp=? WHERE id=?")
-            ->execute(time(), $id);
+            ->execute(time(), $id)
+        ;
 
         Message::addConfirmation('Der Antrag wurde erfolgreich freigegeben.');
 
@@ -108,22 +109,34 @@ class AccessRequestBackend extends Backend
             $email,
             (string) $row['firstname'],
             (string) $row['lastname'],
-            $areasHuman
+            $areasHuman,
         );
-
 
         $this->redirect('contao?do=co_access_request');
     }
 
-    
+    public function generateApproveButton(array $row, string|null $href, string $label, string $title, string|null $icon, string $attributes): string
+    {
+        if (!$row['emailConfirmed'] || $row['approved']) {
+            return ''; // nicht anzeigen
+        }
+
+        return \sprintf(
+            '<a href="contao?do=co_access_request&key=approve&id=%s" title="%s" style="color:green;font-weight:bold">%s Freigeben</a>',
+            $row['id'],
+            StringUtil::specialchars($title),
+            Image::getHtml($icon),
+        );
+    }
+
     private function mapAreasToGroups(array $areas): array
     {
         return $this->accessService->getGroupIdsForAreas($areas);
     }
 
-
     /**
      * @param list<string> $areas
+     *
      * @return list<string>
      */
     private function formatAreasHuman(array $areas): array
@@ -136,23 +149,11 @@ class AccessRequestBackend extends Backend
         ];
 
         $out = [];
+
         foreach ($areas as $a) {
             $out[] = $map[$a] ?? $a;
         }
+
         return $out;
-    }
-
-    public function generateApproveButton(array $row, ?string $href, string $label, string $title, ?string $icon, string $attributes): string
-    {
-        if (!$row['emailConfirmed'] || $row['approved']) {
-            return ''; // nicht anzeigen
-        }
-
-        return sprintf(
-            '<a href="contao?do=co_access_request&key=approve&id=%s" title="%s" style="color:green;font-weight:bold">%s Freigeben</a>',
-            $row['id'],
-            StringUtil::specialchars($title),
-            Image::getHtml($icon)
-        );
     }
 }

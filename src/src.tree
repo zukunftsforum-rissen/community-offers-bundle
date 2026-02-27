@@ -1,0 +1,35 @@
+.
+├── Backend
+│   └── AccessRequestBackend.php
+├── CommunityOffersBundle.php
+├── ContaoManager
+│   └── Plugin.php
+├── Controller
+│   └── Api
+│       ├── AccessConfirmController.php
+│       ├── AccessController.php
+│       ├── DeviceController.php
+│       └── LoanController.php
+├── DataContainer
+│   └── TlCoAreaDevice.php
+├── Door
+│   ├── DoorGatewayInterface.php
+│   └── MockDoorGateway.php
+├── EventListener
+│   ├── LoadFormFieldListener.php
+│   └── ProcessFormDataListener.php
+├── Security
+│   ├── DeviceApiUser.php
+│   └── DeviceTokenAuthenticator.php
+├── Service
+│   ├── AccessRequestService.php
+│   ├── AccessService.php
+│   ├── ApprovalMailer.php
+│   ├── DeviceAuthService.php
+│   ├── DoorAuditLogger.php
+│   ├── DoorJobService.php
+│   ├── LoanService.php
+│   └── LoggingService.php
+└── src.tree
+
+10 directories, 23 files

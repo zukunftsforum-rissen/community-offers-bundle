@@ -12,14 +12,13 @@ use ZukunftsforumRissen\CommunityOffersBundle\Door\DoorGatewayInterface;
 class AccessService
 {
     /**
-     * @param array<string,int> $areaGroups
+     * @param array<string, int> $areaGroups
      */
     public function __construct(
         private readonly ContaoFramework $framework,
         private readonly array $areaGroups,
-        private readonly DoorGatewayInterface $doorGateway
+        private readonly DoorGatewayInterface $doorGateway,
     ) {}
-
 
     /**
      * @return list<string>
@@ -28,8 +27,8 @@ class AccessService
     {
         $this->framework->initialize();
 
-        $member = MemberModel::findByPk($memberId);
-        if ($member === null) {
+        $member = MemberModel::findById($memberId);
+        if (null === $member) {
             return [];
         }
 
@@ -37,26 +36,28 @@ class AccessService
         $groups = array_map('intval', $groups);
 
         $areas = [];
+
         foreach ($this->areaGroups as $area => $groupId) {
-            if (in_array((int)$groupId, $groups, true)) {
-                $areas[] = (string)$area;
+            if (\in_array((int) $groupId, $groups, true)) {
+                $areas[] = (string) $area;
             }
         }
 
         return $areas;
     }
 
-
+    /**
+     * @deprecated Pull-Modell: Türöffnen erfolgt nur noch über DoorJobs + Device Polling.
+     */
     public function openDoor(string $area, int $memberId): bool
     {
-        // Hier NICHT die Rechte prüfen (das macht der Controller bereits),
-        // aber wir validieren, dass die Area existiert.
-        if (!array_key_exists($area, $this->areaGroups)) {
+        if (!\array_key_exists($area, $this->areaGroups)) {
             return false;
         }
 
         return $this->doorGateway->open($area, $memberId);
     }
+
 
     /**
      * @return list<string>
@@ -65,7 +66,6 @@ class AccessService
     {
         return array_values(array_map('strval', array_keys($this->areaGroups)));
     }
-
 
     public function getGroupIdsForAreas(array $areas): array
     {

@@ -15,48 +15,46 @@ class ApprovalMailer
         private readonly string $replyTo,
         private readonly string $appUrl,
         private readonly string $resetPasswordUrl,
-    ) {}
+    ) {
+    }
 
     /**
      * @param list<string> $areasHumanReadable
      */
-    public function sendApprovalMail(
-        string $toEmail,
-        string $firstname,
-        string $lastname,
-        array $areasHumanReadable
-    ): void {
+    public function sendApprovalMail(string $toEmail, string $firstname, string $lastname, array $areasHumanReadable): void
+    {
         $name = trim($firstname.' '.$lastname);
         $areasText = $areasHumanReadable ? implode(', ', $areasHumanReadable) : '-';
 
         $text = <<<TXT
-Hallo {$name},
+            Hallo {$name},
 
-Sie sind jetzt für Zukunftwohnen freigeschaltet. 🎉
+            Sie sind jetzt für Zukunftwohnen freigeschaltet. 🎉
 
-Ihr Login:
-- Benutzername: {$toEmail}
-- Passwort: Wenn Sie noch keines gesetzt haben oder es vergessen haben, dann können Sie es jederzeit zurücksetzen (siehe unten).
+            Ihr Login:
+            - Benutzername: {$toEmail}
+            - Passwort: Wenn Sie noch keines gesetzt haben oder es vergessen haben, dann können Sie es jederzeit zurücksetzen (siehe unten).
 
-App öffnen:
-{$this->appUrl}
+            App öffnen:
+            {$this->appUrl}
 
-Passwort setzen / zurücksetzen:
-{$this->resetPasswordUrl}
+            Passwort setzen / zurücksetzen:
+            {$this->resetPasswordUrl}
 
-Freigeschaltete Bereiche:
-{$areasText}
+            Freigeschaltete Bereiche:
+            {$areasText}
 
-Viele Grüße
-Zukunftwohnen / Zukunftsforum Rissen
-TXT;
+            Viele Grüße
+            Zukunftwohnen / Zukunftsforum Rissen
+            TXT;
 
         $mail = (new Email())
             ->from($this->from)
             ->replyTo($this->replyTo)
             ->to($toEmail)
             ->subject('Freigeschaltet: Zugang zur Zukunftwohnen-App')
-            ->text($text);
+            ->text($text)
+        ;
 
         $this->mailer->send($mail);
     }

@@ -1,176 +1,81 @@
-Door API v1 – Zukunftwohnen Zugangssystem
-Überblick
+# Door API -- Zukunftwohnen Zugangssystem
 
-Ziel: Ein Frontend-Mitglied (PWA) fordert das Öffnen einer Tür (Area) an.
-Ein Raspberry Pi (Device) holt Jobs per Pull (poll), führt die Aktion aus und bestätigt das Ergebnis (confirm).
+> Server-API für das Türöffnungssystem (PWA → Contao → Raspberry Pi →
+> Relais)
 
-Statusmodell
-Status	Bedeutung
-pending	Job wartet auf Abholung durch Device
-dispatched	Job wurde einem Device zugewiesen
-executed	Erfolgreich ausgeführt
-failed	Ausführung fehlgeschlagen
-expired	Timeout (pending oder confirm)
-Zeitregeln
+------------------------------------------------------------------------
 
-pending TTL → expiresAt
+## 1. Architekturüberblick
 
-dispatched TTL → dispatchedAt + confirmWindow
+Das Zugangssystem besteht aus drei klar getrennten Rollen:
 
-confirmWindow = 30 Sekunden
+  -----------------------------------------------------------------------
+  Rolle                         Funktion
+  ----------------------------- -----------------------------------------
+  **PWA (Mitglied)**            Fordert Türöffnung an
 
-1) Tür öffnen (PWA)
-POST /api/door/open/{area}
+  **Contao API**                Validiert, verwaltet Door-Jobs, steuert
+                                Zustände
 
-Frontend-Mitglied fordert Öffnung an.
+  **Raspberry Pi (Device)**     Holt Jobs per Pull, öffnet Tür, sendet
+                                Confirm
+  -----------------------------------------------------------------------
 
-Erfolgsantwort
+### Kommunikationsprinzip
 
-HTTP 202
+-   Pull-Modell (keine eingehenden Verbindungen am Pi)
+-   Kein Webhook
+-   Kein permanenter Socket
+-   Polling mit kurzem Intervall
 
-{
-  "success": true,
-  "accepted": true,
-  "jobId": 123,
-  "status": "pending",
-  "expiresAt": 1772301885
-}
+------------------------------------------------------------------------
 
-Hinweise:
+## 2. Job-Lebenszyklus
 
-expiresAt nur relevant bei pending
+Ein Door-Job durchläuft folgende Zustände:
 
-Bei erneutem Klick kann derselbe aktive Job zurückgegeben werden (Idempotenz)
+pending → dispatched → executed\
+                                                    ↘\
+                                                    failed
 
-Fehler
+Oder bei Timeout:
 
-401 – nicht eingeloggt
+pending → expired\
+dispatched → expired
 
-{ "success": false, "error": "unauthorized" }
+------------------------------------------------------------------------
 
-404 – unbekannte Area
+## 3. Zeitregeln
 
-{ "success": false, "error": "invalid_area" }
+  Phase           Zeitsteuerung
+  --------------- --------------------------------
+  pending         `expiresAt` (Unix Timestamp)
+  dispatched      `dispatchedAt + confirmWindow`
+  confirmWindow   30 Sekunden
 
-429 – RateLimit oder Lock
+**Wichtig:**
 
-{
-  "success": false,
-  "accepted": false,
-  "error": "rate_limited",
-  "retryAfterSeconds": 12
-}
-2) Device Poll (Raspberry Pi)
-GET /api/device/poll/{deviceId}?areas=a,b
+-   `expiresAt` gilt nur für `pending`
+-   `dispatched` wird ausschließlich über `dispatchedAt` geprüft
+-   Confirm nach Ablauf → `410 confirm_timeout`
 
-Device fragt Jobs ab.
+------------------------------------------------------------------------
 
-Keine Jobs
+## 4. Sicherheitsprinzipien
 
-HTTP 200
+-   Frontend-Zugriff nur mit gültiger Contao-Session
+-   Device-Authentifizierung über `deviceId` + Secret
+-   RateLimit pro Mitglied + Area
+-   Locking:
+    -   Member+Area Lock
+    -   Global Area Lock
+-   Nonce pro Dispatch (Replay-Schutz)
 
-{
-  "success": true,
-  "jobs": [],
-  "nextPollInMs": 2000
-}
-Job vorhanden
+------------------------------------------------------------------------
 
-HTTP 200
+## 5. Ablaufdiagramm
 
-{
-  "success": true,
-  "jobs": [
-    {
-      "jobId": 123,
-      "area": "workshop",
-      "nonce": "ba39322f99d812429a0ffa28490f60bf",
-      "expiresInMs": 30000
-    }
-  ],
-  "nextPollInMs": 250
-}
-
-Hinweis:
-
-expiresInMs = verbleibende Confirm-Zeit
-
-nonce muss beim Confirm wieder gesendet werden
-
-3) Device Confirm
-POST /api/device/confirm/{deviceId}
-Request
-{
-  "jobId": 123,
-  "nonce": "ba39322f99d812429a0ffa28490f60bf",
-  "ok": true,
-  "meta": { "durationMs": 420 }
-}
-Erfolgreich
-
-HTTP 200
-
-{
-  "success": true,
-  "accepted": true,
-  "jobId": 123,
-  "status": "executed"
-}
-Idempotent (bereits final)
-
-HTTP 200
-
-{
-  "success": true,
-  "accepted": true,
-  "jobId": 123,
-  "status": "expired"
-}
-Fehlerfälle
-
-404 – Job existiert nicht
-
-{ "success": false, "accepted": false, "error": "not_found" }
-
-403 – nonce oder device falsch
-
-{ "success": false, "accepted": false, "error": "forbidden" }
-
-409 – Job nicht dispatched
-
-{ "success": false, "accepted": false, "error": "not_dispatchable" }
-
-410 – Confirm zu spät
-
-{
-  "success": false,
-  "accepted": false,
-  "error": "confirm_timeout",
-  "status": "expired"
-}
-E2E Ablauf
-
-Normalfall:
-
-open → 202
-
-poll → jobId + nonce
-
-confirm → 200 executed
-
-Timeout-Test:
-
-poll → job
-
-warten > 30s
-
-confirm → 410 confirm_timeout
-
-DB → status expired + TIMEOUT
-
-# Ablaufdiagramm
-
-```mermaid
+``` mermaid
 sequenceDiagram
     participant User as PWA (Mitglied)
     participant API as Contao API
@@ -190,7 +95,7 @@ sequenceDiagram
     API->>API: confirmJob()
 
     alt innerhalb confirmWindow
-        API-->>Pi: 200 executed
+        API-->>Pi: 200 executed/failed
     else Timeout (>30s)
         API-->>Pi: 410 confirm_timeout
     end

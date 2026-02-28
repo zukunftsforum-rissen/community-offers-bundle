@@ -1,139 +1,259 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ZukunftsforumRissen\CommunityOffersBundle\Controller\Api;
 
-use Doctrine\DBAL\Connection;
+use Contao\FrontendUser;
+use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\AccessRequestService;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\AccessService;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorAuditLogger;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorJobService;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService;
 
-#[Route('/api/door', defaults: ['_scope' => 'frontend'])]
+#[Route('/api/door', defaults: ['_scope' => 'frontend', '_token_check' => false])]
 final class AccessController
 {
     public function __construct(
-        private readonly Connection $db,
         private readonly Security $security,
-        // private readonly C3LockService $c3Lock, // <- bei euch: serverseitige Rechteprüfung
+        private readonly AccessService $accessService,
+        private readonly AccessRequestService $accessRequestService,
+        private readonly DoorJobService $doorJobs,
+        private readonly LoggingService $logging,
+        private readonly CacheItemPoolInterface $cache,
+        private readonly DoorAuditLogger $audit,
     ) {}
 
-    #[Route('/open/{area}', name: 'co_door_open', methods: ['POST'])]
-    public function open(string $area, Request $request): JsonResponse
+    #[Route('/whoami', name: 'community_offers_whoami', methods: ['GET'])]
+    public function whoami(Request $request): JsonResponse
     {
-        $member = $this->security->getUser();
-        if (!$member) {
-            return new JsonResponse(['success' => false, 'error' => 'unauthorized'], 401);
-        }
+        $this->logging->initiateLogging('door', 'community-offers');
+        $this->logging->start('whoami');
 
-        // Contao FE User: memberId verlässlich als ->id
-        $memberId = (int)($member->id ?? 0);
-        if ($memberId <= 0) {
-            return new JsonResponse(['success' => false, 'error' => 'unauthorized'], 401);
-        }
+        $user = $this->security->getUser();
 
-        // Area whitelist (zusätzlich zu Routing)
-        $allowedAreas = ['depot', 'swap-house', 'workshop', 'sharing'];
-        if (!in_array($area, $allowedAreas, true)) {
-            return new JsonResponse(['success' => false, 'error' => 'invalid_area'], 404);
-        }
+        if (!$user instanceof FrontendUser) {
+            $this->logging->info('whoami.anon', [
+                'ip' => $request->getClientIp(),
+                'ua' => $request->headers->get('User-Agent'),
+            ]);
 
-        // 1) Serverseitige Rechteprüfung (C3 Lock)
-        // $this->c3Lock->assertCanOpen($member, $area);
-
-        $now = time();
-        $ttl = 10;
-        $expiresAt = $now + $ttl;
-
-        // 2) Best effort: abgelaufene Jobs auf expired setzen
-        $this->db->executeStatement(
-            "UPDATE tl_co_door_job
-             SET status='expired'
-             WHERE status IN ('pending','dispatched')
-               AND expiresAt > 0
-               AND expiresAt < :now",
-            ['now' => $now]
-        );
-
-        // 3) Rate-Limit + “nur 1 aktiver Job pro member+area”
-        // a) Wenn es einen aktiven Job gibt (pending/dispatched, nicht abgelaufen), geben wir den zurück (idempotent)
-        $active = $this->db->fetchAssociative(
-            "SELECT id, expiresAt, status
-             FROM tl_co_door_job
-             WHERE requestedByMemberId = :memberId
-               AND area = :area
-               AND status IN ('pending','dispatched')
-               AND (expiresAt = 0 OR expiresAt >= :now)
-             ORDER BY createdAt DESC
-             LIMIT 1",
-            [
-                'memberId' => $memberId,
-                'area' => $area,
-                'now' => $now,
-            ]
-        );
-
-        if ($active) {
             return new JsonResponse([
-                'success' => true,
-                'accepted' => true,
-                'jobId' => (int)$active['id'],
-                'status' => (string)$active['status'],
-                'expiresAt' => (int)$active['expiresAt'],
-            ], 202);
+                'authenticated' => false,
+                'areas' => [],
+            ]);
         }
 
-        // b) Zusätzliches “burst” Rate-Limit: max 1 request / 2s (Beispiel)
-        $recentCount = (int)$this->db->fetchOne(
-            "SELECT COUNT(*)
-             FROM tl_co_door_job
-             WHERE requestedByMemberId = :memberId
-               AND area = :area
-               AND createdAt >= :since",
-            [
-                'memberId' => $memberId,
-                'area' => $area,
-                'since' => $now - 2,
-            ]
-        );
+        $memberId = (int) $user->id;
+        $areas = $this->accessService->getGrantedAreasForMemberId($memberId);
 
-        if ($recentCount > 0) {
+        $requests = $this->accessRequestService->getPendingRequestsForEmail((string) $user->email);
+
+        $this->logging->debug('whoami.auth', [
+            'memberId' => $memberId,
+            'areas' => $areas,
+            'requests' => $requests,
+            'ip' => $request->getClientIp(),
+        ]);
+
+        return new JsonResponse([
+            'authenticated' => true,
+            'member' => [
+                'id' => $memberId,
+                'firstname' => $user->firstname ?? null,
+                'lastname' => $user->lastname ?? null,
+                'email' => $user->email ?? null,
+            ],
+            'areas' => $areas,
+            'requests' => $requests,
+        ]);
+    }
+
+    #[Route('/request/{slug}', name: 'community_offers_request_access', methods: ['POST'])]
+    #[IsGranted('IS_AUTHENTICATED_REMEMBERED')]
+    public function request(Request $request, string $slug): JsonResponse
+    {
+        $this->logging->initiateLogging('door', 'community-offers');
+        $this->logging->start('request_access', ['slug' => $slug]);
+
+        $user = $this->security->getUser();
+        if (!$user instanceof FrontendUser) {
+            $this->logging->info('request_access.unauthenticated', [
+                'slug' => $slug,
+                'ip' => $request->getClientIp(),
+            ]);
+
+            return new JsonResponse(['success' => false, 'message' => 'Not authenticated'], 401);
+        }
+
+        $known = $this->accessService->getKnownAreas();
+        if (!\in_array($slug, $known, true)) {
+            $this->logging->info('request_access.unknown_area', [
+                'memberId' => (int) $user->id,
+                'slug' => $slug,
+                'ip' => $request->getClientIp(),
+            ]);
+
+            return new JsonResponse(['success' => false, 'message' => 'Unknown area'], 404);
+        }
+
+        $memberId = (int) $user->id;
+        $granted = $this->accessService->getGrantedAreasForMemberId($memberId);
+
+        if (\in_array($slug, $granted, true)) {
+            $this->logging->info('request_access.already_granted', [
+                'memberId' => $memberId,
+                'slug' => $slug,
+            ]);
+
+            return new JsonResponse(['success' => false, 'message' => 'Already granted'], 400);
+        }
+
+        try {
+            // NOTE: Das ist die echte Methode in AccessRequestService.php
+            $result = $this->accessRequestService->sendOrResendDoiForArea(
+                firstname: (string) ($user->firstname ?? ''),
+                lastname: (string) ($user->lastname ?? ''),
+                email: (string) ($user->email ?? ''),
+                area: $slug,
+            );
+        } catch (\Throwable $e) {
+            $this->logging->error('request_access.exception', [
+                'memberId' => $memberId,
+                'slug' => $slug,
+                'error' => $e->getMessage(),
+            ]);
+
+            return new JsonResponse(['success' => false, 'message' => 'Internal error'], 500);
+        }
+
+        $code = (string) ($result['code'] ?? 'unknown');
+
+        $this->logging->info('request_access.result', [
+            'memberId' => $memberId,
+            'slug' => $slug,
+            'code' => $code,
+            'ip' => $request->getClientIp(),
+        ]);
+
+        if ($code === 'pending_confirmed') {
             return new JsonResponse([
                 'success' => false,
-                'error' => 'rate_limited',
+                'message' => 'Anfrage ist bereits bestätigt und wartet auf Freigabe.',
+            ], 409);
+        }
+
+        if ($code === 'cooldown') {
+            return new JsonResponse([
+                'success' => false,
+                'message' => 'Bitte warte kurz, bevor du erneut anforderst.',
+                'retryAfterSeconds' => (int) ($result['retryAfterSeconds'] ?? 300),
             ], 429);
         }
 
-        // 4) Job erzeugen
-        $ip = (string)($request->getClientIp() ?? '');
-        $ua = substr((string)$request->headers->get('User-Agent', ''), 0, 255);
+        if ($code === 'invalid_email') {
+            return new JsonResponse([
+                'success' => false,
+                'message' => 'Invalid email',
+            ], 400);
+        }
 
-        $this->db->insert('tl_co_door_job', [
-            'tstamp' => $now,
-            'createdAt' => $now,
-            'expiresAt' => $expiresAt,
-            'area' => $area,
-            'status' => 'pending',
-            'requestedByMemberId' => $memberId,
-            'requestIp' => $ip,
-            'userAgent' => $ua,
-
-            // dispatch/nonce/result default leer:
-            'dispatchToDeviceId' => '',
-            'dispatchedAt' => 0,
-            'executedAt' => 0,
-            'nonce' => '',
-            'attempts' => 0,
-            'resultCode' => '',
-            'resultMessage' => '',
-        ]);
-
-        $jobId = (int) $this->db->lastInsertId();
+        if ($code !== 'ok') {
+            return new JsonResponse([
+                'success' => false,
+                'message' => 'Could not create request',
+            ], 500);
+        }
 
         return new JsonResponse([
             'success' => true,
-            'accepted' => true,
-            'jobId' => $jobId,
-            'expiresAt' => $expiresAt,
-        ], 202);
+            'message' => 'DOI email sent',
+            // UX-Hinweis (cooldown ist im Service 600s)
+            'retryAfterSeconds' => 600,
+        ], 200);
+    }
+
+    #[Route('/open/{slug}', name: 'community_offers_open_door', methods: ['POST'])]
+    #[IsGranted('IS_AUTHENTICATED_REMEMBERED')]
+    public function open(Request $request, string $slug): JsonResponse
+    {
+        $this->logging->initiateLogging('door', 'community-offers');
+        $this->logging->start('open', ['slug' => $slug]);
+
+        $user = $this->security->getUser();
+        if (!$user instanceof FrontendUser) {
+            return new JsonResponse(['success' => false, 'message' => 'Not authenticated'], 401);
+        }
+
+        $memberId = (int) $user->id;
+
+        // Rechte prüfen
+        $areas = $this->accessService->getGrantedAreasForMemberId($memberId);
+        if (!\in_array($slug, $areas, true)) {
+            $this->logging->info('open.forbidden', [
+                'memberId' => $memberId,
+                'slug' => $slug,
+                'ip' => $request->getClientIp(),
+            ]);
+
+            return new JsonResponse(['success' => false, 'message' => 'Forbidden'], 403);
+        }
+
+        // Best effort housekeeping
+        $this->doorJobs->expireOldJobs();
+
+        $result = $this->doorJobs->createOpenJob(
+            memberId: $memberId,
+            area: $slug,
+            ip: (string) ($request->getClientIp() ?? ''),
+            userAgent: (string) $request->headers->get('User-Agent', ''),
+        );
+
+        $status = (int) ($result['httpStatus'] ?? 500);
+
+        $payload = [
+            'success' => (bool) ($result['ok'] ?? false),
+            'message' => (string) ($result['message'] ?? ''),
+        ];
+
+        if (isset($result['jobId'])) {
+            $payload['accepted'] = true;
+            $payload['jobId'] = (int) $result['jobId'];
+            if (isset($result['status'])) {
+                $payload['status'] = (string) $result['status'];
+            }
+            if (isset($result['expiresAt'])) {
+                $payload['expiresAt'] = (int) $result['expiresAt'];
+            }
+        } else {
+            $payload['accepted'] = false;
+        }
+
+        if (isset($result['retryAfterSeconds'])) {
+            $payload['retryAfterSeconds'] = (int) $result['retryAfterSeconds'];
+        }
+
+        // optional: Header bei 429
+        $response = new JsonResponse($payload, $status);
+        if ($status === 429 && isset($result['retryAfterSeconds'])) {
+            $response->headers->set('Retry-After', (string) (int) $result['retryAfterSeconds']);
+        }
+
+        // Audit/Log (ohne Annahmen über konkrete Audit-API)
+        $this->logging->info('open.result', [
+            'memberId' => $memberId,
+            'slug' => $slug,
+            'httpStatus' => $status,
+            'ok' => (bool) ($result['ok'] ?? false),
+            'jobId' => $result['jobId'] ?? null,
+        ]);
+
+        return $response;
     }
 }

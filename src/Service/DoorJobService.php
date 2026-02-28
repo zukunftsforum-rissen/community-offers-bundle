@@ -21,6 +21,11 @@ final class DoorJobService
         private readonly CacheItemPoolInterface $cache,
     ) {}
 
+    public function getConfirmWindowSeconds(): int
+    {
+        return self::CONFIRM_WINDOW_SECONDS;
+    }
+
     /**
      * Create (or reuse) an "open door" job for member+area.
      *
@@ -40,7 +45,7 @@ final class DoorJobService
     {
         $now = time();
 
-        // Best effort housekeeping
+        // Best effort housekeeping (wichtig: Pull-Modell ohne Worker/Cron)
         $this->expireOldJobs();
 
         // --- Rate limit: 3/min Member+Area ---
@@ -75,7 +80,7 @@ final class DoorJobService
         $rateItem->expiresAfter(max(1, (int) $data['resetAt'] - $now));
         $this->cache->save($rateItem);
 
-        // --- C3 Locks: Member+Area + global Area ---
+        // --- Locks: Member+Area + global Area ---
         $lockSeconds = 5;
         $until = $now + $lockSeconds;
 
@@ -225,10 +230,15 @@ final class DoorJobService
     }
 
     /**
-     * @return array<int, array{id:mixed, area:mixed, nonce:mixed, expiresAt:mixed}>
+     * Claim up to $limit pending jobs for a device/areas and mark them as dispatched.
+     *
+     * @return array<int, array{id:mixed, area:mixed, nonce:mixed, dispatchedAt:mixed}>
      */
     public function dispatchJobs(string $deviceId, array $areas, int $limit = 3): array
     {
+        // Best effort housekeeping
+        $this->expireOldJobs();
+
         if ($limit < 1) {
             $limit = 1;
         }
@@ -284,7 +294,7 @@ final class DoorJobService
 
                 if ($affected === 1) {
                     $row = $this->db->fetchAssociative(
-                        "SELECT id, area, nonce, expiresAt
+                        "SELECT id, area, nonce, dispatchedAt
                          FROM tl_co_door_job
                          WHERE id=:id",
                         ['id' => (int) $id]
@@ -303,33 +313,60 @@ final class DoorJobService
         }
     }
 
+    /**
+     * Backwards-compatible boolean confirm (true = accepted).
+     */
     public function confirmJob(string $deviceId, int $jobId, string $nonce, bool $ok, array $meta = []): bool
     {
+        $res = $this->confirmJobResult($deviceId, $jobId, $nonce, $ok, $meta);
+        return (bool) ($res['accepted'] ?? false);
+    }
+
+    /**
+     * Detailed confirm result for API mapping.
+     *
+     * @return array{
+     *   accepted: bool,
+     *   httpStatus: int,
+     *   status?: string,
+     *   error?: string,
+     *   message?: string
+     * }
+     */
+    public function confirmJobResult(string $deviceId, int $jobId, string $nonce, bool $ok, array $meta = []): array
+    {
         $job = $this->db->fetchAssociative(
-            "SELECT id, status, dispatchToDeviceId, nonce, expiresAt, dispatchedAt
+            "SELECT id, status, dispatchToDeviceId, nonce, dispatchedAt
              FROM tl_co_door_job
              WHERE id=:id",
             ['id' => $jobId]
         );
 
         if (!$job) {
-            return false;
+            return ['accepted' => false, 'httpStatus' => 404, 'error' => 'not_found'];
         }
+
+        $status = (string) $job['status'];
+        $jobDevice = (string) $job['dispatchToDeviceId'];
+        $jobNonce = (string) $job['nonce'];
 
         // idempotent: bereits final -> akzeptiere, wenn device+nonce passen
-        if (in_array($job['status'], ['executed', 'failed', 'expired'], true)) {
-            return ((string) $job['dispatchToDeviceId'] === $deviceId)
-                && hash_equals((string) $job['nonce'], $nonce);
+        if (in_array($status, ['executed', 'failed', 'expired'], true)) {
+            $match = ($jobDevice === $deviceId) && hash_equals($jobNonce, $nonce);
+            return [
+                'accepted' => $match,
+                'httpStatus' => $match ? 200 : 403,
+                'status' => $status,
+                'error' => $match ? null : 'forbidden',
+            ];
         }
 
-        if ($job['status'] !== 'dispatched') {
-            return false;
+        if ($status !== 'dispatched') {
+            return ['accepted' => false, 'httpStatus' => 409, 'status' => $status, 'error' => 'not_dispatchable'];
         }
-        if ((string) $job['dispatchToDeviceId'] !== $deviceId) {
-            return false;
-        }
-        if (!hash_equals((string) $job['nonce'], $nonce)) {
-            return false;
+
+        if ($jobDevice !== $deviceId || !hash_equals($jobNonce, $nonce)) {
+            return ['accepted' => false, 'httpStatus' => 403, 'status' => $status, 'error' => 'forbidden'];
         }
 
         $now = time();
@@ -344,10 +381,16 @@ final class DoorJobService
                  WHERE id=:id AND status='dispatched'",
                 ['id' => $jobId]
             );
-            return false;
+
+            return [
+                'accepted' => false,
+                'httpStatus' => 410,
+                'status' => 'expired',
+                'error' => 'confirm_timeout',
+            ];
         }
 
-        $status = $ok ? 'executed' : 'failed';
+        $finalStatus = $ok ? 'executed' : 'failed';
         $resultCode = $ok ? 'OK' : 'ERR';
         $resultMessage = $ok ? 'Door open executed' : 'Door open failed';
 
@@ -356,7 +399,7 @@ final class DoorJobService
             $resultMessage = substr($resultMessage . $suffix, 0, 255);
         }
 
-        $this->db->executeStatement(
+        $affected = $this->db->executeStatement(
             "UPDATE tl_co_door_job
              SET status=:status,
                  executedAt=:now,
@@ -367,7 +410,7 @@ final class DoorJobService
                AND dispatchToDeviceId=:deviceId
                AND nonce=:nonce",
             [
-                'status' => $status,
+                'status' => $finalStatus,
                 'now' => $now,
                 'resultCode' => $resultCode,
                 'resultMessage' => $resultMessage,
@@ -377,6 +420,11 @@ final class DoorJobService
             ]
         );
 
-        return true;
+        return [
+            'accepted' => ($affected === 1),
+            'httpStatus' => ($affected === 1) ? 200 : 409,
+            'status' => $finalStatus,
+            'error' => ($affected === 1) ? null : 'not_dispatchable',
+        ];
     }
 }

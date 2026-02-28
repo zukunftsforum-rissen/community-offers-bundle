@@ -19,34 +19,38 @@ final class DeviceController extends AbstractController
     #[Route('/poll', name: 'co_device_poll', methods: ['POST'])]
     public function poll(Request $request): JsonResponse
     {
-        /** @var \ZukunftsforumRissen\CommunityOffersBundle\Security\DeviceApiUser $user */ 
         $user = $this->getUser();
-        if (!$user instanceof \ZukunftsforumRissen\CommunityOffersBundle\Security\DeviceApiUser) {
-            return new JsonResponse(['error' => 'unauthorized'], 401);
+        if (!$user instanceof DeviceApiUser) {
+            return new JsonResponse(['success' => false, 'error' => 'unauthorized'], 401);
         }
+
         $deviceId = $user->getDeviceId();
         $areas = $user->getAreas();
 
-        $this->jobs->expireOldJobs();
+        $payload = json_decode((string) $request->getContent(), true) ?: [];
+        $limit = (int) ($payload['limit'] ?? 3);
 
-        $payload = json_decode((string) $request->getContent(), true);
-        $limit = (int) (($payload['limit'] ?? 3));
         $claimed = $this->jobs->dispatchJobs($deviceId, $areas, $limit);
 
         $now = time();
+        $window = $this->jobs->getConfirmWindowSeconds();
+
         $jobs = [];
         foreach ($claimed as $row) {
-            $expiresAt = (int)($row['expiresAt'] ?? 0);
+            $dispatchedAt = (int) ($row['dispatchedAt'] ?? $now);
+            $remaining = max(0, ($dispatchedAt + $window) - $now);
+
             $jobs[] = [
-                'jobId' => (int)$row['id'],
-                'area' => (string)$row['area'],
+                'jobId' => (int) $row['id'],
+                'area' => (string) $row['area'],
                 'action' => 'open',
-                'nonce' => (string)$row['nonce'],
-                'expiresInMs' => $expiresAt > 0 ? max(0, ($expiresAt - $now) * 1000) : 0,
+                'nonce' => (string) $row['nonce'],
+                'expiresInMs' => $remaining * 1000,
             ];
         }
 
         return new JsonResponse([
+            'success' => true,
             'serverTime' => date(DATE_ATOM, $now),
             'jobs' => $jobs,
             'nextPollInMs' => empty($jobs) ? 800 : 200,
@@ -57,25 +61,41 @@ final class DeviceController extends AbstractController
     public function confirm(Request $request): JsonResponse
     {
         $user = $this->getUser();
-        if (!$user instanceof \ZukunftsforumRissen\CommunityOffersBundle\Security\DeviceApiUser) {
-            return new JsonResponse(['error' => 'unauthorized'], 401);
+        if (!$user instanceof DeviceApiUser) {
+            return new JsonResponse(['success' => false, 'error' => 'unauthorized'], 401);
         }
 
-        /** @var \ZukunftsforumRissen\CommunityOffersBundle\Security\DeviceApiUser $user */
         $deviceId = $user->getDeviceId();
 
         $payload = json_decode((string) $request->getContent(), true) ?: [];
-        $jobId = (int)($payload['jobId'] ?? 0);
-        $nonce = (string)($payload['nonce'] ?? '');
-        $ok = (bool)($payload['ok'] ?? false);
+        $jobId = (int) ($payload['jobId'] ?? 0);
+        $nonce = (string) ($payload['nonce'] ?? '');
+        $ok = (bool) ($payload['ok'] ?? false);
         $meta = is_array($payload['meta'] ?? null) ? $payload['meta'] : [];
 
         if ($jobId <= 0 || $nonce === '') {
-            return new JsonResponse(['error' => 'bad_request'], 400);
+            return new JsonResponse(['success' => false, 'error' => 'bad_request'], 400);
         }
 
-        $accepted = $this->jobs->confirmJob($deviceId, $jobId, $nonce, $ok, $meta);
+        $res = $this->jobs->confirmJobResult($deviceId, $jobId, $nonce, $ok, $meta);
 
-        return new JsonResponse(['accepted' => $accepted], 200);
+        $http = (int) ($res['httpStatus'] ?? 500);
+
+        $body = [
+            'success' => (bool) ($res['accepted'] ?? false),
+            'accepted' => (bool) ($res['accepted'] ?? false),
+        ];
+
+        if (!empty($res['status'])) {
+            $body['status'] = (string) $res['status'];
+        }
+        if (!empty($res['error'])) {
+            $body['error'] = (string) $res['error'];
+        }
+        if (!empty($res['message'])) {
+            $body['message'] = (string) $res['message'];
+        }
+
+        return new JsonResponse($body, $http);
     }
 }

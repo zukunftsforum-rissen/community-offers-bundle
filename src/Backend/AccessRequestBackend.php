@@ -29,30 +29,28 @@ class AccessRequestBackend extends Backend
      */
     public function handleActions(): void
     {
-        if ('approve' !== Input::get('key')) {
+        if ('approve' !== $this->getInputValue('key')) {
             return;
         }
 
-        $id = (int) Input::get('id');
+        $id = (int) $this->getInputValue('id');
 
-        $row = Database::getInstance()
-            ->prepare('SELECT * FROM tl_co_access_request WHERE id=?')
-            ->execute($id)
-            ->fetchAssoc()
-        ;
+        $row = $this->fetchAccessRequestRow($id);
 
         if (!$row || !$row['emailConfirmed'] || $row['approved']) {
-            $this->redirect('contao?do=co_access_request');
+            $this->redirectToRequestList();
+
+            return;
         }
 
         // 🔹 Member finden oder neu anlegen (E-Mail als Kriterium)
         $email = mb_strtolower(trim((string) $row['email']));
 
-        $member = MemberModel::findOneBy('email', $email);
+        $member = $this->findMemberByEmail($email);
 
         $isNew = false;
         if (null === $member) {
-            $member = new MemberModel();
+            $member = $this->createMember();
             $isNew = true;
 
             // Minimaler Satz Pflichtwerte für neuen Member
@@ -92,15 +90,12 @@ class AccessRequestBackend extends Backend
             $member->disable = false;
         }
 
-        $member->save();
+        $this->saveMember($member);
 
         // 🔹 Antrag als approved markieren
-        Database::getInstance()
-            ->prepare("UPDATE tl_co_access_request SET approved='1', tstamp=? WHERE id=?")
-            ->execute(time(), $id)
-        ;
+        $this->markRequestApproved($id);
 
-        Message::addConfirmation('Der Antrag wurde erfolgreich freigegeben.');
+        $this->addConfirmation('Der Antrag wurde erfolgreich freigegeben.');
 
         $areas = array_values(array_map('strval', StringUtil::deserialize($row['requestedAreas'], true)));
         $areasHuman = $this->formatAreasHuman($areas);
@@ -112,7 +107,7 @@ class AccessRequestBackend extends Backend
             $areasHuman,
         );
 
-        $this->redirect('contao?do=co_access_request');
+        $this->redirectToRequestList();
     }
 
     /**
@@ -163,5 +158,57 @@ class AccessRequestBackend extends Backend
         }
 
         return $out;
+    }
+
+    protected function getInputValue(string $key): string|null
+    {
+        return Input::get($key);
+    }
+
+    /**
+     * @return array<string, mixed>|false
+     */
+    protected function fetchAccessRequestRow(int $id): array|false
+    {
+        return Database::getInstance()
+            ->prepare('SELECT * FROM tl_co_access_request WHERE id=?')
+            ->execute($id)
+            ->fetchAssoc()
+        ;
+    }
+
+    protected function findMemberByEmail(string $email): object|null
+    {
+        return MemberModel::findOneBy('email', $email);
+    }
+
+    protected function createMember(): object
+    {
+        return new MemberModel();
+    }
+
+    protected function saveMember(object $member): void
+    {
+        if (method_exists($member, 'save')) {
+            $member->save();
+        }
+    }
+
+    protected function markRequestApproved(int $id): void
+    {
+        Database::getInstance()
+            ->prepare("UPDATE tl_co_access_request SET approved='1', tstamp=? WHERE id=?")
+            ->execute(time(), $id)
+        ;
+    }
+
+    protected function addConfirmation(string $message): void
+    {
+        Message::addConfirmation($message);
+    }
+
+    protected function redirectToRequestList(): void
+    {
+        $this->redirect('contao?do=co_access_request');
     }
 }

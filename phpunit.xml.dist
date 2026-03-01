@@ -1,14 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit bootstrap="vendor/autoload.php" colors="true" stopOnFailure="false"
-    cacheDirectory=".phpunit.cache">
+    cacheResultFile=".phpunit.result.cache">
     <testsuites>
+        <testsuite name="Unit">
+            <directory>./tests/Unit</directory>
+        </testsuite>
+        <testsuite name="Integration">
+            <directory>./tests/Integration</directory>
+        </testsuite>
         <testsuite name="Bundle Test Suite">
-            <directory>./tests</directory>
+            <directory>./tests/Unit</directory>
+            <directory>./tests/Integration</directory>
         </testsuite>
     </testsuites>
-    <source>
+    <coverage>
         <include>
             <directory>src</directory>
         </include>
-    </source>
+    </coverage>
 </phpunit>

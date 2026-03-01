@@ -31,6 +31,13 @@
         "phpstan/phpstan-symfony": "^1.4",
         "phpunit/phpunit": "^9.5"
     },
+    "scripts": {
+        "test": "phpunit -c phpunit.xml.dist",
+        "test:unit": "phpunit -c phpunit.xml.dist --testsuite Unit",
+        "test:integration": "cd ../.. && APP_ENV=${APP_ENV:-test} PROJECT_DIR=${PROJECT_DIR:-$PWD} KERNEL_CLASS=\"${KERNEL_CLASS:-Contao\\ManagerBundle\\HttpKernel\\ContaoKernel}\" ./vendor/bin/phpunit --bootstrap vendor/autoload.php -c zukunftsforum-rissen/community-offers-bundle/phpunit.xml.dist --testsuite Integration",
+        "test:integration:project": "cd ../.. && APP_ENV=${APP_ENV:-test} PROJECT_DIR=${PROJECT_DIR:-$PWD} KERNEL_CLASS=\"${KERNEL_CLASS:-Contao\\ManagerBundle\\HttpKernel\\ContaoKernel}\" ./vendor/bin/phpunit --bootstrap vendor/autoload.php -c zukunftsforum-rissen/community-offers-bundle/phpunit.xml.dist --testsuite Integration",
+        "test:integration:verbose": "cd ../.. && APP_ENV=${APP_ENV:-test} PROJECT_DIR=${PROJECT_DIR:-$PWD} KERNEL_CLASS=\"${KERNEL_CLASS:-Contao\\ManagerBundle\\HttpKernel\\ContaoKernel}\" ./vendor/bin/phpunit --bootstrap vendor/autoload.php -v -c zukunftsforum-rissen/community-offers-bundle/phpunit.xml.dist --testsuite Integration"
+    },
     "config": {
         "allow-plugins": {
             "contao-components/installer": true,

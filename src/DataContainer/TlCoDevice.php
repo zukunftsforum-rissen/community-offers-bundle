@@ -17,7 +17,7 @@ final class TlCoDevice
      *
      * @return array<int, mixed>
      */
-    public static function formatLabel(array $row, string $label, DataContainer|null $dc, array $args): array
+    public function formatLabel(array $row, string $label, DataContainer|null $dc, array $args): array
     {
         // $args entspricht den Feldern aus list.label.fields in gleicher Reihenfolge:
         // [name, deviceId, areas, enabled]

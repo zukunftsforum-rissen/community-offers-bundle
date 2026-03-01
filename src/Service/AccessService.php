@@ -48,18 +48,6 @@ class AccessService
     }
 
     /**
-     * @deprecated pull-Modell: Türöffnen erfolgt nur noch über DoorJobs + Device Polling
-     */
-    public function openDoor(string $area, int $memberId): bool
-    {
-        if (!\array_key_exists($area, $this->areaGroups)) {
-            return false;
-        }
-
-        return $this->doorGateway->open($area, $memberId);
-    }
-
-    /**
      * @return list<string>
      */
     public function getKnownAreas(): array

@@ -29,6 +29,15 @@ services:
                   method: handleActions,
               }
 
+    ZukunftsforumRissen\CommunityOffersBundle\DataContainer\TlCoDevice:
+        tags:
+            - {
+                  name: contao.callback,
+                  table: tl_co_device,
+                  target: list.label.label_callback,
+                  method: formatLabel,
+              }
+
     ZukunftsforumRissen\CommunityOffersBundle\Service\ApprovalMailer:
         arguments:
             $from: "%community_offers.mail_from%"

@@ -49,11 +49,9 @@ class LoadFormFieldListener
             $granted = $this->accessService->getGrantedAreasForMemberId((int) $user->id);
 
             $options = [];
-            if (property_exists($widget, 'options')) {
-                $rawOptions = $widget->options;
-                if (\is_array($rawOptions)) {
-                    $options = $rawOptions;
-                }
+            $rawOptions = $widget->options;
+            if (\is_array($rawOptions)) {
+                $options = $rawOptions;
             }
 
             if (!\is_array($options)) {
@@ -70,6 +68,8 @@ class LoadFormFieldListener
                     return !\in_array((string) $opt['value'], $granted, true);
                 },
             ));
+
+            $widget->options = $options;
         }
 
         return $widget;

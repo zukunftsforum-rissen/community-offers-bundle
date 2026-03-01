@@ -22,8 +22,6 @@ final class DeviceTokenAuthenticator extends AbstractAuthenticator
 
     public function supports(Request $request): bool|null
     {
-        error_log('DEVICE AUTH supports() path='.$request->getPathInfo());
-
         return str_starts_with($request->getPathInfo(), '/api/device');
     }
 

@@ -12,14 +12,14 @@ final class DoorJobService
 {
     /**
      * Wie lange ein „dispatched“ Job noch bestätigt werden darf.
-     * (muss zum Poll/Confirm-Verhalten eures Pi passen)
      */
-    private const int CONFIRM_WINDOW_SECONDS = 30;
+    private const CONFIRM_WINDOW_SECONDS = 30;
 
     public function __construct(
         private readonly Connection $db,
         private readonly CacheItemPoolInterface $cache,
-    ) {}
+    ) {
+    }
 
     public function getConfirmWindowSeconds(): int
     {
@@ -45,18 +45,25 @@ final class DoorJobService
     {
         $now = time();
 
-        // Best effort housekeeping (wichtig: Pull-Modell ohne Worker/Cron)
-        $this->expireOldJobs();
+        // --- Best effort: expire old pending/dispatched jobs ---
+        $this->db->executeStatement(
+            "UPDATE tl_co_door_job
+             SET status='expired'
+             WHERE status = 'pending'
+               AND expiresAt > 0
+               AND expiresAt < :now",
+            ['now' => $now],
+        );
 
-        // --- Rate limit: 3/min Member+Area ---
+        // --- Rate limit: 3/min Member+Area (wie in deinem Controller) ---
         $limit = 3;
         $windowSeconds = 60;
 
-        $rateKey = sprintf('door_open_m%d_%s', $memberId, $area);
+        $rateKey = \sprintf('door_open_m%d_%s', $memberId, $area);
         $rateItem = $this->cache->getItem($rateKey);
         $data = $rateItem->isHit() ? $rateItem->get() : null;
 
-        if (!is_array($data) || !isset($data['count'], $data['resetAt'])) {
+        if (!\is_array($data) || !isset($data['count'], $data['resetAt'])) {
             $data = ['count' => 0, 'resetAt' => $now + $windowSeconds];
         }
 
@@ -80,15 +87,15 @@ final class DoorJobService
         $rateItem->expiresAfter(max(1, (int) $data['resetAt'] - $now));
         $this->cache->save($rateItem);
 
-        // --- Locks: Member+Area + global Area ---
+        // --- C3 Locks: Member+Area + global Area ---
         $lockSeconds = 5;
         $until = $now + $lockSeconds;
 
-        $memberLockKey = sprintf('door_lock_member_m%d_%s', $memberId, $area);
+        $memberLockKey = \sprintf('door_lock_member_m%d_%s', $memberId, $area);
         $memberLock = $this->cache->getItem($memberLockKey);
         if ($memberLock->isHit()) {
             $payload = $memberLock->get();
-            $retry = is_array($payload) && isset($payload['until']) ? (int) $payload['until'] - $now : $lockSeconds;
+            $retry = \is_array($payload) && isset($payload['until']) ? (int) $payload['until'] - $now : $lockSeconds;
 
             return [
                 'ok' => false,
@@ -98,11 +105,11 @@ final class DoorJobService
             ];
         }
 
-        $areaLockKey = sprintf('door_lock_area_%s', $area);
+        $areaLockKey = \sprintf('door_lock_area_%s', $area);
         $areaLock = $this->cache->getItem($areaLockKey);
         if ($areaLock->isHit()) {
             $payload = $areaLock->get();
-            $retry = is_array($payload) && isset($payload['until']) ? (int) $payload['until'] - $now : $lockSeconds;
+            $retry = \is_array($payload) && isset($payload['until']) ? (int) $payload['until'] - $now : $lockSeconds;
 
             return [
                 'ok' => false,
@@ -112,11 +119,10 @@ final class DoorJobService
             ];
         }
 
-        // --- Idempotenz: aktiven Job wiederverwenden ---
-        $dispatchedCutoff = $now - self::CONFIRM_WINDOW_SECONDS;
-
+        // --- Idempotenz: aktiven Job wiederverwenden (pending/dispatched, nicht
+        // abgelaufen) ---
         $active = $this->db->fetchAssociative(
-            "SELECT id, expiresAt, status, dispatchedAt
+            "SELECT id, expiresAt, status
              FROM tl_co_door_job
              WHERE requestedByMemberId = :memberId
                AND area = :area
@@ -130,16 +136,17 @@ final class DoorJobService
                 'memberId' => $memberId,
                 'area' => $area,
                 'now' => $now,
-                'dispatchedCutoff' => $dispatchedCutoff,
-            ]
+                'dispatchedCutoff' => $now - self::CONFIRM_WINDOW_SECONDS,
+            ],
         );
 
         if ($active) {
+            // Locks bei Wiederverwendung NICHT setzen – die gelten nur für echte Aktionen, der
+            // Poller wird den Job ohnehin "dispatched" und "executed" abarbeiten.
             $status = (string) $active['status'];
-
-            // expiresAt ist nur für pending relevant.
-            // Dispatched läuft über dispatchedAt + CONFIRM_WINDOW.
-            $expiresAt = $status === 'pending' ? (int) $active['expiresAt'] : 0;
+            // expiresAt gilt nur für pending. Dispatched läuft über dispatchedAt +
+            // confirm window.
+            $expiresAt = 'pending' === $status ? (int) $active['expiresAt'] : 0;
 
             return [
                 'ok' => true,
@@ -180,7 +187,8 @@ final class DoorJobService
 
         $jobId = (int) $this->db->lastInsertId();
 
-        // Locks setzen wir JETZT, damit nicht mehrere Requests parallel eskalieren.
+        // Locks setzen wir JETZT (wie vorher), damit nicht 5 Leute gleichzeitig dieselbe
+        // Tür “spammen”
         $memberLock->set(['until' => $until]);
         $memberLock->expiresAfter($lockSeconds);
         $this->cache->save($memberLock);
@@ -202,43 +210,38 @@ final class DoorJobService
     public function expireOldJobs(): void
     {
         $now = time();
+
         $dispatchedCutoff = $now - self::CONFIRM_WINDOW_SECONDS;
 
-        // pending -> expired (expiresAt)
         $this->db->executeStatement(
             "UPDATE tl_co_door_job
-             SET status='expired', tstamp=UNIX_TIMESTAMP(),
-                 resultCode=CASE WHEN resultCode='' THEN 'TIMEOUT' ELSE resultCode END,
-                 resultMessage=CASE WHEN resultMessage='' THEN 'Pending timeout' ELSE resultMessage END
-             WHERE status='pending'
-               AND expiresAt > 0
-               AND expiresAt < :now",
-            ['now' => $now]
+        SET status='expired', tstamp=UNIX_TIMESTAMP()
+        WHERE status ='pending'
+            AND expiresAt > 0
+            AND expiresAt < :now",
+            ['now' => $now],
         );
 
-        // dispatched -> expired (dispatchedAt + confirm window)
         $this->db->executeStatement(
             "UPDATE tl_co_door_job
-             SET status='expired', tstamp=UNIX_TIMESTAMP(),
-                 resultCode='TIMEOUT',
-                 resultMessage='Confirm timeout'
-             WHERE status='dispatched'
-               AND dispatchedAt > 0
-               AND dispatchedAt < :cutoff",
-            ['cutoff' => $dispatchedCutoff]
+        SET status='expired', tstamp=UNIX_TIMESTAMP(), resultCode='TIMEOUT', resultMessage='Confirm timeout'
+        WHERE status ='dispatched'
+            AND dispatchedAt > 0
+            AND dispatchedAt < :cutoff",
+            ['cutoff' => $dispatchedCutoff],
         );
     }
 
     /**
-     * Claim up to $limit pending jobs for a device/areas and mark them as dispatched.
+     * @return array<int, array{id:mixed, area:mixed, nonce:mixed, expiresAt:mixed}>
+     */
+    /**
+     * @param list<string> $areas
      *
-     * @return array<int, array{id:mixed, area:mixed, nonce:mixed, dispatchedAt:mixed}>
+     * @return list<array{jobId:int, area:string, nonce:string, expiresInMs:int}>
      */
     public function dispatchJobs(string $deviceId, array $areas, int $limit = 3): array
     {
-        // Best effort housekeeping
-        $this->expireOldJobs();
-
         if ($limit < 1) {
             $limit = 1;
         }
@@ -252,52 +255,55 @@ final class DoorJobService
         $now = time();
 
         $this->db->beginTransaction();
+
         try {
             $ids = $this->db->fetchFirstColumn(
                 "SELECT id
-                 FROM tl_co_door_job
-                 WHERE status='pending'
-                   AND area IN (:areas)
-                   AND (expiresAt = 0 OR expiresAt >= :now)
-                 ORDER BY createdAt ASC
-                 LIMIT $limit",
+             FROM tl_co_door_job
+             WHERE status='pending'
+               AND area IN (:areas)
+               AND (expiresAt = 0 OR expiresAt >= :now)
+             ORDER BY createdAt ASC
+             LIMIT $limit",
                 ['areas' => $areas, 'now' => $now],
-                ['areas' => ArrayParameterType::STRING]
+                ['areas' => ArrayParameterType::STRING],
             );
 
             if (!$ids) {
                 $this->db->commit();
+
                 return [];
             }
 
             $claimed = [];
+
             foreach ($ids as $id) {
                 $nonce = bin2hex(random_bytes(16));
 
                 $affected = $this->db->executeStatement(
                     "UPDATE tl_co_door_job
-                     SET status='dispatched',
-                         dispatchToDeviceId=:deviceId,
-                         dispatchedAt=:now,
-                         nonce=:nonce,
-                         attempts=attempts+1
-                     WHERE id=:id
-                       AND status='pending'
-                       AND (expiresAt = 0 OR expiresAt >= :now)",
+                 SET status='dispatched',
+                     dispatchToDeviceId=:deviceId,
+                     dispatchedAt=:now,
+                     nonce=:nonce,
+                     attempts=attempts+1
+                 WHERE id=:id
+                   AND status='pending'
+                   AND (expiresAt = 0 OR expiresAt >= :now)",
                     [
                         'deviceId' => $deviceId,
                         'now' => $now,
                         'nonce' => $nonce,
                         'id' => (int) $id,
-                    ]
+                    ],
                 );
 
-                if ($affected === 1) {
+                if (1 === $affected) {
                     $row = $this->db->fetchAssociative(
-                        "SELECT id, area, nonce, dispatchedAt
-                         FROM tl_co_door_job
-                         WHERE id=:id",
-                        ['id' => (int) $id]
+                        'SELECT id, area, nonce, expiresAt
+                     FROM tl_co_door_job
+                     WHERE id=:id',
+                        ['id' => (int) $id],
                     );
                     if ($row) {
                         $claimed[] = $row;
@@ -306,100 +312,97 @@ final class DoorJobService
             }
 
             $this->db->commit();
+
             return $claimed;
         } catch (\Throwable $e) {
             $this->db->rollBack();
+
             throw $e;
         }
     }
 
     /**
-     * Backwards-compatible boolean confirm (true = accepted).
+     * @param array<string, mixed> $meta
      */
     public function confirmJob(string $deviceId, int $jobId, string $nonce, bool $ok, array $meta = []): bool
     {
-        $res = $this->confirmJobResult($deviceId, $jobId, $nonce, $ok, $meta);
-        return (bool) ($res['accepted'] ?? false);
+        $res = $this->confirmJobDetailed($deviceId, $jobId, $nonce, $ok, $meta);
+
+        return (bool) $res['accepted'];
     }
 
     /**
-     * Detailed confirm result for API mapping.
+     * Detaillierte Confirm-Variante mit sauberen HTTP-Codes.
      *
-     * @return array{
-     *   accepted: bool,
-     *   httpStatus: int,
-     *   status?: string,
-     *   error?: string,
-     *   message?: string
-     * }
+     * @return array{accepted:bool, httpStatus:int, status?:string, error?:string}
      */
-    public function confirmJobResult(string $deviceId, int $jobId, string $nonce, bool $ok, array $meta = []): array
+    /**
+     * @param array<string, mixed> $meta
+     *
+     * @return array{accepted: bool, httpStatus: int, status?: string, error?: string, message?: string, resultCode?: string, resultMessage?: string}
+     */
+    public function confirmJobDetailed(string $deviceId, int $jobId, string $nonce, bool $ok, array $meta = []): array
     {
         $job = $this->db->fetchAssociative(
-            "SELECT id, status, dispatchToDeviceId, nonce, dispatchedAt
+            'SELECT id, status, dispatchToDeviceId, nonce, dispatchedAt
              FROM tl_co_door_job
-             WHERE id=:id",
-            ['id' => $jobId]
+             WHERE id=:id',
+            ['id' => $jobId],
         );
 
         if (!$job) {
             return ['accepted' => false, 'httpStatus' => 404, 'error' => 'not_found'];
         }
 
-        $status = (string) $job['status'];
-        $jobDevice = (string) $job['dispatchToDeviceId'];
-        $jobNonce = (string) $job['nonce'];
+        $status = (string) ($job['status'] ?? '');
+        $jobDevice = (string) ($job['dispatchToDeviceId'] ?? '');
+        $jobNonce = (string) ($job['nonce'] ?? '');
 
-        // idempotent: bereits final -> akzeptiere, wenn device+nonce passen
-        if (in_array($status, ['executed', 'failed', 'expired'], true)) {
-            $match = ($jobDevice === $deviceId) && hash_equals($jobNonce, $nonce);
-            return [
-                'accepted' => $match,
-                'httpStatus' => $match ? 200 : 403,
-                'status' => $status,
-                'error' => $match ? null : 'forbidden',
-            ];
+        // idempotent: bereits final -> akzeptiere nur, wenn device+nonce passen
+        if (\in_array($status, ['executed', 'failed', 'expired'], true)) {
+            if ($jobDevice === $deviceId && '' !== $jobNonce && hash_equals($jobNonce, $nonce)) {
+                return ['accepted' => true, 'httpStatus' => 200, 'status' => $status];
+            }
+
+            return ['accepted' => false, 'httpStatus' => 403, 'error' => 'forbidden', 'status' => $status];
         }
 
-        if ($status !== 'dispatched') {
-            return ['accepted' => false, 'httpStatus' => 409, 'status' => $status, 'error' => 'not_dispatchable'];
+        if ('dispatched' !== $status) {
+            return ['accepted' => false, 'httpStatus' => 409, 'error' => 'not_dispatchable', 'status' => $status];
         }
 
-        if ($jobDevice !== $deviceId || !hash_equals($jobNonce, $nonce)) {
-            return ['accepted' => false, 'httpStatus' => 403, 'status' => $status, 'error' => 'forbidden'];
+        if ($jobDevice !== $deviceId) {
+            return ['accepted' => false, 'httpStatus' => 403, 'error' => 'forbidden', 'status' => $status];
+        }
+        if ('' === $jobNonce || !hash_equals($jobNonce, $nonce)) {
+            return ['accepted' => false, 'httpStatus' => 403, 'error' => 'forbidden', 'status' => $status];
         }
 
         $now = time();
         $dispatchedAt = (int) ($job['dispatchedAt'] ?? 0);
 
-        // confirm TTL über dispatchedAt
-        if ($dispatchedAt > 0 && $dispatchedAt < ($now - self::CONFIRM_WINDOW_SECONDS)) {
+        if ($dispatchedAt > 0 && $dispatchedAt < $now - self::CONFIRM_WINDOW_SECONDS) {
             $this->db->executeStatement(
                 "UPDATE tl_co_door_job
                  SET status='expired', tstamp=UNIX_TIMESTAMP(),
                      resultCode='TIMEOUT', resultMessage='Confirm timeout'
                  WHERE id=:id AND status='dispatched'",
-                ['id' => $jobId]
+                ['id' => $jobId],
             );
 
-            return [
-                'accepted' => false,
-                'httpStatus' => 410,
-                'status' => 'expired',
-                'error' => 'confirm_timeout',
-            ];
+            return ['accepted' => false, 'httpStatus' => 410, 'error' => 'confirm_timeout', 'status' => 'expired'];
         }
 
-        $finalStatus = $ok ? 'executed' : 'failed';
+        $newStatus = $ok ? 'executed' : 'failed';
         $resultCode = $ok ? 'OK' : 'ERR';
         $resultMessage = $ok ? 'Door open executed' : 'Door open failed';
 
         if ($meta) {
-            $suffix = ' | ' . substr(json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '', 0, 200);
-            $resultMessage = substr($resultMessage . $suffix, 0, 255);
+            $suffix = ' | '.substr((string) (json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: ''), 0, 200);
+            $resultMessage = substr($resultMessage.$suffix, 0, 255);
         }
 
-        $affected = $this->db->executeStatement(
+        $this->db->executeStatement(
             "UPDATE tl_co_door_job
              SET status=:status,
                  executedAt=:now,
@@ -410,21 +413,16 @@ final class DoorJobService
                AND dispatchToDeviceId=:deviceId
                AND nonce=:nonce",
             [
-                'status' => $finalStatus,
+                'status' => $newStatus,
                 'now' => $now,
                 'resultCode' => $resultCode,
                 'resultMessage' => $resultMessage,
                 'id' => $jobId,
                 'deviceId' => $deviceId,
                 'nonce' => $nonce,
-            ]
+            ],
         );
 
-        return [
-            'accepted' => ($affected === 1),
-            'httpStatus' => ($affected === 1) ? 200 : 409,
-            'status' => $finalStatus,
-            'error' => ($affected === 1) ? null : 'not_dispatchable',
-        ];
+        return ['accepted' => true, 'httpStatus' => 200, 'status' => $newStatus];
     }
 }

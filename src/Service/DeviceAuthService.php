@@ -1,19 +1,22 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ZukunftsforumRissen\CommunityOffersBundle\Service;
 
 use Contao\StringUtil;
 use Doctrine\DBAL\Connection;
 
-/** @package ZukunftsforumRissen\CommunityOffersBundle\Service */
 final class DeviceAuthService
 {
-    public function __construct(private readonly Connection $db) {}
+    public function __construct(private readonly Connection $db)
+    {
+    }
 
     /**
-     * @return array{deviceId:string, areas:string[]}|null
+     * @return array{deviceId:string, areas:?array<string>}|null
      */
-    public function authenticate(?string $token): ?array
+    public function authenticate(string|null $token): array|null
     {
         if (!$token) {
             return null;
@@ -22,12 +25,11 @@ final class DeviceAuthService
         $hash = hash('sha256', $token);
 
         $device = $this->db->fetchAssociative(
-            "SELECT deviceId, enabled, areas
+            'SELECT deviceId, enabled, areas
              FROM tl_co_device
              WHERE apiTokenHash = :hash
-             LIMIT 1",
-            ['hash' => $hash]
-        );
+             LIMIT 1',
+            ['hash' => $hash]);
 
         if (!$device || ($device['enabled'] ?? ' ') !== '1') {
             return null;
@@ -36,7 +38,7 @@ final class DeviceAuthService
         $deviceId = (string) $device['deviceId'];
 
         $areasRaw = $device['areas'] ?? null;
-        $areasArr = StringUtil::deserialize($areasRaw, true);
+        $areasArr = array_values(array_map('strval', StringUtil::deserialize($areasRaw, true)));
         $areas = array_values(array_unique(array_filter(array_map('strval', $areasArr))));
 
         return ['deviceId' => $deviceId, 'areas' => $areas];

@@ -20,6 +20,12 @@ class ProcessFormDataListener
     ) {
     }
 
+    /**
+     * @param array<string, mixed> $submittedData
+     * @param array<string, mixed> $labels
+     * @param array<string, mixed> $files
+     * @param array<string, mixed> $formData
+     */
     public function __invoke(array $submittedData, array $formData, array $files, array $labels): void
     {
         $formId = (string) ($formData['formID'] ?? '');
@@ -61,8 +67,7 @@ class ProcessFormDataListener
                 postal: '',
                 city: '',
                 mobile: '',
-                requestedAreas: $requestedAreas,
-            );
+                requestedAreas: $requestedAreas);
 
             return;
         }
@@ -85,7 +90,6 @@ class ProcessFormDataListener
             postal: $postal,
             city: $city,
             mobile: $mobile,
-            requestedAreas: $requestedAreas,
-        );
+            requestedAreas: $requestedAreas);
     }
 }

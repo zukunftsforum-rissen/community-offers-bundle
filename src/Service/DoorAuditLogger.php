@@ -22,6 +22,9 @@ class DoorAuditLogger
     /**
      * @param array<string, mixed> $context
      */
+    /**
+     * @param array<string, mixed> $context
+     */
     public function audit(string $action, string $area, string $result, string $message = '', array $context = []): void
     {
         $this->framework->initialize();
@@ -48,8 +51,7 @@ class DoorAuditLogger
                 mb_substr($ip, 0, 64),
                 mb_substr($ua, 0, 255),
                 mb_substr($message, 0, 255),
-                $context ? json_encode($context, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : null,
-            )
+                $context ? json_encode($context, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : null)
         ;
     }
 }

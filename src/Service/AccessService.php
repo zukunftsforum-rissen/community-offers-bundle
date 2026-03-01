@@ -18,7 +18,8 @@ class AccessService
         private readonly ContaoFramework $framework,
         private readonly array $areaGroups,
         private readonly DoorGatewayInterface $doorGateway,
-    ) {}
+    ) {
+    }
 
     /**
      * @return list<string>
@@ -47,7 +48,7 @@ class AccessService
     }
 
     /**
-     * @deprecated Pull-Modell: Türöffnen erfolgt nur noch über DoorJobs + Device Polling.
+     * @deprecated pull-Modell: Türöffnen erfolgt nur noch über DoorJobs + Device Polling
      */
     public function openDoor(string $area, int $memberId): bool
     {
@@ -58,7 +59,6 @@ class AccessService
         return $this->doorGateway->open($area, $memberId);
     }
 
-
     /**
      * @return list<string>
      */
@@ -67,6 +67,11 @@ class AccessService
         return array_values(array_map('strval', array_keys($this->areaGroups)));
     }
 
+    /**
+     * @param list<string> $areas
+     *
+     * @return list<int>
+     */
     public function getGroupIdsForAreas(array $areas): array
     {
         $ids = [];

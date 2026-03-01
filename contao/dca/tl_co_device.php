@@ -1,7 +1,7 @@
 <?php
 
 use Contao\DC_Table;
-use ZukunftsforumRissen\CommunityOffersBundle\src\DataContainer\TlCoDevice;
+use ZukunftsforumRissen\CommunityOffersBundle\DataContainer\TlCoDevice;
 
 $GLOBALS['TL_DCA']['tl_co_device'] = [
 

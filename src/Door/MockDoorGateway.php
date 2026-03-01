@@ -9,8 +9,8 @@ use ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService;
 class MockDoorGateway implements DoorGatewayInterface
 {
     public function __construct(
-        private readonly LoggingService $logging,
-    ) {
+        private readonly LoggingService $logging)
+    {
     }
 
     public function open(string $area, int $memberId): bool

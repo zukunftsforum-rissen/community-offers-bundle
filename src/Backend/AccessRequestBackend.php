@@ -62,7 +62,7 @@ class AccessRequestBackend extends Backend
             $member->username = $email; // $email ist bereits lowercased/trimmed
 
             // Login aktivieren (Contao-Standard)
-            $member->login = '1';
+            $member->login = true;
 
             // Passwort-Reset erzwingen: zufälliges Passwort setzen
             $member->password = password_hash(bin2hex(random_bytes(8)), PASSWORD_DEFAULT);
@@ -78,7 +78,7 @@ class AccessRequestBackend extends Backend
         $member->mobile = (string) $row['mobile'];
 
         // Gruppen zuweisen (merge statt überschreiben? – siehe unten)
-        $areas = StringUtil::deserialize($row['requestedAreas'], true);
+        $areas = array_values(array_map('strval', StringUtil::deserialize($row['requestedAreas'], true)));
         $groupIds = $this->mapAreasToGroups($areas);
 
         // Bestehende Gruppen optional behalten und nur ergänzen:
@@ -89,7 +89,7 @@ class AccessRequestBackend extends Backend
 
         // disable nicht blind überschreiben (nur wenn neu)
         if ($isNew) {
-            $member->disable = 0;
+            $member->disable = false;
         }
 
         $member->save();
@@ -102,7 +102,7 @@ class AccessRequestBackend extends Backend
 
         Message::addConfirmation('Der Antrag wurde erfolgreich freigegeben.');
 
-        $areas = StringUtil::deserialize($row['requestedAreas'], true);
+        $areas = array_values(array_map('strval', StringUtil::deserialize($row['requestedAreas'], true)));
         $areasHuman = $this->formatAreasHuman($areas);
 
         $this->approvalMailer->sendApprovalMail(
@@ -115,6 +115,9 @@ class AccessRequestBackend extends Backend
         $this->redirect('contao?do=co_access_request');
     }
 
+    /**
+     * @param array<string, mixed> $row
+     */
     public function generateApproveButton(array $row, string|null $href, string $label, string $title, string|null $icon, string $attributes): string
     {
         if (!$row['emailConfirmed'] || $row['approved']) {
@@ -129,6 +132,11 @@ class AccessRequestBackend extends Backend
         );
     }
 
+    /**
+     * @param list<string> $areas
+     *
+     * @return list<int> Group IDs
+     */
     private function mapAreasToGroups(array $areas): array
     {
         return $this->accessService->getGroupIdsForAreas($areas);

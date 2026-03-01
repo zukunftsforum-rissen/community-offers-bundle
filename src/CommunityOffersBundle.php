@@ -19,5 +19,4 @@ class CommunityOffersBundle extends AbstractBundle
     {
         $containerConfigurator->import('../config/services.yaml');
     }
-
 }

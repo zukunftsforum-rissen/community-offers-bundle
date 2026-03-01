@@ -10,16 +10,14 @@ use Contao\StringUtil;
 final class TlCoDevice
 {
     /**
-     * Contao label_callback: return modified $args array
+     * Contao label_callback: return modified $args array.
      *
-     * @param array<string,mixed> $row
-     * @param string             $label
-     * @param DataContainer|null $dc
-     * @param array<int,mixed>   $args
+     * @param array<string, mixed> $row
+     * @param array<int, mixed>    $args
      *
-     * @return array<int,mixed>
+     * @return array<int, mixed>
      */
-    public static function formatLabel(array $row, string $label, ?DataContainer $dc, array $args): array
+    public static function formatLabel(array $row, string $label, DataContainer|null $dc, array $args): array
     {
         // $args entspricht den Feldern aus list.label.fields in gleicher Reihenfolge:
         // [name, deviceId, areas, enabled]
@@ -31,7 +29,7 @@ final class TlCoDevice
         $args[2] = $areas ? implode(', ', $areas) : '–';
 
         // enabled als Ja/Nein
-        $args[3] = (($row['enabled'] ?? '') === '1') ? 'Ja' : 'Nein';
+        $args[3] = ($row['enabled'] ?? '') === '1' ? 'Ja' : 'Nein';
 
         return $args;
     }

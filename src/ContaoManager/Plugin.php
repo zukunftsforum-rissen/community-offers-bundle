@@ -26,32 +26,31 @@ class Plugin implements BundlePluginInterface, RoutingPluginInterface, Extension
         ];
     }
 
-
-    public function getRouteCollection(LoaderResolverInterface $resolver, KernelInterface $kernel): ?RouteCollection
+    public function getRouteCollection(LoaderResolverInterface $resolver, KernelInterface $kernel): RouteCollection|null
     {
-        return $resolver->resolve(__DIR__ . '/../../config/routes.yaml')
-            ->load(__DIR__ . '/../../config/routes.yaml')
+        return $resolver->resolve(__DIR__.'/../../config/routes.yaml')
+            ->load(__DIR__.'/../../config/routes.yaml')
         ;
     }
-
 
     /**
      * Allows a plugin to override extension configuration.
      *
-     * @param string                    $extensionName
-     * @param list<array<string,mixed>> $extensionConfigs
+     * @param string                     $extensionName
+     * @param list<array<string, mixed>> $extensionConfigs
      *
-     * @return list<array<string,mixed>>
+     * @return list<array<string, mixed>>
      */
     public function getExtensionConfig($extensionName, array $extensionConfigs, ContainerBuilder $container): array
     {
-        if ($extensionName !== 'security') {
+        if ('security' !== $extensionName) {
             return $extensionConfigs;
         }
 
-        // Finde die Config, die bereits firewalls definiert (kommt i.d.R. aus contao/manager-bundle)
+        // Finde die Config, die bereits firewalls definiert (kommt i.d.R. aus
+        // contao/manager-bundle)
         foreach ($extensionConfigs as $i => $config) {
-            if (!isset($config['firewalls']) || !is_array($config['firewalls'])) {
+            if (!isset($config['firewalls']) || !\is_array($config['firewalls'])) {
                 continue;
             }
 
@@ -73,7 +72,7 @@ class Plugin implements BundlePluginInterface, RoutingPluginInterface, Extension
 
             // access_control ist mergebar, aber wir setzen unsere Regel gern ganz nach vorn
             $ac = $config['access_control'] ?? [];
-            if (!is_array($ac)) {
+            if (!\is_array($ac)) {
                 $ac = [];
             }
 

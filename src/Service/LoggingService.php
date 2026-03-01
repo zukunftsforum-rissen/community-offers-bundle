@@ -74,7 +74,7 @@ class LoggingService
      */
     public function start($message, $context = []): void
     {
-        $this->loggerStart->debug($message, $context);
+        $this->loggerStart->debug($message, (array) $context);
     }
 
     /**
@@ -83,7 +83,7 @@ class LoggingService
      */
     public function debug($message, $context = []): void
     {
-        $this->log('debug', $message, $context);
+        $this->log('debug', $message, (array) $context);
     }
 
     /**
@@ -92,7 +92,7 @@ class LoggingService
      */
     public function info($message, $context = []): void
     {
-        $this->log('info', $message, $context);
+        $this->log('info', $message, (array) $context);
     }
 
     /**
@@ -101,7 +101,7 @@ class LoggingService
      */
     public function error($message, $context = []): void
     {
-        $this->log('error', $message, $context);
+        $this->log('error', $message, (array) $context);
     }
 
     /**
@@ -110,7 +110,7 @@ class LoggingService
      */
     public function critical($message, $context = []): void
     {
-        $this->log('critical', $message, $context);
+        $this->log('critical', $message, (array) $context);
     }
 
     public function logCurrentMethod(): void

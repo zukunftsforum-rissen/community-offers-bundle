@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace ZukunftsforumRissen\CommunityOffersBundle\EventListener;
 
 use Contao\CoreBundle\DependencyInjection\Attribute\AsHook;
-use Contao\CoreBundle\InsertTag\InsertTagParser;
 use Contao\Form;
 use Contao\FrontendUser;
 use Contao\Widget;
@@ -18,10 +17,12 @@ class LoadFormFieldListener
     public function __construct(
         private readonly Security $security,
         private readonly AccessService $accessService,
-        private readonly InsertTagParser $insertTagParser,
     ) {
     }
 
+    /**
+     * @param array<string, mixed> $formData
+     */
     public function __invoke(Widget $widget, string $formId, array $formData, Form $form): Widget
     {
         // Contao übergibt "auto_<FORMULAR-ID>"
@@ -47,12 +48,20 @@ class LoadFormFieldListener
         if ('requestedAreas' === $widget->name) {
             $granted = $this->accessService->getGrantedAreasForMemberId((int) $user->id);
 
-            if (!\is_array($widget->options)) {
+            $options = [];
+            if (property_exists($widget, 'options')) {
+                $rawOptions = $widget->options;
+                if (\is_array($rawOptions)) {
+                    $options = $rawOptions;
+                }
+            }
+
+            if (!\is_array($options)) {
                 return $widget;
             }
 
-            $widget->options = array_values(array_filter(
-                $widget->options,
+            $options = array_values(array_filter(
+                $options,
                 static function ($opt) use ($granted): bool {
                     if (!\is_array($opt) || !isset($opt['value'])) {
                         return true;

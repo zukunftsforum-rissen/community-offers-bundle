@@ -6,6 +6,7 @@ namespace ZukunftsforumRissen\CommunityOffersBundle\Service;
 
 use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\Database;
+use Contao\Database\Result;
 use Contao\StringUtil;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Email;
@@ -156,6 +157,9 @@ class AccessRequestService
      *   'swap-house' => ['state' => 'pending_confirmed'],
      * ].
      */
+    /**
+     * @return array<string, array<string, int|string>>
+     */
     public function getPendingRequestsForEmail(string $email): array
     {
         $this->framework->initialize();
@@ -181,7 +185,7 @@ class AccessRequestService
         ;
 
         while ($res->next()) {
-            $areas = StringUtil::deserialize($res->requestedAreas, true);
+            $areas = StringUtil::deserialize($this->resultField($res, 'requestedAreas'), true);
             $areas = array_map('strval', $areas);
 
             foreach ($areas as $area) {
@@ -197,8 +201,8 @@ class AccessRequestService
                     continue;
                 }
 
-                if ('' === (string) $res->emailConfirmed) {
-                    $age = time() - (int) $res->tstamp;
+                if ('' === (string) $this->resultField($res, 'emailConfirmed')) {
+                    $age = time() - (int) $this->resultField($res, 'tstamp');
                     $remaining = $cooldown - $age;
                     $remaining = $remaining > 0 ? $remaining : 0;
 
@@ -263,16 +267,16 @@ class AccessRequestService
         $matchConfirmed = null;
 
         while ($res->next()) {
-            $areas = StringUtil::deserialize($res->requestedAreas, true);
+            $areas = StringUtil::deserialize($this->resultField($res, 'requestedAreas'), true);
             $areas = array_map('strval', $areas);
 
             if (!\in_array($area, $areas, true)) {
                 continue;
             }
 
-            $matchId = (int) $res->id;
-            $matchTstamp = (int) $res->tstamp;
-            $matchConfirmed = (string) $res->emailConfirmed;
+            $matchId = (int) $this->resultField($res, 'id');
+            $matchTstamp = (int) $this->resultField($res, 'tstamp');
+            $matchConfirmed = (string) $this->resultField($res, 'emailConfirmed');
             break;
         }
 
@@ -382,6 +386,9 @@ class AccessRequestService
         return implode(', ', array_map(static fn ($a) => $map[$a] ?? $a, $areas));
     }
 
+    /**
+     * @param list<string> $requestedAreas
+     */
     private function sendDoiMail(string $firstname, string $lastname, string $email, string $token, array $requestedAreas, string $street, string $postal, string $city, string $mobile): void
     {
         $confirmUrl = $this->router->generate(
@@ -455,5 +462,15 @@ class AccessRequestService
             array_map('strval', $areas),
             static fn (string $area): bool => \in_array($area, $allowed, true),
         ));
+    }
+
+    /**
+     * Contao\Database\Result has dynamic properties; PHPStan doesn't see them.
+     */
+    private function resultField(Result $result, string $key): mixed
+    {
+        $row = $result->row();
+
+        return $row[$key] ?? null;
     }
 }

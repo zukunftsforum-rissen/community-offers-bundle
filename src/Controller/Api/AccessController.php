@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace ZukunftsforumRissen\CommunityOffersBundle\Controller\Api;
 
 use Contao\FrontendUser;
-use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -13,7 +12,6 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\AccessRequestService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\AccessService;
-use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorAuditLogger;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorJobService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService;
 
@@ -26,9 +24,8 @@ final class AccessController
         private readonly AccessRequestService $accessRequestService,
         private readonly DoorJobService $doorJobs,
         private readonly LoggingService $logging,
-        private readonly CacheItemPoolInterface $cache,
-        private readonly DoorAuditLogger $audit,
-    ) {}
+    ) {
+    }
 
     #[Route('/whoami', name: 'community_offers_whoami', methods: ['GET'])]
     public function whoami(Request $request): JsonResponse
@@ -133,7 +130,7 @@ final class AccessController
             return new JsonResponse(['success' => false, 'message' => 'Internal error'], 500);
         }
 
-        $code = (string) ($result['code'] ?? 'unknown');
+        $code = (string) $result['code'];
 
         $this->logging->info('request_access.result', [
             'memberId' => $memberId,
@@ -142,41 +139,56 @@ final class AccessController
             'ip' => $request->getClientIp(),
         ]);
 
-        if ($code === 'pending_confirmed') {
-            return new JsonResponse([
-                'success' => false,
-                'message' => 'Anfrage ist bereits bestätigt und wartet auf Freigabe.',
-            ], 409);
+        if ('pending_confirmed' === $code) {
+            return new JsonResponse(
+                [
+                    'success' => false,
+                    'message' => 'Anfrage ist bereits bestätigt und wartet auf Freigabe.',
+                ],
+                409,
+            );
         }
 
-        if ($code === 'cooldown') {
-            return new JsonResponse([
-                'success' => false,
-                'message' => 'Bitte warte kurz, bevor du erneut anforderst.',
-                'retryAfterSeconds' => (int) ($result['retryAfterSeconds'] ?? 300),
-            ], 429);
+        if ('cooldown' === $code) {
+            return new JsonResponse(
+                [
+                    'success' => false,
+                    'message' => 'Bitte warte kurz, bevor du erneut anforderst.',
+                    'retryAfterSeconds' => (int) ($result['retryAfterSeconds'] ?? 300),
+                ],
+                429,
+            );
         }
 
-        if ($code === 'invalid_email') {
-            return new JsonResponse([
-                'success' => false,
-                'message' => 'Invalid email',
-            ], 400);
+        if ('invalid_email' === $code) {
+            return new JsonResponse(
+                [
+                    'success' => false,
+                    'message' => 'Invalid email',
+                ],
+                400,
+            );
         }
 
-        if ($code !== 'ok') {
-            return new JsonResponse([
-                'success' => false,
-                'message' => 'Could not create request',
-            ], 500);
+        if ('ok' !== $code) {
+            return new JsonResponse(
+                [
+                    'success' => false,
+                    'message' => 'Could not create request',
+                ],
+                500,
+            );
         }
 
-        return new JsonResponse([
-            'success' => true,
-            'message' => 'DOI email sent',
-            // UX-Hinweis (cooldown ist im Service 600s)
-            'retryAfterSeconds' => 600,
-        ], 200);
+        return new JsonResponse(
+            [
+                'success' => true,
+                'message' => 'DOI email sent',
+                // UX-Hinweis (cooldown ist im Service 600s)
+                'retryAfterSeconds' => 600,
+            ],
+            200,
+        );
     }
 
     #[Route('/open/{slug}', name: 'community_offers_open_door', methods: ['POST'])]
@@ -207,7 +219,7 @@ final class AccessController
 
         // Best effort housekeeping
         $this->doorJobs->expireOldJobs();
-
+        /** @var array{ok: bool, httpStatus: int, message: string, jobId?: int, status?: string, expiresAt?: int, retryAfterSeconds?: int} $result */
         $result = $this->doorJobs->createOpenJob(
             memberId: $memberId,
             area: $slug,
@@ -215,11 +227,11 @@ final class AccessController
             userAgent: (string) $request->headers->get('User-Agent', ''),
         );
 
-        $status = (int) ($result['httpStatus'] ?? 500);
+        $status = (int) $result['httpStatus'];
 
         $payload = [
-            'success' => (bool) ($result['ok'] ?? false),
-            'message' => (string) ($result['message'] ?? ''),
+            'success' => (bool) $result['ok'],
+            'message' => (string) $result['message'],
         ];
 
         if (isset($result['jobId'])) {
@@ -241,7 +253,7 @@ final class AccessController
 
         // optional: Header bei 429
         $response = new JsonResponse($payload, $status);
-        if ($status === 429 && isset($result['retryAfterSeconds'])) {
+        if (429 === $status && isset($result['retryAfterSeconds'])) {
             $response->headers->set('Retry-After', (string) (int) $result['retryAfterSeconds']);
         }
 
@@ -250,7 +262,7 @@ final class AccessController
             'memberId' => $memberId,
             'slug' => $slug,
             'httpStatus' => $status,
-            'ok' => (bool) ($result['ok'] ?? false),
+            'ok' => (bool) $result['ok'],
             'jobId' => $result['jobId'] ?? null,
         ]);
 

@@ -14,5 +14,6 @@ Willkommen zur technischen Dokumentation des **Zugangssystems** (Contao 5 + Bund
 
 Die Diagramme werden in CI aus `docs/diagrams/` sowie den DCAs unter `contao/dca/` erzeugt.
 
-- Architecture: `docs/diagrams/architecture.png|pdf`
-- Datenmodell: `docs/diagrams/data-model.generated.png|pdf`
+- Architecture: `docs/diagrams/generated/architecture.png|pdf`
+- Datenmodell (aus DCA): `docs/diagrams/generated/data-model.generated.png|pdf`
+- Datenmodell (kuratiert): `docs/diagrams/generated/data-model.extended.png|pdf`

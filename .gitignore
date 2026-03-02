@@ -4,3 +4,23 @@
 
 # PHP Unit
 /.phpunit.result.cache
+
+# Secrets / env
+.env
+.env.*
+**/*.pem
+**/*.key
+
+# Dumps & logs
+*.sql
+*.sqlite
+*.log
+var/log/
+var/cache/
+
+# Device tokens / exports
+**/token*.txt
+**/secrets*.yml
+
+# Generated (optional)
+site/

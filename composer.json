@@ -1,5 +1,5 @@
 {
-"name": "zukunftsforum-rissen/community-offers-bundle",
+    "name": "zukunftsforum-rissen/community-offers-bundle",
     "type": "contao-bundle",
     "require": {
         "contao/core-bundle": "^5.0"
@@ -10,6 +10,7 @@
             "ZukunftsforumRissen\\CommunityOffersBundle\\": "src/"
         }
     },
+    "description": "Contao 5 bundle for community offers and door access (pull model) used by Zukunftsforum Rissen e.V.",
     "autoload-dev": {
         "psr-4": {
             "ZukunftsforumRissen\\CommunityOffersBundle\\Tests\\": "tests/"

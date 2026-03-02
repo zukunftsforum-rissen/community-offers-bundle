@@ -3,3 +3,23 @@
 
 im BE Link vom Antrag zum member einrichten!
 
+
+
+
+Da ihr:
+
+Raspberry Pull-Modell
+
+API
+
+DoorJobService (confirmWindow 30s)
+
+DeviceController Poll
+
+habt, würde ich zusätzlich später empfehlen:
+
+trivy config scan (Dockerfiles, YAML)
+
+CodeQL (Symfony/PHP Analyse)
+
+Aber das ist Phase 2.

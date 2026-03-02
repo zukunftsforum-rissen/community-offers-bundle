@@ -1,4 +1,4 @@
-name: Build & Deploy Docs (MkDocs + Diagrams)
+name: Build & Deploy Docs (Docker-only Diagrams + MkDocs)
 
 on:
   push:
@@ -23,40 +23,16 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      # ---- 1) Generate PlantUML from DCA ----
-      - name: Generate PlantUML from DCA
+      # Build diagrams (PlantUML + Mermaid) using Docker only
+      - name: Build diagrams
         run: |
           php -v
-          php tools/generate_data_model_puml.php \
-            --dca-dir contao/dca \
-            --out docs/diagrams/data-model.generated.puml
+          docker --version
+          bash tools/build-diagrams.sh
 
-      - name: Render PlantUML (PNG/PDF)
-        run: |
-          docker run --rm -v "$PWD":/work -w /work plantuml/plantuml \
-            -tpng docs/diagrams/data-model.generated.puml
-          docker run --rm -v "$PWD":/work -w /work plantuml/plantuml \
-            -tpdf docs/diagrams/data-model.generated.puml
-
-      # ---- 2) Render Mermaid ----
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Install mermaid-cli
-        run: npm i -g @mermaid-js/mermaid-cli
-
-      - name: Render Mermaid (PNG/PDF)
-        run: |
-          test -f docs/diagrams/architecture.mmd
-          mmdc -i docs/diagrams/architecture.mmd -o docs/diagrams/architecture.png
-          mmdc -i docs/diagrams/architecture.mmd -o docs/diagrams/architecture.pdf
-
-      # ---- 3) Build MkDocs site ----
+      # MkDocs build (optional, only if you're using MkDocs)
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -70,7 +46,6 @@ jobs:
       - name: Build site
         run: mkdocs build --clean
 
-      # ---- 4) Upload to Pages ----
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
@@ -83,6 +58,5 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
+      - id: deployment
         uses: actions/deploy-pages@v4

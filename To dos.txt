@@ -23,3 +23,8 @@ trivy config scan (Dockerfiles, YAML)
 CodeQL (Symfony/PHP Analyse)
 
 Aber das ist Phase 2.
+
+
+
+
+professionelles Test-Setup (github actions)

@@ -19,6 +19,7 @@ PUML_PDF="$OUT_DIR/generated/data-model.generated.pdf"
 # Docker images
 IMG_MERMAID="minlag/mermaid-cli"
 IMG_PLANTUML="plantuml/plantuml"
+IMG_IMAGEMAGICK="dpokidov/imagemagick"
 
 # Run docker as current user to avoid root-owned outputs
 DU="$(id -u):$(id -g)"
@@ -40,7 +41,11 @@ docker_run() {
 command -v docker >/dev/null 2>&1 || die "docker not found"
 command -v php >/dev/null 2>&1 || die "php not found"
 
+# Ensure expected directory layout exists
 ensure_dir "$OUT_DIR"
+ensure_dir "$OUT_DIR/source"
+ensure_dir "$OUT_DIR/generated"
+ensure_dir "$OUT_DIR/archive"
 
 test -f "$ARCH_SRC" || die "Missing Mermaid source: $ARCH_SRC"
 test -d "$DCA_DIR" || die "Missing DCA dir: $DCA_DIR (adjust DCA_DIR in script)"
@@ -65,13 +70,16 @@ php tools/generate_data_model_puml.php \
 info "Rendering PlantUML (PNG) via Docker"
 docker_run "$IMG_PLANTUML" -tpng "$PUML_GEN"
 
-info "Building PlantUML PDF from PNG (ImageMagick, Docker-only)"
+info "Building PlantUML PDF from PNG (ImageMagick v7, Docker-only)"
 docker run --rm \
-	-u "$(id -u):$(id -g)" \
+	-u "$DU" \
 	-v "$PWD":/work \
 	-w /work \
-	dpokidov/imagemagick \
-	convert -density 150 "$PUML_PNG" "$PUML_PDF"
+	"$IMG_IMAGEMAGICK" \
+	-density 150 "$PUML_PNG" "$PUML_PDF"
+
+test -s "$PUML_PDF" || die "PDF creation failed (empty): $PUML_PDF"
+
 info "Rendering Mermaid (PNG/PDF) via Docker"
 docker_run "$IMG_MERMAID" -i "$ARCH_SRC" -o "$ARCH_PNG"
 docker_run "$IMG_MERMAID" -i "$ARCH_SRC" -o "$ARCH_PDF"

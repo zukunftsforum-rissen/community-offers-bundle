@@ -1,0 +1,50 @@
+site_name: Zukunftwohnen – Technik
+docs_dir: docs
+site_dir: site
+
+theme:
+  name: material
+  language: de
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.top
+    - toc.follow
+    - search.suggest
+    - search.highlight
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - tables
+
+nav:
+  - Start: index.md
+  - Überblick:
+      - Executive Summary: executive-summary.md
+      - Projektbeschreibung: project-description.md
+      - Developer Overview: developer-overview.md
+      - Upgrade Plan: UPGRADE_PLAN.md
+  - API:
+      - API Door: api-door.md
+      - API Examples: api-examples.md
+  - Betrieb & Sicherheit:
+      - Ops Runbook: ops-runbook.md
+      - Security Model: security-model.md
+      - Tracing / Observability: tracing-observability.md
+      - CI & Release: ci-and-release.md
+  - Netzwerk / AVM:
+      - Architecture / Network: architecture-network.md
+      - Network Sketch (PDF): network-sketch.pdf
+      - AVM Technical Review: avm-technical-review.md
+  - Datenmodell:
+      - Data Model (aktuell): data-model.md
+      - Data Model v5: data-model-v5.md
+  - Diagramme:
+      - diagrams/README.md
+

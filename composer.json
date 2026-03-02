@@ -29,7 +29,7 @@
         "phpstan/phpstan": "^1.10",
         "phpstan/phpstan-phpunit": "^1.4",
         "phpstan/phpstan-symfony": "^1.4",
-        "phpunit/phpunit": "^9.5"
+        "phpunit/phpunit": "^13.0"
     },
     "scripts": {
         "test": "phpunit -c phpunit.xml.dist",

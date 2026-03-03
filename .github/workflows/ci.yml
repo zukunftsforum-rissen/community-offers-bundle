@@ -28,9 +28,8 @@ jobs:
       - name: Composer validate
         run: composer validate --no-interaction --strict
 
-      - name: Install dependencies
-        run: composer install --no-interaction --no-progress --prefer-dist
+      - name: Install dependencies (no scripts)
+        run: composer install --no-interaction --no-progress --prefer-dist --no-scripts
 
-      - name: Skip PHPUnit in CI (Contao runtime not available)
-        run: echo "Skipping tests in CI"
-
+      - name: Skip tests (Contao runtime not available)
+        run: echo "Skipping phpunit/phpstan in CI for now"

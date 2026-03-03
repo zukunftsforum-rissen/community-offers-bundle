@@ -6,7 +6,7 @@ on:
 
 jobs:
   php:
-    name: CI / PHP ${{ matrix.php }}
+    name: PHP ${{ matrix.php }}
     runs-on: ubuntu-latest
 
     strategy:

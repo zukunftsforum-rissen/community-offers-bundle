@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   build:
-    name: Pages / Build
+    name: Build
     runs-on: ubuntu-latest
 
     steps:

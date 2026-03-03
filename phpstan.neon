@@ -17,3 +17,7 @@ parameters:
 
     excludePaths:
         - %currentWorkingDirectory%/src/Resources/*
+        - tests/Integration/KernelBootIntegrationTest.php
+
+    treatPhpDocTypesAsCertain: false
+

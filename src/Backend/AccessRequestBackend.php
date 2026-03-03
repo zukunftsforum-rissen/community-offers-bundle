@@ -127,39 +127,6 @@ class AccessRequestBackend extends Backend
         );
     }
 
-    /**
-     * @param list<string> $areas
-     *
-     * @return list<int> Group IDs
-     */
-    private function mapAreasToGroups(array $areas): array
-    {
-        return $this->accessService->getGroupIdsForAreas($areas);
-    }
-
-    /**
-     * @param list<string> $areas
-     *
-     * @return list<string>
-     */
-    private function formatAreasHuman(array $areas): array
-    {
-        $map = [
-            'workshop' => 'Werkstatt',
-            'sharing' => 'Sharingstation',
-            'depot' => 'Lebensmittel-Depot',
-            'swap-house' => 'Tauschhaus',
-        ];
-
-        $out = [];
-
-        foreach ($areas as $a) {
-            $out[] = $map[$a] ?? $a;
-        }
-
-        return $out;
-    }
-
     protected function getInputValue(string $key): string|null
     {
         return Input::get($key);
@@ -210,5 +177,38 @@ class AccessRequestBackend extends Backend
     protected function redirectToRequestList(): void
     {
         $this->redirect('contao?do=co_access_request');
+    }
+
+    /**
+     * @param list<string> $areas
+     *
+     * @return list<int> Group IDs
+     */
+    private function mapAreasToGroups(array $areas): array
+    {
+        return $this->accessService->getGroupIdsForAreas($areas);
+    }
+
+    /**
+     * @param list<string> $areas
+     *
+     * @return list<string>
+     */
+    private function formatAreasHuman(array $areas): array
+    {
+        $map = [
+            'workshop' => 'Werkstatt',
+            'sharing' => 'Sharingstation',
+            'depot' => 'Lebensmittel-Depot',
+            'swap-house' => 'Tauschhaus',
+        ];
+
+        $out = [];
+
+        foreach ($areas as $a) {
+            $out[] = $map[$a] ?? $a;
+        }
+
+        return $out;
     }
 }

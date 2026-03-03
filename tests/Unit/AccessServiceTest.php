@@ -98,7 +98,7 @@ class AccessServiceTest extends TestCase
         $service = new AccessService($framework, [
             'workshop' => 2,
             'depot' => 7,
-        ], $doorGateway);
+        ]);
 
         $result = $service->getGrantedAreasForMemberId($memberId);
 
@@ -154,7 +154,7 @@ class AccessServiceTest extends TestCase
             'workshop' => 2,
             'sharing' => 4,
             'depot' => 7,
-        ], $doorGateway);
+        ]);
 
         $result = $service->getGrantedAreasForMemberId($memberId);
 

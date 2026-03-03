@@ -7,7 +7,6 @@ namespace ZukunftsforumRissen\CommunityOffersBundle\Service;
 use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\MemberModel;
 use Contao\StringUtil;
-use ZukunftsforumRissen\CommunityOffersBundle\Door\DoorGatewayInterface;
 
 class AccessService
 {
@@ -17,7 +16,6 @@ class AccessService
     public function __construct(
         private readonly ContaoFramework $framework,
         private readonly array $areaGroups,
-        private readonly DoorGatewayInterface $doorGateway,
     ) {
     }
 

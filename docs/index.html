@@ -343,22 +343,22 @@ window.__mermaid = mermaid;
 			<div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 18px;">
 
 				<a href="https://github.com/zukunftsforum-rissen/community-offers-bundle/actions" style="border:1px solid rgba(47,129,247,.4);background:rgba(47,129,247,.12);color:#6cb6ff;
-																										padding:6px 10px;border-radius:999px;font-size:12px;text-decoration:none;">
+																																padding:6px 10px;border-radius:999px;font-size:12px;text-decoration:none;">
 					CI: Required (PHP 8.2 / 8.3 / 8.4)
 				</a>
 
 				<a href="https://github.com/zukunftsforum-rissen/community-offers-bundle/security" style="border:1px solid rgba(255,180,0,.4);background:rgba(255,180,0,.12);
-																										padding:6px 10px;border-radius:999px;font-size:12px;text-decoration:none;color:inherit;">
+																																padding:6px 10px;border-radius:999px;font-size:12px;text-decoration:none;color:inherit;">
 					Security: Gitleaks + Trivy
 				</a>
 
 				<a href="https://zukunftsforum-rissen.github.io/community-offers-bundle/" style="border:1px solid rgba(0,200,120,.4);background:rgba(0,200,120,.12);
-																										padding:6px 10px;border-radius:999px;font-size:12px;text-decoration:none;color:inherit;">
+																																padding:6px 10px;border-radius:999px;font-size:12px;text-decoration:none;color:inherit;">
 					GitHub Pages
 				</a>
 
 				<span style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);
-																											padding:6px 10px;border-radius:999px;font-size:12px;">
+																																	padding:6px 10px;border-radius:999px;font-size:12px;">
 					confirmWindow: 30s
 				</span>
 
@@ -471,12 +471,15 @@ label: "network-sketch.pdf"
 }
 ];
 
+const BASE = new URL(".", window.location.href); // folder of this index.html
+
 // --- Helpers ---
 const $ = (id) => document.getElementById(id);
 
 async function renderMermaidDiagrams(root) {
 if (!window.__mermaid) 
 return;
+
 
 
 const mermaid = window.__mermaid;
@@ -581,8 +584,7 @@ window.open(`${REPO_URL}/blob/main/docs/${file}`, "_blank", "noreferrer");
 };
 
 try {
-const res = await fetch(file, {cache: "no-store"});
-if (! res.ok) 
+const res = await fetch(new URL(file, BASE), { cache: "no-store" });if (! res.ok) 
 throw new Error(`HTTP ${
 res.status
 }`);

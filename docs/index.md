@@ -59,10 +59,23 @@ Client/App sendet **Open-Request** → API erzeugt **DoorJob** → Raspberry Pi 
   <img src="diagrams/generated/architecture.svg" alt="Architekturübersicht" style="display:block;max-width:100%;height:auto;margin:0 auto;">
 </div>
 
-**Downloads:**  
-- [SVG](diagrams/generated/architecture.svg)  
-- [PDF](diagrams/generated/architecture.pdf)  
-- [PNG](diagrams/generated/architecture.png)---
+<div style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 18px;">
+  <a href="diagrams/generated/architecture.svg" download
+     style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);
+            padding:6px 10px;border-radius:999px;font-size:12px;text-decoration:none;color:inherit;">
+    SVG herunterladen
+  </a>
+  <a href="diagrams/generated/architecture.pdf"
+     style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);
+            padding:6px 10px;border-radius:999px;font-size:12px;text-decoration:none;color:inherit;">
+    PDF öffnen
+  </a>
+  <a href="diagrams/generated/architecture.png"
+     style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);
+            padding:6px 10px;border-radius:999px;font-size:12px;text-decoration:none;color:inherit;">
+    PNG öffnen
+  </a>
+</div>
 
 ## Warum Pull-Modell?
 

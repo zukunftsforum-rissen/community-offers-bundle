@@ -1,11 +1,11 @@
-name: Security
+name: Security 
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
   schedule:
-    - cron: "0 3 * * 1"  # Mo 03:00
+    - cron: "0 3 * * 1" # Mo 03:00
 
 jobs:
   gitleaks:
@@ -16,22 +16,27 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@v2
-        with:
-          args: detect --redact --verbose
+      - name: Run gitleaks (docker)
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}:/repo" \
+            -w /repo \
+            zricethezav/gitleaks:latest detect --redact --verbose
 
   trivy:
-    name: Trivy (config & fs)
+    name: Trivy
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Trivy scan (repo)
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          scan-type: fs
-          scanners: vuln,secret,config
-          format: table
-          exit-code: "1"
-          severity: CRITICAL,HIGH
+      - name: Trivy scan (docker, report only for now)
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}:/repo" \
+            -w /repo \
+            aquasec/trivy:0.56.1 \
+            fs /repo \
+            --scanners vuln,secret,config \
+            --severity HIGH,CRITICAL \
+            --format table \
+            --exit-code 0

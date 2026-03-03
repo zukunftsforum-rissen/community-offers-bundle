@@ -24,3 +24,9 @@ var/cache/
 
 # Generated (optional)
 site/
+
+# Java / PlantUML cache / prefs
+.java/
+?/.java/
+**/.java/
+**/.userPrefs/

@@ -55,11 +55,14 @@ Client/App sendet **Open-Request** → API erzeugt **DoorJob** → Raspberry Pi 
 
 ## Architekturdiagramm
 
-![Architekturübersicht](diagrams/generated/architecture.svg)
+<div style="border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.02);border-radius:14px;padding:10px;overflow:auto;margin:12px 0;">
+  <img src="diagrams/generated/architecture.svg" alt="Architekturübersicht" style="display:block;max-width:100%;height:auto;margin:0 auto;">
+</div>
 
-**Downloads:** [PDF](diagrams/generated/architecture.pdf) · [PNG](diagrams/generated/architecture.png)
-
----
+**Downloads:**  
+- [SVG](diagrams/generated/architecture.svg)  
+- [PDF](diagrams/generated/architecture.pdf)  
+- [PNG](diagrams/generated/architecture.png)---
 
 ## Warum Pull-Modell?
 
@@ -93,6 +96,65 @@ Damit bleibt:
 - die Business-Logik zentral
 - die Hardware austauschbar
 - das System auditierbar und wartbar
+
+### DoorJob State Machine
+
+| State | Bedeutung | Übergang |
+|---|---|---|
+| `pending` | Job wurde angelegt (Open-Request) | → `dispatched` oder `expired` |
+| `dispatched` | Job wurde an ein Device ausgeliefert (Nonce erzeugt) | → `executed`, `failed` oder `expired` |
+| `executed` | Tür erfolgreich geöffnet | Ende |
+| `failed` | Hardware-/Ausführungsfehler | Ende |
+| `expired` | Zeitfenster abgelaufen | Ende |
+
+### Zustandsdiagramm
+
+```mermaid
+stateDiagram-v2
+    [*] --> pending
+
+    pending --> dispatched : Pi pollt\nJob wird ausgeliefert
+    pending --> expired : expiresAt erreicht
+
+    dispatched --> executed : confirm innerhalb confirmWindow
+    dispatched --> failed : Hardware/IO Fehler
+    dispatched --> expired : confirmWindow abgelaufen
+
+    executed --> [*]
+    failed --> [*]
+    expired --> [*]
+
+
+### Request Flow (Sequenz)
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant App as App/Client
+  participant API as Symfony API (Contao Bundle)
+  participant DB as DB (DoorJobs)
+  participant Pi as Raspberry Pi (Pull)
+  participant HW as Door Hardware
+
+  App->>API: POST /api/door/open/{area}
+  API->>DB: create DoorJob (state=created)
+  API-->>App: jobId + confirmWindow
+
+  loop Polling
+    Pi->>API: GET /api/device/poll
+    API->>DB: fetch next jobs for device
+    API-->>Pi: job(s) (created/confirmed)
+  end
+
+  App->>API: POST /api/door/confirm/{jobId}
+  API->>DB: set state=confirmed (expires in 30s)
+
+  Pi->>API: GET /api/device/poll
+  API-->>Pi: confirmed job
+
+  Pi->>HW: trigger relay / open door
+  Pi->>API: POST /api/device/complete/{jobId} (success/fail)
+  API->>DB: set state=completed or failed
 
 ## Datenmodell
 

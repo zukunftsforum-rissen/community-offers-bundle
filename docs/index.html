@@ -12,6 +12,11 @@
 		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js/styles/github-dark.min.css">
 		<script src="https://cdn.jsdelivr.net/npm/highlight.js/lib/common.min.js"></script>
 
+		<script type="module">
+			import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+window.__mermaid = mermaid;
+		</script>
+
 		<style>:root
 		{
 			--bg: #0b1220;
@@ -338,22 +343,22 @@
 			<div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 18px;">
 
 				<a href="https://github.com/zukunftsforum-rissen/community-offers-bundle/actions" style="border:1px solid rgba(47,129,247,.4);background:rgba(47,129,247,.12);color:#6cb6ff;
-														padding:6px 10px;border-radius:999px;font-size:12px;text-decoration:none;">
+																										padding:6px 10px;border-radius:999px;font-size:12px;text-decoration:none;">
 					CI: Required (PHP 8.2 / 8.3 / 8.4)
 				</a>
 
 				<a href="https://github.com/zukunftsforum-rissen/community-offers-bundle/security" style="border:1px solid rgba(255,180,0,.4);background:rgba(255,180,0,.12);
-														padding:6px 10px;border-radius:999px;font-size:12px;text-decoration:none;color:inherit;">
+																										padding:6px 10px;border-radius:999px;font-size:12px;text-decoration:none;color:inherit;">
 					Security: Gitleaks + Trivy
 				</a>
 
 				<a href="https://zukunftsforum-rissen.github.io/community-offers-bundle/" style="border:1px solid rgba(0,200,120,.4);background:rgba(0,200,120,.12);
-														padding:6px 10px;border-radius:999px;font-size:12px;text-decoration:none;color:inherit;">
+																										padding:6px 10px;border-radius:999px;font-size:12px;text-decoration:none;color:inherit;">
 					GitHub Pages
 				</a>
 
 				<span style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);
-															padding:6px 10px;border-radius:999px;font-size:12px;">
+																											padding:6px 10px;border-radius:999px;font-size:12px;">
 					confirmWindow: 30s
 				</span>
 
@@ -469,6 +474,39 @@ label: "network-sketch.pdf"
 // --- Helpers ---
 const $ = (id) => document.getElementById(id);
 
+async function renderMermaidDiagrams(root) {
+if (!window.__mermaid) 
+return;
+
+
+const mermaid = window.__mermaid;
+mermaid.initialize({startOnLoad: false, theme: "dark"});
+
+const blocks = root.querySelectorAll("pre code.language-mermaid, pre code.lang-mermaid, pre code.mermaid");
+let i = 0;
+
+for (const code of blocks) {
+const pre = code.closest("pre");
+const src = code.textContent;
+
+const container = document.createElement("div");
+container.className = "mermaid";
+container.style.margin = "14px 0";
+container.style.padding = "10px";
+container.style.border = "1px solid rgba(255,255,255,.08)";
+container.style.borderRadius = "12px";
+container.style.background = "rgba(255,255,255,.03)";
+container.textContent = src;
+
+pre.replaceWith(container);
+i++;
+}
+
+if (i > 0) { // Let Mermaid render all newly inserted .mermaid nodes
+await mermaid.run({querySelector: ".mermaid"});
+}
+}
+
 function getRouteFile() {
 const url = new URL(window.location.href);
 const file = url.searchParams.get("doc");
@@ -559,6 +597,8 @@ marked.setOptions({gfm: true, breaks: false});
 const html = marked.parse(text);
 $("content").innerHTML = html;
 rewriteMarkdownLinks($("content"));
+
+await renderMermaidDiagrams($("content"));
 
 // Title: first h1, else filename
 const h1 = $("content").querySelector("h1");

@@ -294,6 +294,16 @@
 				max-height: none;
 			}
 		}
+
+		.article a[style*="border:1px solid"] {
+			transition: transform 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+		}
+		.article a[style*="border:1px solid"]:hover {
+			transform: translateY(-1px);
+			border-color: rgba(47, 129, 247, 0.45);
+			background: rgba(47, 129, 247, 0.10);
+			text-decoration: none;
+		}
 	</style>
 </head>
 <body>
@@ -324,6 +334,29 @@
 				<div class="meta">
 					<span id="status"></span>
 				</div>
+			</div>
+			<div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 18px;">
+
+				<a href="https://github.com/zukunftsforum-rissen/community-offers-bundle/actions" style="border:1px solid rgba(47,129,247,.4);background:rgba(47,129,247,.12);color:#6cb6ff;
+														padding:6px 10px;border-radius:999px;font-size:12px;text-decoration:none;">
+					CI: Required (PHP 8.2 / 8.3 / 8.4)
+				</a>
+
+				<a href="https://github.com/zukunftsforum-rissen/community-offers-bundle/security" style="border:1px solid rgba(255,180,0,.4);background:rgba(255,180,0,.12);
+														padding:6px 10px;border-radius:999px;font-size:12px;text-decoration:none;color:inherit;">
+					Security: Gitleaks + Trivy
+				</a>
+
+				<a href="https://zukunftsforum-rissen.github.io/community-offers-bundle/" style="border:1px solid rgba(0,200,120,.4);background:rgba(0,200,120,.12);
+														padding:6px 10px;border-radius:999px;font-size:12px;text-decoration:none;color:inherit;">
+					GitHub Pages
+				</a>
+
+				<span style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);
+															padding:6px 10px;border-radius:999px;font-size:12px;">
+					confirmWindow: 30s
+				</span>
+
 			</div>
 			<div class="article" id="content">
 				<p>Lädt…</p>
@@ -568,9 +601,11 @@ if (! href)
 return;
 
 
+
 // external / special links untouched
 if (href.startsWith("http://") || href.startsWith("https://") || href.startsWith("mailto:") || href.startsWith("#") || href.startsWith("?doc=")) 
 return;
+
 
 
 // keep hash anchors
@@ -581,6 +616,7 @@ const hash = parts[1] ? "#" + parts[1] : "";
 // only rewrite markdown docs
 if (! path.toLowerCase().endsWith(".md")) 
 return;
+
 
 
 // Rewrite to the SPA-style route so it renders nicely

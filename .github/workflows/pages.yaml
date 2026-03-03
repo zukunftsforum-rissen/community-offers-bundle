@@ -3,6 +3,7 @@ name: Build & Deploy Pages
 on:
   push:
     branches: [ main ]
+  pull_request:
 
 permissions:
   contents: read
@@ -38,6 +39,7 @@ jobs:
           path: docs/
 
   deploy:
+    if: github.event_name == 'push'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

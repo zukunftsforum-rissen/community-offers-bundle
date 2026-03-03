@@ -35,7 +35,12 @@ ensure_dir() { mkdir -p "$1"; }
 
 docker_run() {
 	# shellcheck disable=SC2068
-	docker run --rm -u "$DU" -v "$PWD":/work -w /work "$@"
+	docker run --rm \
+		-u "$DU" \
+		-e HOME=/tmp \
+		-v "$PWD":/work \
+		-w /work \
+		"$@"
 }
 
 require_nonempty() {
@@ -76,9 +81,9 @@ require_nonempty "$PUML_PDF"
 
 info "Rendering Mermaid via Docker (PNG, SVG, PDF)"
 # PNG: raise scale for better readability even without SVG
-docker_run "$IMG_MERMAID" -i "$ARCH_SRC" -o "$ARCH_PNG" --scale 2
-docker_run "$IMG_MERMAID" -i "$ARCH_SRC" -o "$ARCH_SVG"
-docker_run "$IMG_MERMAID" -i "$ARCH_SRC" -o "$ARCH_PDF"
+docker_run "$IMG_MERMAID" -i "$ARCH_SRC" -o "$ARCH_PNG" --scale 2 --backgroundColor white
+docker_run "$IMG_MERMAID" -i "$ARCH_SRC" -o "$ARCH_SVG" --backgroundColor white
+docker_run "$IMG_MERMAID" -i "$ARCH_SRC" -o "$ARCH_PDF" --backgroundColor white
 
 require_nonempty "$ARCH_PNG"
 require_nonempty "$ARCH_SVG"

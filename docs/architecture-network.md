@@ -35,3 +35,7 @@ Verbindungen am Raspberry Pi.
 -   Kein Portforwarding notwendig
 -   Device Auth über Secret
 -   Logging aller Türöffnungen
+
+# Netzwerk / Architektur
+
+![Architekturübersicht](diagrams/generated/architecture.svg)

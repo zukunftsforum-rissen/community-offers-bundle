@@ -19,11 +19,11 @@
 			--panel2: #0c1626;
 			--text: #e6edf3;
 			--muted: #9fb0c2;
-			--border: rgba(255, 255, 255, .08);
+			--border: rgba(255, 255, 255, 0.08);
 			--link: #6cb6ff;
 			--accent: #2f81f7;
-			--codebg: rgba(255, 255, 255, .06);
-			--shadow: 0 12px 30px rgba(0, 0, 0, .35);
+			--codebg: rgba(255, 255, 255, 0.06);
+			--shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
 			--radius: 14px;
 			--font: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
 			--mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
@@ -50,7 +50,7 @@
 			top: 0;
 			z-index: 20;
 			backdrop-filter: blur(10px);
-			background: rgba(11, 18, 32, .72);
+			background: rgba(11, 18, 32, 0.72);
 			border-bottom: 1px solid var(--border);
 		}
 		.topbar {
@@ -88,14 +88,14 @@
 			padding: 7px 10px;
 			border: 1px solid var(--border);
 			border-radius: 999px;
-			background: rgba(255, 255, 255, .04);
+			background: rgba(255, 255, 255, 0.04);
 			color: var(--muted);
 			font-size: 13px;
 		}
 		.btn {
 			appearance: none;
 			border: 1px solid var(--border);
-			background: rgba(255, 255, 255, .04);
+			background: rgba(255, 255, 255, 0.04);
 			color: var(--text);
 			padding: 8px 10px;
 			border-radius: 10px;
@@ -103,7 +103,7 @@
 			font-size: 13px;
 		}
 		.btn:hover {
-			border-color: rgba(255, 255, 255, .18);
+			border-color: rgba(255, 255, 255, 0.18);
 		}
 
 		.layout {
@@ -119,7 +119,7 @@
 			position: sticky;
 			top: 62px;
 			align-self: start;
-			background: rgba(15, 26, 43, .85);
+			background: rgba(15, 26, 43, 0.85);
 			border: 1px solid var(--border);
 			border-radius: var(--radius);
 			box-shadow: var(--shadow);
@@ -128,14 +128,14 @@
 		.aside-head {
 			padding: 12px;
 			border-bottom: 1px solid var(--border);
-			background: rgba(12, 22, 38, .65);
+			background: rgba(12, 22, 38, 0.65);
 		}
 		.search {
 			width: 100%;
 			padding: 10px;
 			border: 1px solid var(--border);
 			border-radius: 10px;
-			background: rgba(255, 255, 255, .03);
+			background: rgba(255, 255, 255, 0.03);
 			color: var(--text);
 			outline: none;
 			font-size: 13px;
@@ -166,17 +166,17 @@
 			color: var(--muted);
 		}
 		.nav a.active {
-			background: rgba(47, 129, 247, .16);
-			border-color: rgba(47, 129, 247, .35);
+			background: rgba(47, 129, 247, 0.16);
+			border-color: rgba(47, 129, 247, 0.35);
 		}
 		.nav a:hover {
-			background: rgba(255, 255, 255, .04);
-			border-color: rgba(255, 255, 255, .10);
+			background: rgba(255, 255, 255, 0.04);
+			border-color: rgba(255, 255, 255, 0.10);
 			text-decoration: none;
 		}
 
 		main {
-			background: rgba(15, 26, 43, .70);
+			background: rgba(15, 26, 43, 0.70);
 			border: 1px solid var(--border);
 			border-radius: var(--radius);
 			box-shadow: var(--shadow);
@@ -185,7 +185,7 @@
 		.content-head {
 			padding: 14px 16px;
 			border-bottom: 1px solid var(--border);
-			background: rgba(12, 22, 38, .65);
+			background: rgba(12, 22, 38, 0.65);
 			display: flex;
 			align-items: center;
 			gap: 10px;
@@ -236,7 +236,7 @@
 			border-radius: 6px;
 		}
 		.article pre {
-			background: rgba(0, 0, 0, .25);
+			background: rgba(0, 0, 0, 0.25);
 			padding: 14px;
 			border-radius: 12px;
 			overflow: auto;
@@ -249,8 +249,8 @@
 		.article blockquote {
 			margin: 14px 0;
 			padding: 10px 12px;
-			border-left: 3px solid rgba(47, 129, 247, .6);
-			background: rgba(255, 255, 255, .03);
+			border-left: 3px solid rgba(47, 129, 247, 0.6);
+			background: rgba(255, 255, 255, 0.03);
 			border-radius: 10px;
 		}
 		.article table {
@@ -268,7 +268,7 @@
 		}
 		.article th {
 			text-align: left;
-			background: rgba(255, 255, 255, .04);
+			background: rgba(255, 255, 255, 0.04);
 		}
 		.article img {
 			max-width: 100%;
@@ -517,6 +517,7 @@ res.status
 }`);
 
 
+
 const text = await res.text();
 
 if (isMarkdown(file)) {
@@ -524,6 +525,7 @@ marked.setOptions({gfm: true, breaks: false});
 
 const html = marked.parse(text);
 $("content").innerHTML = html;
+rewriteMarkdownLinks($("content"));
 
 // Title: first h1, else filename
 const h1 = $("content").querySelector("h1");
@@ -557,6 +559,36 @@ escapeHtml(file)
 }</code> existiert und auf GitHub Pages veröffentlicht wird.</p>
       `;
 }
+}
+
+function rewriteMarkdownLinks(root) {
+root.querySelectorAll("a[href]").forEach(a => {
+const href = a.getAttribute("href");
+if (! href) 
+return;
+
+
+// external / special links untouched
+if (href.startsWith("http://") || href.startsWith("https://") || href.startsWith("mailto:") || href.startsWith("#") || href.startsWith("?doc=")) 
+return;
+
+
+// keep hash anchors
+const parts = href.split("#");
+const path = parts[0];
+const hash = parts[1] ? "#" + parts[1] : "";
+
+// only rewrite markdown docs
+if (! path.toLowerCase().endsWith(".md")) 
+return;
+
+
+// Rewrite to the SPA-style route so it renders nicely
+const newHref = `?doc=${
+encodeURIComponent(path)
+}${hash}`;
+a.setAttribute("href", newHref);
+});
 }
 
 function escapeHtml(s) {

@@ -1,5 +1,4 @@
 name: CI
-
 on:
   push:
     branches: [ main ]
@@ -7,7 +6,7 @@ on:
 
 jobs:
   php:
-    name: PHP checks
+    name: CI / PHP ${{ matrix.php }}
     runs-on: ubuntu-latest
 
     strategy:

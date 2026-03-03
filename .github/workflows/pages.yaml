@@ -16,6 +16,7 @@ concurrency:
 
 jobs:
   build:
+    name: Pages / Build
     runs-on: ubuntu-latest
 
     steps:
@@ -39,6 +40,7 @@ jobs:
           path: docs/
 
   deploy:
+    name: Pages / Deploy
     if: github.event_name == 'push'
     environment:
       name: github-pages

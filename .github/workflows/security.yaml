@@ -1,4 +1,4 @@
-name: Security
+name: Security 
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
 
 jobs:
   gitleaks:
-    name: Gitleaks
+    name: Security / Gitleaks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,7 +24,7 @@ jobs:
             zricethezav/gitleaks:latest detect --redact --verbose
 
   trivy:
-    name: Trivy (config & fs)
+    name: Security / Trivy
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

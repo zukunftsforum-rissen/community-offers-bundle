@@ -124,19 +124,19 @@ Damit bleibt:
 
 ```mermaid
 stateDiagram-v2
-    [*] --> pending
+  [*] --> pending
 
-    pending --> dispatched : Pi pollt\nJob wird ausgeliefert
-    pending --> expired : expiresAt erreicht
+  pending --> dispatched: Pi pollt (Job ausgeliefert)
+  pending --> expired: expiresAt erreicht
 
-    dispatched --> executed : confirm innerhalb confirmWindow
-    dispatched --> failed : Hardware/IO Fehler
-    dispatched --> expired : confirmWindow abgelaufen
+  dispatched --> executed: confirm innerhalb confirmWindow
+  dispatched --> failed: Hardware/IO Fehler
+  dispatched --> expired: confirmWindow abgelaufen
 
-    executed --> [*]
-    failed --> [*]
-    expired --> [*]
-
+  executed --> [*]
+  failed --> [*]
+  expired --> [*]
+```
 
 ### Request Flow (Sequenz)
 
@@ -144,30 +144,25 @@ stateDiagram-v2
 sequenceDiagram
   autonumber
   participant App as App/Client
-  participant API as Symfony API (Contao Bundle)
-  participant DB as DB (DoorJobs)
+  participant API as Symfony API
+  participant DB as DB
   participant Pi as Raspberry Pi (Pull)
   participant HW as Door Hardware
 
   App->>API: POST /api/door/open/{area}
-  API->>DB: create DoorJob (state=created)
+  API->>DB: create DoorJob (pending)
   API-->>App: jobId + confirmWindow
 
   loop Polling
     Pi->>API: GET /api/device/poll
-    API->>DB: fetch next jobs for device
-    API-->>Pi: job(s) (created/confirmed)
+    API->>DB: select pending jobs
+    API-->>Pi: job (dispatched)
   end
 
-  App->>API: POST /api/door/confirm/{jobId}
-  API->>DB: set state=confirmed (expires in 30s)
-
-  Pi->>API: GET /api/device/poll
-  API-->>Pi: confirmed job
-
+  Pi->>API: POST /api/device/confirm/{jobId}
+  API->>DB: executed (or failed/expired)
   Pi->>HW: trigger relay / open door
-  Pi->>API: POST /api/device/complete/{jobId} (success/fail)
-  API->>DB: set state=completed or failed
+```
 
 ## Datenmodell
 

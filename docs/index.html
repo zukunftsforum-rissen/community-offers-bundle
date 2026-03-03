@@ -343,22 +343,22 @@ window.__mermaid = mermaid;
 			<div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 18px;">
 
 				<a href="https://github.com/zukunftsforum-rissen/community-offers-bundle/actions" style="border:1px solid rgba(47,129,247,.4);background:rgba(47,129,247,.12);color:#6cb6ff;
-																																padding:6px 10px;border-radius:999px;font-size:12px;text-decoration:none;">
+																																																								padding:6px 10px;border-radius:999px;font-size:12px;text-decoration:none;">
 					CI: Required (PHP 8.2 / 8.3 / 8.4)
 				</a>
 
 				<a href="https://github.com/zukunftsforum-rissen/community-offers-bundle/security" style="border:1px solid rgba(255,180,0,.4);background:rgba(255,180,0,.12);
-																																padding:6px 10px;border-radius:999px;font-size:12px;text-decoration:none;color:inherit;">
+																																																								padding:6px 10px;border-radius:999px;font-size:12px;text-decoration:none;color:inherit;">
 					Security: Gitleaks + Trivy
 				</a>
 
 				<a href="https://zukunftsforum-rissen.github.io/community-offers-bundle/" style="border:1px solid rgba(0,200,120,.4);background:rgba(0,200,120,.12);
-																																padding:6px 10px;border-radius:999px;font-size:12px;text-decoration:none;color:inherit;">
+																																																								padding:6px 10px;border-radius:999px;font-size:12px;text-decoration:none;color:inherit;">
 					GitHub Pages
 				</a>
 
 				<span style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);
-																																	padding:6px 10px;border-radius:999px;font-size:12px;">
+																																																									padding:6px 10px;border-radius:999px;font-size:12px;">
 					confirmWindow: 30s
 				</span>
 
@@ -373,6 +373,8 @@ window.__mermaid = mermaid;
 		// --- Configure your docs here ---
 const REPO_URL = "https://github.com/zukunftsforum-rissen/community-offers-bundle";
 const DEFAULT_DOC = "index.md";
+const BASE = new URL(".", window.location.href);
+// folder of this index.html
 
 // Groups based on your current docs tree (from screenshot)
 const NAV_GROUPS = [
@@ -471,7 +473,6 @@ label: "network-sketch.pdf"
 }
 ];
 
-const BASE = new URL(".", window.location.href); // folder of this index.html
 
 // --- Helpers ---
 const $ = (id) => document.getElementById(id);
@@ -574,45 +575,63 @@ a.classList.toggle("active", a.dataset.file === file);
 });
 }
 
+async function fetchTextWithFallbacks(file) {
+const BASE = new URL(".", window.location.href);
+
+// Try a few likely locations:
+const candidates = [
+new URL(file, BASE), // index.md next to index.html
+new URL("docs/" + file, BASE), // index.md under /docs/
+new URL("../docs/" + file, BASE) // in case index.html is in a subfolder
+];
+
+const tried = [];
+
+for (const url of candidates) {
+tried.push(url.toString());
+const res = await fetch(url, {cache: "no-store"});
+if (res.ok) {
+return {text: await res.text(), url: url.toString(), tried};
+}
+tried.push(`${url}  -> HTTP ${
+res.status
+}`);
+}
+
+const err = new Error("Document fetch failed");
+err.tried = tried;
+throw err;
+}
+
 async function loadDoc(file) {
 $("status").textContent = "Lädt…";
 $("currentFilePill").textContent = file;
 
-// GitHub button points to the file under /docs/
 $("openOnGitHubBtn").onclick = () => {
 window.open(`${REPO_URL}/blob/main/docs/${file}`, "_blank", "noreferrer");
 };
 
-try {
-const res = await fetch(new URL(file, BASE), { cache: "no-store" });if (! res.ok) 
-throw new Error(`HTTP ${
-res.status
-}`);
-
-
-
-const text = await res.text();
+try { // Use robust fallback fetching
+const {text, tried} = await fetchTextWithFallbacks(file);
 
 if (isMarkdown(file)) {
 marked.setOptions({gfm: true, breaks: false});
 
 const html = marked.parse(text);
 $("content").innerHTML = html;
-rewriteMarkdownLinks($("content"));
 
+rewriteMarkdownLinks($("content"));
 await renderMermaidDiagrams($("content"));
 
-// Title: first h1, else filename
 const h1 = $("content").querySelector("h1");
 $("title").textContent = h1 ? h1.textContent.trim() : file;
 
-// highlight code
 $("content").querySelectorAll("pre code").forEach(block => {
 try {
 hljs.highlightElement(block);
 } catch (_) {}
 });
-} else { // Not expected (we mainly use .md), but keep graceful
+} else {
 $("content").innerHTML = `<pre>${
 escapeHtml(text)
 }</pre>`;
@@ -622,19 +641,26 @@ $("subtitle").textContent = `docs/${file}`;
 } catch (err) {
 $("status").textContent = "Fehler";
 $("title").textContent = "Dokument nicht gefunden";
+
+const tried = err && err.tried ? err.tried : [];
+
 $("content").innerHTML = `
-        <p><b>Konnte <code>${
+      <p><b>Konnte <code>${
 escapeHtml(file)
 }</code> nicht laden.</b></p>
-        <p style="color: var(--muted)">Details: ${
-escapeHtml(String(err))
+      <p style="color: var(--muted)">Details: ${
+escapeHtml(err && err.message ? err.message : String(err))
 }</p>
-        <p>Prüfe, ob die Datei unter <code>docs/${
-escapeHtml(file)
-}</code> existiert und auf GitHub Pages veröffentlicht wird.</p>
-      `;
+      ${
+tried.length ? `<p><b>Getestete URLs:</b></p><pre>${
+escapeHtml(tried.join("\n"))
+}</pre>` : ""
+}
+      <p>Prüfe, ob die Datei im Pages-Artifact enthalten ist (docs/ vs repo-root).</p>
+    `;
 }
 }
+
 
 function rewriteMarkdownLinks(root) {
 root.querySelectorAll("a[href]").forEach(a => {

@@ -1,15 +1,595 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="de">
 	<head>
-		<meta charset="utf-8">
-		<title>Community Offers Bundle</title>
-	</head>
-	<body>
-		<h1>Community Offers – Architektur</h1>
-		<ul>
-			<li><a href="diagrams/generated/architecture.png">Architecture Diagram</a></li>
-			<li><a href="diagrams/generated/architecture.svg">Architecture Diagram (SVG, sharp)</a></li>
-			<li><a href="diagrams/generated/data-model.generated.pdf">Data Model PDF</a></li>
-		</ul>
-	</body>
-</html>
+		<meta charset="utf-8"/>
+		<meta name="viewport" content="width=device-width,initial-scale=1"/>
+		<title>Community Offers Bundle – Docs</title>
+
+		<!-- Markdown renderer (CDN) -->
+		<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+		<!-- Optional: syntax highlight -->
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js/styles/github-dark.min.css">
+		<script src="https://cdn.jsdelivr.net/npm/highlight.js/lib/common.min.js"></script>
+
+		<style>:root
+		{
+			--bg: #0b1220;
+			--panel: #0f1a2b;
+			--panel2: #0c1626;
+			--text: #e6edf3;
+			--muted: #9fb0c2;
+			--border: rgba(255, 255, 255, .08);
+			--link: #6cb6ff;
+			--accent: #2f81f7;
+			--codebg: rgba(255, 255, 255, .06);
+			--shadow: 0 12px 30px rgba(0, 0, 0, .35);
+			--radius: 14px;
+			--font: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+			--mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+		}
+		* {
+			box-sizing: border-box;
+		}
+		body {
+			margin: 0;
+			font-family: var(--font);
+			color: var(--text);
+			background: radial-gradient(1200px 600px at 15% 0%, rgba(47,129,247,.20), transparent 60%), radial-gradient(900px 500px at 80% 10%, rgba(140, 97, 255, 0.15), transparent 55%), var(--bg);
+		}
+		a {
+			color: var(--link);
+			text-decoration: none;
+		}
+		a:hover {
+			text-decoration: underline;
+		}
+
+		header {
+			position: sticky;
+			top: 0;
+			z-index: 20;
+			backdrop-filter: blur(10px);
+			background: rgba(11, 18, 32, .72);
+			border-bottom: 1px solid var(--border);
+		}
+		.topbar {
+			display: flex;
+			align-items: center;
+			gap: 12px;
+			padding: 12px 16px;
+			max-width: 1200px;
+			margin: 0 auto;
+		}
+		.brand {
+			display: flex;
+			align-items: baseline;
+			gap: 10px;
+			min-width: 0;
+		}
+		.brand b {
+			font-size: 15px;
+			letter-spacing: 0.2px;
+		}
+		.brand span {
+			color: var(--muted);
+			font-size: 13px;
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+		.spacer {
+			flex: 1;
+		}
+		.pill {
+			display: inline-flex;
+			align-items: center;
+			gap: 8px;
+			padding: 7px 10px;
+			border: 1px solid var(--border);
+			border-radius: 999px;
+			background: rgba(255, 255, 255, .04);
+			color: var(--muted);
+			font-size: 13px;
+		}
+		.btn {
+			appearance: none;
+			border: 1px solid var(--border);
+			background: rgba(255, 255, 255, .04);
+			color: var(--text);
+			padding: 8px 10px;
+			border-radius: 10px;
+			cursor: pointer;
+			font-size: 13px;
+		}
+		.btn:hover {
+			border-color: rgba(255, 255, 255, .18);
+		}
+
+		.layout {
+			max-width: 1200px;
+			margin: 0 auto;
+			display: grid;
+			grid-template-columns: 300px 1fr;
+			gap: 16px;
+			padding: 16px;
+		}
+
+		aside {
+			position: sticky;
+			top: 62px;
+			align-self: start;
+			background: rgba(15, 26, 43, .85);
+			border: 1px solid var(--border);
+			border-radius: var(--radius);
+			box-shadow: var(--shadow);
+			overflow: hidden;
+		}
+		.aside-head {
+			padding: 12px;
+			border-bottom: 1px solid var(--border);
+			background: rgba(12, 22, 38, .65);
+		}
+		.search {
+			width: 100%;
+			padding: 10px;
+			border: 1px solid var(--border);
+			border-radius: 10px;
+			background: rgba(255, 255, 255, .03);
+			color: var(--text);
+			outline: none;
+			font-size: 13px;
+		}
+		.nav {
+			max-height: calc(100vh - 62px - 16px - 60px);
+			overflow: auto;
+			padding: 8px;
+		}
+		.group-title {
+			margin: 10px 8px 6px;
+			font-size: 12px;
+			color: var(--muted);
+			text-transform: uppercase;
+			letter-spacing: 0.12em;
+		}
+		.nav a {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			padding: 9px 10px;
+			margin: 2px 0;
+			border-radius: 10px;
+			color: var(--text);
+			border: 1px solid transparent;
+		}
+		.nav a small {
+			color: var(--muted);
+		}
+		.nav a.active {
+			background: rgba(47, 129, 247, .16);
+			border-color: rgba(47, 129, 247, .35);
+		}
+		.nav a:hover {
+			background: rgba(255, 255, 255, .04);
+			border-color: rgba(255, 255, 255, .10);
+			text-decoration: none;
+		}
+
+		main {
+			background: rgba(15, 26, 43, .70);
+			border: 1px solid var(--border);
+			border-radius: var(--radius);
+			box-shadow: var(--shadow);
+			overflow: hidden;
+		}
+		.content-head {
+			padding: 14px 16px;
+			border-bottom: 1px solid var(--border);
+			background: rgba(12, 22, 38, .65);
+			display: flex;
+			align-items: center;
+			gap: 10px;
+		}
+		.content-head h1 {
+			margin: 0;
+			font-size: 16px;
+			font-weight: 700;
+			letter-spacing: 0.2px;
+		}
+		.content-head .meta {
+			margin-left: auto;
+			display: flex;
+			gap: 8px;
+			align-items: center;
+			color: var(--muted);
+			font-size: 13px;
+		}
+		.article {
+			padding: 20px 22px;
+		}
+
+		/* Markdown styling */
+		.article h1,
+		.article h2,
+		.article h3 {
+			margin-top: 22px;
+		}
+		.article h1 {
+			font-size: 28px;
+		}
+		.article h2 {
+			font-size: 22px;
+			border-bottom: 1px solid var(--border);
+			padding-bottom: 8px;
+		}
+		.article h3 {
+			font-size: 18px;
+		}
+		.article p,
+		.article li {
+			line-height: 1.6;
+		}
+		.article code {
+			font-family: var(--mono);
+			background: var(--codebg);
+			padding: 2px 5px;
+			border-radius: 6px;
+		}
+		.article pre {
+			background: rgba(0, 0, 0, .25);
+			padding: 14px;
+			border-radius: 12px;
+			overflow: auto;
+			border: 1px solid var(--border);
+		}
+		.article pre code {
+			background: transparent;
+			padding: 0;
+		}
+		.article blockquote {
+			margin: 14px 0;
+			padding: 10px 12px;
+			border-left: 3px solid rgba(47, 129, 247, .6);
+			background: rgba(255, 255, 255, .03);
+			border-radius: 10px;
+		}
+		.article table {
+			width: 100%;
+			border-collapse: collapse;
+			margin: 14px 0;
+			overflow: hidden;
+			border-radius: 12px;
+			border: 1px solid var(--border);
+		}
+		.article th,
+		.article td {
+			padding: 10px 12px;
+			border-bottom: 1px solid var(--border);
+		}
+		.article th {
+			text-align: left;
+			background: rgba(255, 255, 255, .04);
+		}
+		.article img {
+			max-width: 100%;
+			border-radius: 12px;
+			border: 1px solid var(--border);
+		}
+		.article hr {
+			border: 0;
+			border-top: 1px solid var(--border);
+			margin: 18px 0;
+		}
+
+		/* Mobile */
+		@media(max-width: 940px) {
+			.layout {
+				grid-template-columns: 1fr;
+			}
+			aside {
+				position: relative;
+				top: 0;
+			}
+			.nav {
+				max-height: none;
+			}
+		}
+	</style>
+</head>
+<body>
+
+	<header>
+		<div class="topbar">
+			<div class="brand">
+				<b>Community Offers Bundle</b>
+				<span id="subtitle">Docs</span>
+			</div>
+			<div class="spacer"></div>
+			<span class="pill" id="currentFilePill">–</span>
+			<button class="btn" id="openOnGitHubBtn" title="Datei im Repo öffnen">GitHub</button>
+		</div>
+	</header>
+
+	<div class="layout">
+		<aside>
+			<div class="aside-head">
+				<input class="search" id="search" placeholder="Suchen… (Dateiname)"/>
+			</div>
+			<nav class="nav" id="nav"></nav>
+		</aside>
+
+		<main>
+			<div class="content-head">
+				<h1 id="title">Lädt…</h1>
+				<div class="meta">
+					<span id="status"></span>
+				</div>
+			</div>
+			<div class="article" id="content">
+				<p>Lädt…</p>
+			</div>
+		</main>
+	</div>
+
+	<script>
+		// --- Configure your docs here ---
+const REPO_URL = "https://github.com/zukunftsforum-rissen/community-offers-bundle";
+const DEFAULT_DOC = "index.md";
+
+// Groups based on your current docs tree (from screenshot)
+const NAV_GROUPS = [
+{
+title: "Start",
+items: [
+{
+file: "index.md",
+label: "Index"
+}, {
+file: "executive-summary.md",
+label: "Executive Summary"
+}, {
+file: "project-description.md",
+label: "Project Description"
+}, {
+file: "developer-overview.md",
+label: "Developer Overview"
+}
+]
+},
+{
+title: "Architektur",
+items: [
+{
+file: "architecture-network.md",
+label: "Architecture Network"
+},
+{
+file: "security-model.md",
+label: "Security Model"
+},
+{
+file: "data-model.md",
+label: "Data Model"
+},
+{
+file: "tracing-observability.md",
+label: "Tracing & Observability"
+}, {
+file: "ops-runbook.md",
+label: "Ops Runbook"
+}
+]
+},
+{
+title: "API",
+items: [
+{
+file: "api-door.md",
+label: "API Door"
+}, {
+file: "api-examples.md",
+label: "API Examples"
+}
+]
+},
+{
+title: "CI & Release",
+items: [
+{
+file: "ci-and-release.md",
+label: "CI and Release"
+}, {
+file: "UPGRADE_PLAN.md",
+label: "Upgrade Plan"
+}, {
+file: "avm-technical-review.md",
+label: "AVM Technical Review"
+}
+]
+}, {
+title: "Diagramme",
+items: [
+// Your generated diagrams
+{
+href: "diagrams/generated/architecture.svg",
+label: "architecture.svg (generated)"
+},
+{
+href: "diagrams/generated/architecture.pdf",
+label: "architecture.pdf (generated)"
+},
+{
+href: "diagrams/generated/data-model.generated.pdf",
+label: "data-model.generated.pdf"
+},
+{
+href: "diagrams/README.md",
+label: "Diagrams README"
+}, {
+href: "network-sketch.pdf",
+label: "network-sketch.pdf"
+}
+]
+}
+];
+
+// --- Helpers ---
+const $ = (id) => document.getElementById(id);
+
+function getRouteFile() {
+const url = new URL(window.location.href);
+const file = url.searchParams.get("doc");
+return file || DEFAULT_DOC;
+}
+
+function setRouteFile(file) {
+const url = new URL(window.location.href);
+url.searchParams.set("doc", file);
+history.pushState({}, "", url);
+loadDoc(file);
+setActiveNav(file);
+}
+
+function isMarkdown(path) {
+return path.toLowerCase().endsWith(".md");
+}
+
+function makeNav() {
+const nav = $("nav");
+nav.innerHTML = "";
+for (const group of NAV_GROUPS) {
+const gt = document.createElement("div");
+gt.className = "group-title";
+gt.textContent = group.title;
+nav.appendChild(gt);
+
+for (const item of group.items) {
+const a = document.createElement("a");
+
+if (item.file) {
+a.href = `?doc=${
+encodeURIComponent(item.file)
+}`;
+a.dataset.file = item.file;
+a.addEventListener("click", (e) => {
+e.preventDefault();
+setRouteFile(item.file);
+});
+a.innerHTML = `<span>${
+item.label
+}</span><span style="margin-left:auto"><small>${
+item.file
+}</small></span>`;
+} else if (item.href) {
+a.href = item.href;
+a.target = "_blank";
+a.rel = "noreferrer";
+a.innerHTML = `<span>${
+item.label
+}</span><span style="margin-left:auto"><small>open</small></span>`;
+}
+
+nav.appendChild(a);
+}
+}
+}
+
+function setActiveNav(file) {
+document.querySelectorAll(".nav a[data-file]").forEach(a => {
+a.classList.toggle("active", a.dataset.file === file);
+});
+}
+
+async function loadDoc(file) {
+$("status").textContent = "Lädt…";
+$("currentFilePill").textContent = file;
+
+// GitHub button points to the file under /docs/
+$("openOnGitHubBtn").onclick = () => {
+window.open(`${REPO_URL}/blob/main/docs/${file}`, "_blank", "noreferrer");
+};
+
+try {
+const res = await fetch(file, {cache: "no-store"});
+if (! res.ok) 
+throw new Error(`HTTP ${
+res.status
+}`);
+
+
+const text = await res.text();
+
+if (isMarkdown(file)) {
+marked.setOptions({gfm: true, breaks: false});
+
+const html = marked.parse(text);
+$("content").innerHTML = html;
+
+// Title: first h1, else filename
+const h1 = $("content").querySelector("h1");
+$("title").textContent = h1 ? h1.textContent.trim() : file;
+
+// highlight code
+$("content").querySelectorAll("pre code").forEach(block => {
+try {
+hljs.highlightElement(block);
+} catch (_) {}
+});
+} else { // Not expected (we mainly use .md), but keep graceful
+$("content").innerHTML = `<pre>${
+escapeHtml(text)
+}</pre>`;
+$("title").textContent = file;
+} $("status").textContent = "OK";
+$("subtitle").textContent = `docs/${file}`;
+} catch (err) {
+$("status").textContent = "Fehler";
+$("title").textContent = "Dokument nicht gefunden";
+$("content").innerHTML = `
+        <p><b>Konnte <code>${
+escapeHtml(file)
+}</code> nicht laden.</b></p>
+        <p style="color: var(--muted)">Details: ${
+escapeHtml(String(err))
+}</p>
+        <p>Prüfe, ob die Datei unter <code>docs/${
+escapeHtml(file)
+}</code> existiert und auf GitHub Pages veröffentlicht wird.</p>
+      `;
+}
+}
+
+function escapeHtml(s) {
+return s.replace(/[&<>"']/g, (c) => ({
+"&": "&amp;",
+"<": "&lt;",
+">": "&gt;",
+'"': "&quot;",
+"'": "&#39;"
+}[c]));
+}
+
+function wireSearch() {
+const input = $("search");
+input.addEventListener("input", () => {
+const q = input.value.trim().toLowerCase();
+document.querySelectorAll(".nav a[data-file]").forEach(a => {
+const hay = (a.dataset.file + " " + a.textContent).toLowerCase();
+a.style.display = hay.includes(q) ? "" : "none";
+});
+// group titles bleiben, ist ok; wenn du willst, kann man sie auch ausblenden.
+});
+}
+
+window.addEventListener("popstate", () => loadDoc(getRouteFile()));
+
+// Init
+makeNav();
+wireSearch();
+
+const initial = getRouteFile();
+setActiveNav(initial);
+loadDoc(initial);
+	</script>
+
+</body></html>

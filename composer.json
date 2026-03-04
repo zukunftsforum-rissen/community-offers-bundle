@@ -37,7 +37,8 @@
         "test:unit": "phpunit -c phpunit.xml.dist --testsuite Unit",
         "test:integration": "cd ../.. && APP_ENV=${APP_ENV:-test} PROJECT_DIR=${PROJECT_DIR:-$PWD} KERNEL_CLASS=\"${KERNEL_CLASS:-Contao\\ManagerBundle\\HttpKernel\\ContaoKernel}\" ./vendor/bin/phpunit --bootstrap vendor/autoload.php -c zukunftsforum-rissen/community-offers-bundle/phpunit.xml.dist --testsuite Integration",
         "test:integration:project": "cd ../.. && APP_ENV=${APP_ENV:-test} PROJECT_DIR=${PROJECT_DIR:-$PWD} KERNEL_CLASS=\"${KERNEL_CLASS:-Contao\\ManagerBundle\\HttpKernel\\ContaoKernel}\" ./vendor/bin/phpunit --bootstrap vendor/autoload.php -c zukunftsforum-rissen/community-offers-bundle/phpunit.xml.dist --testsuite Integration",
-        "test:integration:verbose": "cd ../.. && APP_ENV=${APP_ENV:-test} PROJECT_DIR=${PROJECT_DIR:-$PWD} KERNEL_CLASS=\"${KERNEL_CLASS:-Contao\\ManagerBundle\\HttpKernel\\ContaoKernel}\" ./vendor/bin/phpunit --bootstrap vendor/autoload.php -v -c zukunftsforum-rissen/community-offers-bundle/phpunit.xml.dist --testsuite Integration"
+        "test:integration:verbose": "cd ../.. && APP_ENV=${APP_ENV:-test} PROJECT_DIR=${PROJECT_DIR:-$PWD} KERNEL_CLASS=\"${KERNEL_CLASS:-Contao\\ManagerBundle\\HttpKernel\\ContaoKernel}\" ./vendor/bin/phpunit --bootstrap vendor/autoload.php -v -c zukunftsforum-rissen/community-offers-bundle/phpunit.xml.dist --testsuite Integration""phpstan": "APP_ENV=test vendor/bin/phpstan analyse -c phpstan.neon",
+        "phpstan:tests": "APP_ENV=test vendor/bin/phpstan analyse -c phpstan-tests.neon"
     },
     "config": {
         "allow-plugins": {

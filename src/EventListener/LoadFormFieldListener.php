@@ -69,7 +69,6 @@ class LoadFormFieldListener
                 },
             ));
 
-            // ... options berechnen ...
             /** @phpstan-ignore-next-line Contao uses magic properties; options is writable at runtime */
             $widget->options = $options;
         }

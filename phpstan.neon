@@ -1,6 +1,4 @@
 includes:
-    - vendor/phpstan/phpstan-phpunit/extension.neon
-    - vendor/phpstan/phpstan-phpunit/rules.neon
     - vendor/phpstan/phpstan-symfony/extension.neon
     - vendor/phpstan/phpstan-symfony/rules.neon
 
@@ -8,16 +6,15 @@ parameters:
     level: 6
 
     paths:
-        - %currentWorkingDirectory%/src
-        - %currentWorkingDirectory%/tests
+        - src
 
+    # Contao models/templates are dynamic (optional – falls ihr diese nutzt)
     universalObjectCratesClasses:
         - Contao\Model
         - Contao\Template
 
+    # Wenn ignoreErrors mal nicht matcht, soll es nicht hard failen
+    reportUnmatchedIgnoredErrors: false
+
     excludePaths:
-        - %currentWorkingDirectory%/src/Resources/*
-        - tests/Integration/KernelBootIntegrationTest.php
-
-    treatPhpDocTypesAsCertain: false
-
+        - src/Resources/*

@@ -177,6 +177,6 @@ class AccessServiceTest extends TestCase
         $framework = $this->createStub(ContaoFramework::class);
         $doorGateway = $this->createStub(DoorGatewayInterface::class);
 
-        return new AccessService($framework, $areaGroups, $doorGateway);
+        return new AccessService($framework, $areaGroups);
     }
 }

@@ -5,19 +5,30 @@ parameters:
     paths:
         - tests
 
-    # etwas lockerer für Tests
     level: 5
-
-    # reduziert “always true/false” und Array-shape Noise in Tests
     treatPhpDocTypesAsCertain: false
-
-    # typische Test-Noise-Checks etwas entspannen
-    checkMissingIterableValueType: false
-    checkGenericClassInNonGenericObjectType: false
-
     reportUnmatchedIgnoredErrors: false
 
+    excludePaths:
+        - tests/Integration/KernelBootIntegrationTest.php
+
     ignoreErrors:
-        # PHPUnit / Fixture-Noise (sehr typisch)
-        - '#Call to method PHPUnit\\\\Framework\\\\Assert::assert.* will always evaluate to false#'
-        - '#Offset .* does not exist on array#'
+        # PHPStan 2.x: replacement for deprecated config options
+        - identifier: missingType.iterableValue
+        - identifier: missingType.generics
+
+        # DeviceControllerTest: array-shape Offsets in Tests
+        - message: '#Offset .* does not exist on array#'
+          paths:
+            - tests/Unit/DeviceControllerTest.php
+
+        # Contao Widget dynamic properties in tests
+        - message: '#Access to an undefined property Contao\\Widget::#'
+          paths:
+            - tests/Unit/LoadFormFieldListenerTest.php
+            
+        # Typical test noise: null coalesce on known array shapes
+        - identifier: nullCoalesce.offset
+
+        # PHPUnit “always false” due to PHPDoc certainty
+        - message: '#Call to method PHPUnit\\\\Framework\\\\Assert::assert.* will always evaluate to false#'

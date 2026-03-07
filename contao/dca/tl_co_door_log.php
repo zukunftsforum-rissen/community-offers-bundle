@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Contao\DC_Table;
+use ZukunftsforumRissen\CommunityOffersBundle\DataContainer\DoorLogCallback;
 
 $GLOBALS['TL_DCA']['tl_co_door_log'] = [
     'config' => [
@@ -28,7 +29,7 @@ $GLOBALS['TL_DCA']['tl_co_door_log'] = [
         ],
         'label' => [
             'fields' => ['tstamp', 'correlationId', 'memberId', 'area', 'action', 'result'],
-            'label_callback' => ['tl_co_door_log', 'labelCallback'],
+            'label_callback' => [DoorLogCallback::class, 'labelCallback'],
         ],
         'global_operations' => [
             'all' => [
@@ -77,7 +78,7 @@ $GLOBALS['TL_DCA']['tl_co_door_log'] = [
             'filter' => true,
             'search' => true,
             'inputType' => 'select',
-            'options_callback' => ['tl_co_door_log', 'getMemberOptions'],
+            'options_callback' => [DoorLogCallback::class, 'getMemberOptions'],
             'eval' => [
                 'chosen' => true,
                 'includeBlankOption' => true,

@@ -90,9 +90,9 @@ class LoggingService
     /**
      * @param array<string, mixed> $context
      */
-    public function warning(string $message, array $context = []): void
+    public function warning(string $message, $context = []): void
     {
-        $this->log('warning', $message, $context);
+        $this->log('warning', $message, (array) $context);
     }
 
     /**

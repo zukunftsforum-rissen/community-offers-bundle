@@ -44,7 +44,7 @@ class DoorAuditLogger
             ->execute(
                 time(),
                 mb_substr($correlationId, 0, 36),
-                max(0, (int) $memberId),
+                $memberId,
                 $area,
                 $action,
                 $result,

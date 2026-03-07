@@ -191,6 +191,10 @@ final class DoorJobService
         $expiresAt = $now + $ttlSeconds;
         $userAgent = substr($userAgent, 0, 255);
 
+        if ('' === $correlationId) {
+            $correlationId = uuid_create(UUID_TYPE_RANDOM);
+        }
+
         $this->db->insert('tl_co_door_job', [
             'tstamp' => $now,
             'createdAt' => $now,

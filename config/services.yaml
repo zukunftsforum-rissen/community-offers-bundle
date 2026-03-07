@@ -38,6 +38,21 @@ services:
                   method: formatLabel,
               }
 
+    ZukunftsforumRissen\CommunityOffersBundle\DataContainer\DoorLogCallback:
+        tags:
+            - {
+                name: contao.callback,
+                table: tl_co_door_log,
+                target: list.label.label_callback,
+                method: labelCallback,
+            }
+            - {
+                name: contao.callback,
+                table: tl_co_door_log,
+                target: fields.memberId.options,
+                method: getMemberOptions,
+            }
+
     ZukunftsforumRissen\CommunityOffersBundle\Service\ApprovalMailer:
         arguments:
             $from: "%community_offers.mail_from%"

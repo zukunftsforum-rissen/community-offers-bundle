@@ -12,6 +12,8 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\AccessRequestService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\AccessService;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\CorrelationIdService;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorAuditLogger;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorJobService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService;
 
@@ -24,6 +26,8 @@ final class AccessController
         private readonly AccessRequestService $accessRequestService,
         private readonly DoorJobService $doorJobs,
         private readonly LoggingService $logging,
+        private readonly DoorAuditLogger $audit,
+        private readonly CorrelationIdService $correlationIds,
     ) {
     }
 
@@ -113,7 +117,6 @@ final class AccessController
         }
 
         try {
-            // NOTE: Das ist die echte Methode in AccessRequestService.php
             $result = $this->accessRequestService->sendOrResendDoiForArea(
                 firstname: (string) ($user->firstname ?? ''),
                 lastname: (string) ($user->lastname ?? ''),
@@ -184,7 +187,6 @@ final class AccessController
             [
                 'success' => true,
                 'message' => 'DOI email sent',
-                // UX-Hinweis (cooldown ist im Service 600s)
                 'retryAfterSeconds' => 600,
             ],
             200,
@@ -196,35 +198,76 @@ final class AccessController
     public function open(Request $request, string $slug): JsonResponse
     {
         $this->logging->initiateLogging('door', 'community-offers');
-        $this->logging->start('open', ['slug' => $slug]);
+
+        $cid = $this->correlationIds->create();
+
+        $this->logging->start('open', [
+            'slug' => $slug,
+            'cid' => $cid,
+        ]);
 
         $user = $this->security->getUser();
         if (!$user instanceof FrontendUser) {
+            $this->logging->warning('open.unauthenticated', [
+                'cid' => $cid,
+                'slug' => $slug,
+                'ip' => $request->getClientIp(),
+            ]);
+
+            $this->audit->audit(
+                action: 'door_open',
+                area: $slug,
+                result: 'unauthenticated',
+                message: 'Door open without authenticated frontend user',
+                correlationId: $cid,
+                context: ['slug' => $slug],
+            );
+
             return new JsonResponse(['success' => false, 'message' => 'Not authenticated'], 401);
         }
 
         $memberId = (int) $user->id;
 
-        // Rechte prüfen
+        $this->audit->audit(
+            action: 'door_open',
+            area: $slug,
+            result: 'attempt',
+            message: 'Door open requested',
+            correlationId: $cid,
+            memberId: $memberId,
+            context: ['ip' => $request->getClientIp()],
+        );
+
         $areas = $this->accessService->getGrantedAreasForMemberId($memberId);
         if (!\in_array($slug, $areas, true)) {
-            $this->logging->info('open.forbidden', [
+            $this->logging->warning('open.forbidden', [
+                'cid' => $cid,
                 'memberId' => $memberId,
                 'slug' => $slug,
                 'ip' => $request->getClientIp(),
             ]);
 
+            $this->audit->audit(
+                action: 'door_open',
+                area: $slug,
+                result: 'forbidden',
+                message: 'Member has no access to requested area',
+                correlationId: $cid,
+                memberId: $memberId,
+                context: ['slug' => $slug],
+            );
+
             return new JsonResponse(['success' => false, 'message' => 'Forbidden'], 403);
         }
 
-        // Best effort housekeeping
         $this->doorJobs->expireOldJobs();
-        /** @var array{ok: bool, httpStatus: int, message: string, jobId?: int, status?: string, expiresAt?: int, retryAfterSeconds?: int} $result */
+
         $result = $this->doorJobs->createOpenJob(
             memberId: $memberId,
             area: $slug,
             ip: (string) ($request->getClientIp() ?? ''),
             userAgent: (string) $request->headers->get('User-Agent', ''),
+            correlationId: $cid,
         );
 
         $status = (int) $result['httpStatus'];
@@ -232,6 +275,7 @@ final class AccessController
         $payload = [
             'success' => (bool) $result['ok'],
             'message' => (string) $result['message'],
+            'correlationId' => $cid,
         ];
 
         if (isset($result['jobId'])) {
@@ -251,14 +295,13 @@ final class AccessController
             $payload['retryAfterSeconds'] = (int) $result['retryAfterSeconds'];
         }
 
-        // optional: Header bei 429
         $response = new JsonResponse($payload, $status);
         if (429 === $status && isset($result['retryAfterSeconds'])) {
             $response->headers->set('Retry-After', (string) (int) $result['retryAfterSeconds']);
         }
 
-        // Audit/Log (ohne Annahmen über konkrete Audit-API)
         $this->logging->info('open.result', [
+            'cid' => $cid,
             'memberId' => $memberId,
             'slug' => $slug,
             'httpStatus' => $status,

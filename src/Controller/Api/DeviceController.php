@@ -10,21 +10,31 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 use ZukunftsforumRissen\CommunityOffersBundle\Security\DeviceApiUser;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorJobService;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService;
 
 #[Route('/api/device')]
 final class DeviceController extends AbstractController
 {
-    public function __construct(private readonly DoorJobService $jobs)
-    {
+    public function __construct(
+        private readonly DoorJobService $jobs,
+        private readonly LoggingService $logging,
+    ) {
     }
 
     #[Route('/poll', name: 'co_device_poll', methods: ['POST'])]
     public function poll(Request $request): JsonResponse
     {
+        $this->logging->initiateLogging('door', 'community-offers');
+
         $user = $this->getUser();
         if (!$user instanceof DeviceApiUser) {
+            $this->logging->warning('device.poll.unauthorized', [
+                'ip' => $request->getClientIp(),
+            ]);
+
             return new JsonResponse(['error' => 'unauthorized'], 401);
         }
+
         $deviceId = $user->getDeviceId();
         $areas = $user->getAreas();
 
@@ -36,7 +46,6 @@ final class DeviceController extends AbstractController
 
         $jobs = [];
 
-        /** @var list<array{jobId:int, area:string, nonce:string, expiresInMs:int}> $claimed */
         foreach ($claimed as $job) {
             $jobs[] = [
                 'jobId' => (int) $job['jobId'],
@@ -44,8 +53,16 @@ final class DeviceController extends AbstractController
                 'action' => 'open',
                 'nonce' => (string) $job['nonce'],
                 'expiresInMs' => (int) $job['expiresInMs'],
+                'correlationId' => (string) $job['correlationId'],
             ];
         }
+
+        $this->logging->info('device.poll.result', [
+            'deviceId' => $deviceId,
+            'areas' => $areas,
+            'limit' => $limit,
+            'jobsReturned' => \count($jobs),
+        ]);
 
         $now = time();
 
@@ -59,12 +76,17 @@ final class DeviceController extends AbstractController
     #[Route('/confirm', name: 'co_device_confirm', methods: ['POST'])]
     public function confirm(Request $request): JsonResponse
     {
+        $this->logging->initiateLogging('door', 'community-offers');
+
         $user = $this->getUser();
         if (!$user instanceof DeviceApiUser) {
+            $this->logging->warning('device.confirm.unauthorized', [
+                'ip' => $request->getClientIp(),
+            ]);
+
             return new JsonResponse(['error' => 'unauthorized'], 401);
         }
 
-        /** @var DeviceApiUser $user */
         $deviceId = $user->getDeviceId();
 
         $payload = json_decode((string) $request->getContent(), true) ?: [];
@@ -74,11 +96,32 @@ final class DeviceController extends AbstractController
         $meta = \is_array($payload['meta'] ?? null) ? $payload['meta'] : [];
 
         if ($jobId <= 0 || '' === $nonce) {
+            $this->logging->warning('device.confirm.bad_request', [
+                'deviceId' => $deviceId,
+                'jobId' => $jobId,
+            ]);
+
             return new JsonResponse(['error' => 'bad_request'], 400);
         }
 
-        $accepted = $this->jobs->confirmJob($deviceId, $jobId, $nonce, $ok, $meta);
+        $result = $this->jobs->confirmJobDetailed($deviceId, $jobId, $nonce, $ok, $meta);
 
-        return new JsonResponse(['accepted' => $accepted], 200);
+        $this->logging->info('device.confirm.result', [
+            'deviceId' => $deviceId,
+            'jobId' => $jobId,
+            'accepted' => (bool) $result['accepted'],
+            'httpStatus' => (int) $result['httpStatus'],
+            'status' => $result['status'] ?? null,
+            'error' => $result['error'] ?? null,
+        ]);
+
+        return new JsonResponse(
+            [
+                'accepted' => (bool) $result['accepted'],
+                'status' => $result['status'] ?? null,
+                'error' => $result['error'] ?? null,
+            ],
+            (int) $result['httpStatus'],
+        );
     }
 }

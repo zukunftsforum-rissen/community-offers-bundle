@@ -19,6 +19,8 @@ use Symfony\Component\Workflow\Transition;
 use ZukunftsforumRissen\CommunityOffersBundle\Controller\Api\AccessController;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\AccessRequestService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\AccessService;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\CorrelationIdService;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorAuditLogger;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorJobService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService;
 use ZukunftsforumRissen\CommunityOffersBundle\Workflow\DoorJobWorkflowSubscriber;
@@ -308,7 +310,13 @@ class ApiAccessControllerTest extends TestCase
         $cache->expects($this->once())->method('getItem')->willReturn($rateItem);
         $cache->expects($this->never())->method('save');
 
-        $doorJobs = new DoorJobService($db, $cache,  $this->createDoorJobStateMachine());
+        $doorJobs = new DoorJobService(
+            $db,
+            $cache,
+            $this->createDoorJobStateMachine(),
+            $this->createStub(LoggingService::class),
+            $this->createStub(DoorAuditLogger::class),
+        );
 
         $controller = $this->createController(
             $security,
@@ -338,10 +346,20 @@ class ApiAccessControllerTest extends TestCase
         $doorJobs ??= new DoorJobService(
             $this->createStub(Connection::class),
             $this->createStub(CacheItemPoolInterface::class),
-            $this->createDoorJobStateMachine()
+            $this->createDoorJobStateMachine(),
+            $this->createStub(LoggingService::class),
+            $this->createStub(DoorAuditLogger::class),
         );
 
-        return new AccessController($security, $accessService, $accessRequestService, $doorJobs, $logging);
+        return new AccessController(
+            $security,
+            $accessService,
+            $accessRequestService,
+            $doorJobs,
+            $logging,
+            $this->createStub(DoorAuditLogger::class),
+            new CorrelationIdService(),
+        );
     }
 
     private function createFrontendUser(int $id, string $firstname, string $lastname, string $email): FrontendUser

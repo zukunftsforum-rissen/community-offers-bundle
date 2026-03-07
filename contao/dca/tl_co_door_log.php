@@ -10,6 +10,7 @@ $GLOBALS['TL_DCA']['tl_co_door_log'] = [
         'sql' => [
             'keys' => [
                 'id' => 'primary',
+                'correlationId' => 'index',
                 'memberId' => 'index',
                 'area' => 'index',
                 'tstamp' => 'index',
@@ -18,7 +19,6 @@ $GLOBALS['TL_DCA']['tl_co_door_log'] = [
             ],
         ],
     ],
-
     'list' => [
         'sorting' => [
             'mode' => 2,
@@ -27,7 +27,7 @@ $GLOBALS['TL_DCA']['tl_co_door_log'] = [
             'panelLayout' => 'filter;sort,search,limit',
         ],
         'label' => [
-            'fields' => ['tstamp', 'memberId', 'area', 'action', 'result'],
+            'fields' => ['tstamp', 'correlationId', 'memberId', 'area', 'action', 'result'],
             'label_callback' => ['tl_co_door_log', 'labelCallback'],
         ],
         'global_operations' => [
@@ -51,9 +51,8 @@ $GLOBALS['TL_DCA']['tl_co_door_log'] = [
     ],
     'palettes' => [
         '__selector__' => [],
-        'default' => '{log_legend},tstamp,memberId,area,action,result,ip,userAgent,message,context',
+        'default' => '{log_legend},tstamp,correlationId,memberId,area,action,result,ip,userAgent,message,context',
     ],
-
     'fields' => [
         'id' => [
             'sql' => "int(10) unsigned NOT NULL auto_increment",
@@ -65,6 +64,13 @@ $GLOBALS['TL_DCA']['tl_co_door_log'] = [
             'inputType' => 'text',
             'eval' => ['rgxp' => 'datim', 'doNotCopy' => true, 'tl_class' => 'w50'],
             'sql' => "int(10) unsigned NOT NULL default 0",
+        ],
+        'correlationId' => [
+            'label' => &$GLOBALS['TL_LANG']['tl_co_door_job']['correlationId'],
+            'search' => true,
+            'inputType' => 'text',
+            'eval' => ['readonly' => true, 'tl_class' => 'w50'],
+            'sql' => "varchar(36) NOT NULL default ''",
         ],
         'memberId' => [
             'label' => &$GLOBALS['TL_LANG']['tl_co_door_log']['memberId'],
@@ -88,7 +94,6 @@ $GLOBALS['TL_DCA']['tl_co_door_log'] = [
             'eval' => ['includeBlankOption' => true, 'chosen' => true, 'tl_class' => 'w50'],
             'sql' => "varchar(64) NOT NULL default ''",
         ],
-
         'action' => [
             'label' => &$GLOBALS['TL_LANG']['tl_co_door_log']['action'],
             'filter' => true,
@@ -98,7 +103,6 @@ $GLOBALS['TL_DCA']['tl_co_door_log'] = [
             'eval' => ['includeBlankOption' => true, 'chosen' => true, 'tl_class' => 'w50'],
             'sql' => "varchar(64) NOT NULL default ''",
         ],
-
         'result' => [
             'label' => &$GLOBALS['TL_LANG']['tl_co_door_log']['result'],
             'filter' => true,
@@ -137,100 +141,3 @@ $GLOBALS['TL_DCA']['tl_co_door_log'] = [
         ],
     ],
 ];
-
-class tl_co_door_log
-{
-    public function labelCallback(array $row): string
-    {
-        // --- Zeit ---
-        $time = '';
-        if (!empty($row['tstamp'])) {
-            $time = \Contao\Date::parse(\Contao\Config::get('datimFormat'), (int) $row['tstamp']);
-        }
-
-        // --- Mitglied (mit kleinem Cache, damit nicht pro Zeile neu geladen wird) ---
-        static $memberCache = [];
-
-        $memberLabel = 'Gast/Unbekannt';
-        $memberId = (int) ($row['memberId'] ?? 0);
-
-        if ($memberId > 0) {
-            if (!array_key_exists($memberId, $memberCache)) {
-                $m = \Contao\Database::getInstance()
-                    ->prepare("SELECT firstname, lastname, email FROM tl_member WHERE id=?")
-                    ->execute($memberId);
-
-                $memberCache[$memberId] = $m->numRows ? [
-                    'firstname' => (string) $m->firstname,
-                    'lastname'  => (string) $m->lastname,
-                    'email'     => (string) $m->email,
-                ] : null;
-            }
-
-            $md = $memberCache[$memberId];
-            if (is_array($md)) {
-                $name = trim(($md['firstname'] ?? '') . ' ' . ($md['lastname'] ?? ''));
-                $email = (string) ($md['email'] ?? '');
-
-                $memberLabel = $name !== '' ? $name : ('#' . $memberId);
-                if ($email !== '') {
-                    $memberLabel .= ' <' . $email . '>';
-                }
-            } else {
-                $memberLabel = '#' . $memberId;
-            }
-        }
-
-        // --- Übersetzungen (area/action/result) ---
-        $areaKey   = (string) ($row['area'] ?? '');
-        $actionKey = (string) ($row['action'] ?? '');
-        $resultKey = (string) ($row['result'] ?? '');
-
-        $area   = $GLOBALS['TL_LANG']['tl_co_door_log']['areas'][$areaKey] ?? $areaKey;
-        $action = $GLOBALS['TL_LANG']['tl_co_door_log']['actions'][$actionKey] ?? $actionKey;
-        $result = $GLOBALS['TL_LANG']['tl_co_door_log']['results'][$resultKey] ?? $resultKey;
-
-        if ($time === '' && $area === '' && $action === '' && $result === '') {
-            return 'Logeintrag';
-        }
-
-        return trim(sprintf(
-            '%s | %s | %s | %s | %s',
-            $time,
-            $memberLabel,
-            $area,
-            $action,
-            $result
-        ));
-    }
-
-    public function getMemberOptions(): array
-    {
-        $options = [];
-
-        $res = \Contao\Database::getInstance()
-            ->execute("
-            SELECT DISTINCT l.memberId AS id, m.firstname, m.lastname, m.email
-            FROM tl_co_door_log l
-            LEFT JOIN tl_member m ON m.id = l.memberId
-            WHERE l.memberId > 0
-            ORDER BY m.lastname, m.firstname
-        ");
-
-        while ($res->next()) {
-            $id = (int) $res->id;
-
-            $name = trim(($res->firstname ?? '') . ' ' . ($res->lastname ?? ''));
-            $email = (string) ($res->email ?? '');
-
-            $label = $name !== '' ? $name : ('#' . $id);
-            if ($email !== '') {
-                $label .= ' <' . $email . '>';
-            }
-
-            $options[$id] = $label;
-        }
-
-        return $options;
-    }
-}

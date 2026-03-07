@@ -22,10 +22,7 @@ class DoorAuditLogger
     /**
      * @param array<string, mixed> $context
      */
-    /**
-     * @param array<string, mixed> $context
-     */
-    public function audit(string $action, string $area, string $result, string $message = '', array $context = []): void
+    public function audit(string $action, string $area, string $result, string $message = '', array $context = [], string $correlationId = '', int|null $memberId = null): void
     {
         $this->framework->initialize();
 
@@ -33,25 +30,29 @@ class DoorAuditLogger
         $ip = $req?->getClientIp() ?? '';
         $ua = (string) ($req?->headers->get('User-Agent') ?? '');
 
-        $user = $this->security->getUser();
-        $memberId = $user instanceof FrontendUser ? (int) $user->id : 0;
+        if (null === $memberId) {
+            $user = $this->security->getUser();
+            $memberId = $user instanceof FrontendUser ? (int) $user->id : 0;
+        }
 
         Database::getInstance()
             ->prepare('
                 INSERT INTO tl_co_door_log
-                (tstamp, memberId, area, action, result, ip, userAgent, message, context)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (tstamp, correlationId, memberId, area, action, result, ip, userAgent, message, context)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ')
             ->execute(
                 time(),
-                $memberId,
+                mb_substr($correlationId, 0, 36),
+                max(0, (int) $memberId),
                 $area,
                 $action,
                 $result,
                 mb_substr($ip, 0, 64),
                 mb_substr($ua, 0, 255),
                 mb_substr($message, 0, 255),
-                $context ? json_encode($context, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : null)
+                $context ? json_encode($context, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : null,
+            )
         ;
     }
 }

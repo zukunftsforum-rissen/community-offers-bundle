@@ -1,7 +1,5 @@
 <?php
 
-// src/Service/LoggingService.php
-
 declare(strict_types=1);
 
 namespace ZukunftsforumRissen\CommunityOffersBundle\Service;
@@ -14,9 +12,9 @@ use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 
 class LoggingService
 {
-    private Logger $logger;
+    private Logger|null $logger = null;
 
-    private Logger $loggerStart;
+    private Logger|null $loggerStart = null;
 
     private bool $loggingEnabled;
 
@@ -33,13 +31,12 @@ class LoggingService
         $this->logDir = $projectDir.'/var/logs/';
     }
 
-    /**
-     * Initialize logging To be called first before using the logging methods.
-     *
-     * @param string $fileName optional (if not set, default filename is 'app')
-     */
     public function initiateLogging(string $moduleName, string $fileName = ''): void
     {
+        if (null !== $this->logger && null !== $this->loggerStart) {
+            return;
+        }
+
         $logFileName = $fileName ?: 'app';
         $logFile = $this->logDir.$logFileName.'.log';
         $streamHandler = new StreamHandler($logFile, Level::Debug);
@@ -66,65 +63,81 @@ class LoggingService
     }
 
     /**
-     * Log a message idented by "Start Start Start" To be called at the entrance point
-     * of a module.
-     *
-     * @param string               $message
      * @param array<string, mixed> $context
      */
-    public function start($message, $context = []): void
+    public function start(string $message, array $context = []): void
     {
-        $this->loggerStart->debug($message, (array) $context);
+        $this->ensureInitialized();
+        $this->loggerStart?->debug($message, $this->normalizeContext($context));
     }
 
     /**
-     * @param string               $message
      * @param array<string, mixed> $context
      */
-    public function debug($message, $context = []): void
+    public function debug(string $message, array $context = []): void
     {
-        $this->log('debug', $message, (array) $context);
+        $this->log('debug', $message, $context);
     }
 
     /**
-     * @param string               $message
      * @param array<string, mixed> $context
      */
-    public function info($message, $context = []): void
+    public function info(string $message, array $context = []): void
     {
-        $this->log('info', $message, (array) $context);
+        $this->log('info', $message, $context);
     }
 
     /**
-     * @param string               $message
      * @param array<string, mixed> $context
      */
-    public function error($message, $context = []): void
+    public function warning(string $message, array $context = []): void
     {
-        $this->log('error', $message, (array) $context);
+        $this->log('warning', $message, $context);
     }
 
     /**
-     * @param string               $message
      * @param array<string, mixed> $context
      */
-    public function critical($message, $context = []): void
+    public function error(string $message, array $context = []): void
     {
-        $this->log('critical', $message, (array) $context);
+        $this->log('error', $message, $context);
+    }
+
+    /**
+     * @param array<string, mixed> $context
+     */
+    public function critical(string $message, array $context = []): void
+    {
+        $this->log('critical', $message, $context);
     }
 
     public function logCurrentMethod(): void
     {
+        $this->ensureInitialized();
         $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
         $currentMethod = $backtrace[1]['function'] ?? 'unknown';
 
-        $this->logger->debug("  Current method: $currentMethod");
+        $this->logger?->debug("  Current method: $currentMethod");
+    }
+
+    /**
+     * @param array<string, mixed> $context
+     *
+     * @return array<string, mixed>
+     */
+    private function normalizeContext(array $context): array
+    {
+        if (isset($context['correlationId']) && !isset($context['cid'])) {
+            $context['cid'] = $context['correlationId'];
+        }
+
+        return $context;
     }
 
     /**
      * @param array<string, mixed> $context
      */
-    private function formatContext($context): string
+    private function formatContext(array $context): string
     {
         $formattedContext = '';
 
@@ -136,39 +149,50 @@ class LoggingService
     }
 
     /**
-     * @param string               $level
-     * @param string               $message
      * @param array<string, mixed> $context
      */
-    private function log($level, $message, $context = []): void
+    private function log(string $level, string $message, array $context = []): void
     {
         if (!$this->loggingEnabled && 'critical' !== $level) {
             return;
         }
 
+        $this->ensureInitialized();
+        $context = $this->normalizeContext($context);
+
         $formattedContext = $this->formatContext($context);
         $logMessage = '    '.$message;
-        if (!empty($formattedContext)) {
+        if ('' !== $formattedContext) {
             $logMessage .= "\n".$formattedContext;
         }
 
         switch ($level) {
             case 'debug':
                 if ($this->debugLoggingEnabled) {
-                    $this->logger->debug($logMessage);
+                    $this->logger?->debug($logMessage);
                 }
                 break;
             case 'info':
-                $this->logger->info($logMessage);
+                $this->logger?->info($logMessage);
+                break;
+            case 'warning':
+                $this->logger?->warning($logMessage);
                 break;
             case 'error':
-                $this->logger->error($logMessage);
+                $this->logger?->error($logMessage);
                 break;
             case 'critical':
-                $this->logger->critical($logMessage);
+                $this->logger?->critical($logMessage);
                 break;
             default:
-                $this->logger->notice($logMessage);
+                $this->logger?->notice($logMessage);
+        }
+    }
+
+    private function ensureInitialized(): void
+    {
+        if (null === $this->logger || null === $this->loggerStart) {
+            $this->initiateLogging('door', 'community-offers');
         }
     }
 }

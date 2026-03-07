@@ -8,7 +8,9 @@ use Doctrine\DBAL\Connection;
 use PHPUnit\Framework\TestCase;
 use Psr\Cache\CacheItemInterface;
 use Psr\Cache\CacheItemPoolInterface;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorAuditLogger;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorJobService;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService;
 use Symfony\Component\Workflow\Definition;
 use Symfony\Component\Workflow\MarkingStore\MethodMarkingStore;
 use Symfony\Component\Workflow\StateMachine;
@@ -48,7 +50,7 @@ class DoorJobServiceTest extends TestCase
         $cache->expects($this->once())->method('getItem')->willReturn($rateItem);
         $cache->expects($this->never())->method('save');
 
-        $service = new DoorJobService($db, $cache, $this->createDoorJobStateMachine());
+        $service = $this->createService($db, $cache);
 
         $result = $service->createOpenJob(10, 'depot', '127.0.0.1', 'phpunit');
 
@@ -94,7 +96,7 @@ class DoorJobServiceTest extends TestCase
         ;
         $cache->expects($this->once())->method('save')->with($rateItem)->willReturn(true);
 
-        $service = new DoorJobService($db, $cache, $this->createDoorJobStateMachine());
+        $service = $this->createService($db, $cache);
 
         $result = $service->createOpenJob(10, 'depot', '127.0.0.1', 'phpunit');
 
@@ -152,7 +154,7 @@ class DoorJobServiceTest extends TestCase
         ;
         $cache->expects($this->exactly(3))->method('save')->willReturn(true);
 
-        $service = new DoorJobService($db, $cache, $this->createDoorJobStateMachine());
+        $service = $this->createService($db, $cache);
 
         $result = $service->createOpenJob(10, 'depot', '127.0.0.1', 'phpunit');
 
@@ -277,9 +279,15 @@ class DoorJobServiceTest extends TestCase
         $this->assertSame(['accepted' => true, 'httpStatus' => 200, 'status' => 'executed'], $result);
     }
 
-    private function createService(Connection $db): DoorJobService
+    private function createService(Connection $db, CacheItemPoolInterface|null $cache = null): DoorJobService
     {
-        return new DoorJobService($db, $this->createStub(CacheItemPoolInterface::class), $this->createDoorJobStateMachine());
+        return new DoorJobService(
+            $db,
+            $cache ?? $this->createStub(CacheItemPoolInterface::class),
+            $this->createDoorJobStateMachine(),
+            $this->createStub(LoggingService::class),
+            $this->createStub(DoorAuditLogger::class),
+        );
     }
 
     private function createDoorJobStateMachine(): StateMachine

@@ -87,15 +87,16 @@ class DoorAuditLoggerTest extends TestCase
         $args = $executeCalls[0];
 
         $this->assertIsInt($args[0]);
-        $this->assertSame(42, $args[1]);
-        $this->assertSame('depot', $args[2]);
-        $this->assertSame('open', $args[3]);
-        $this->assertSame('ok', $args[4]);
-        $this->assertSame('127.0.0.1', $args[5]);
-        $this->assertSame('PHPUnit-Agent', $args[6]);
-        $this->assertSame('Opened', $args[7]);
-        $this->assertIsString($args[8]);
-        $this->assertStringContainsString('"jobId":99', (string) $args[8]);
+        $this->assertSame('', $args[1]);
+        $this->assertSame(42, $args[2]);
+        $this->assertSame('depot', $args[3]);
+        $this->assertSame('open', $args[4]);
+        $this->assertSame('ok', $args[5]);
+        $this->assertSame('127.0.0.1', $args[6]);
+        $this->assertSame('PHPUnit-Agent', $args[7]);
+        $this->assertSame('Opened', $args[8]);
+        $this->assertIsString($args[9]);
+        $this->assertStringContainsString('"jobId":99', (string) $args[9]);
     }
 
     /**
@@ -145,11 +146,12 @@ class DoorAuditLoggerTest extends TestCase
         $this->assertCount(1, $executeCalls);
         $args = $executeCalls[0];
 
-        $this->assertSame(0, $args[1]);
-        $this->assertSame('', $args[5]);
+        $this->assertSame('', $args[1]);
+        $this->assertSame(0, $args[2]);
         $this->assertSame('', $args[6]);
         $this->assertSame('', $args[7]);
-        $this->assertNull($args[8]);
+        $this->assertSame('', $args[8]);
+        $this->assertNull($args[9]);
     }
 
     private function setDatabaseSingleton(Database|null $database): void

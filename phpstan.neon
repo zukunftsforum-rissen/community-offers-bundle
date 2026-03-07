@@ -1,6 +1,6 @@
 includes:
-    - ../../vendor/phpstan/phpstan-symfony/extension.neon
-    - ../../vendor/phpstan/phpstan-symfony/rules.neon
+    - %currentWorkingDirectory%/vendor/phpstan/phpstan-symfony/extension.neon
+    - %currentWorkingDirectory%/vendor/phpstan/phpstan-symfony/rules.neon
 
 parameters:
     level: 6

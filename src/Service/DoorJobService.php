@@ -7,6 +7,8 @@ namespace ZukunftsforumRissen\CommunityOffersBundle\Service;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Psr\Cache\CacheItemPoolInterface;
+use Symfony\Component\Workflow\WorkflowInterface;
+use ZukunftsforumRissen\CommunityOffersBundle\Workflow\DoorJob;
 
 final class DoorJobService
 {
@@ -18,6 +20,7 @@ final class DoorJobService
     public function __construct(
         private readonly Connection $db,
         private readonly CacheItemPoolInterface $cache,
+        private WorkflowInterface $doorJobStateMachine,
     ) {
     }
 
@@ -257,8 +260,8 @@ final class DoorJobService
         $this->db->beginTransaction();
 
         try {
-            $ids = $this->db->fetchFirstColumn(
-                "SELECT id
+            $rows = $this->db->fetchAllAssociative(
+                "SELECT id, area, status
              FROM tl_co_door_job
              WHERE status='pending'
                AND area IN (:areas)
@@ -269,7 +272,7 @@ final class DoorJobService
                 ['areas' => ArrayParameterType::STRING],
             );
 
-            if (!$ids) {
+            if (!$rows) {
                 $this->db->commit();
 
                 return [];
@@ -277,12 +280,33 @@ final class DoorJobService
 
             $claimed = [];
 
-            foreach ($ids as $id) {
+            foreach ($rows as $row) {
+                $id = (int) ($row['id'] ?? 0);
+                $area = (string) ($row['area'] ?? '');
+                $status = (string) ($row['status'] ?? '');
+
+                if ($id < 1) {
+                    continue;
+                }
+
+                $job = new DoorJob($id, $area, $status);
+                $job->setDeviceId($deviceId);
+
+                $dtNow = (new \DateTimeImmutable())->setTimestamp($now);
+                $job->setDispatchedAt($dtNow);
+                $job->setConfirmExpiresAt($dtNow->modify('+'.self::CONFIRM_WINDOW_SECONDS.' seconds'));
+
+                if (!$this->doorJobStateMachine->can($job, 'dispatch')) {
+                    continue;
+                }
+
                 $nonce = bin2hex(random_bytes(16));
+
+                $this->doorJobStateMachine->apply($job, 'dispatch');
 
                 $affected = $this->db->executeStatement(
                     "UPDATE tl_co_door_job
-                 SET status='dispatched',
+                 SET status=:status,
                      dispatchToDeviceId=:deviceId,
                      dispatchedAt=:now,
                      nonce=:nonce,
@@ -291,22 +315,29 @@ final class DoorJobService
                    AND status='pending'
                    AND (expiresAt = 0 OR expiresAt >= :now)",
                     [
+                        'status' => $job->getStatus(),
                         'deviceId' => $deviceId,
                         'now' => $now,
                         'nonce' => $nonce,
-                        'id' => (int) $id,
+                        'id' => $id,
                     ],
                 );
 
                 if (1 === $affected) {
-                    $row = $this->db->fetchAssociative(
+                    $row2 = $this->db->fetchAssociative(
                         'SELECT id, area, nonce, expiresAt
                      FROM tl_co_door_job
                      WHERE id=:id',
-                        ['id' => (int) $id],
+                        ['id' => $id],
                     );
-                    if ($row) {
-                        $claimed[] = $row;
+                    if ($row2) {
+                        $expiresAt = (int) ($row2['expiresAt'] ?? 0);
+                        $claimed[] = [
+                            'jobId' => (int) ($row2['id'] ?? 0),
+                            'area' => (string) ($row2['area'] ?? ''),
+                            'nonce' => (string) ($row2['nonce'] ?? ''),
+                            'expiresInMs' => $expiresAt > 0 ? max(0, ($expiresAt - $now) * 1000) : 0,
+                        ];
                     }
                 }
             }
@@ -382,6 +413,18 @@ final class DoorJobService
         $dispatchedAt = (int) ($job['dispatchedAt'] ?? 0);
 
         if ($dispatchedAt > 0 && $dispatchedAt < $now - self::CONFIRM_WINDOW_SECONDS) {
+            $doorJob = new DoorJob(
+                (int) $job['id'],
+                '',
+                $status,
+                (new \DateTimeImmutable())->setTimestamp($dispatchedAt),
+                (new \DateTimeImmutable())->setTimestamp($dispatchedAt)->modify('+'.self::CONFIRM_WINDOW_SECONDS.' seconds'),
+            );
+
+            if ($this->doorJobStateMachine->can($doorJob, 'expire_dispatched')) {
+                $this->doorJobStateMachine->apply($doorJob, 'expire_dispatched');
+            }
+
             $this->db->executeStatement(
                 "UPDATE tl_co_door_job
                  SET status='expired', tstamp=UNIX_TIMESTAMP(),
@@ -390,10 +433,26 @@ final class DoorJobService
                 ['id' => $jobId],
             );
 
-            return ['accepted' => false, 'httpStatus' => 410, 'error' => 'confirm_timeout', 'status' => 'expired'];
+            return ['accepted' => false, 'httpStatus' => 410, 'error' => 'confirm_timeout', 'status' => $doorJob->getStatus()];
         }
 
-        $newStatus = $ok ? 'executed' : 'failed';
+        $doorJob = new DoorJob(
+            (int) $job['id'],
+            '',
+            $status,
+            (new \DateTimeImmutable())->setTimestamp($dispatchedAt),
+            (new \DateTimeImmutable())->setTimestamp($dispatchedAt)->modify('+'.self::CONFIRM_WINDOW_SECONDS.' seconds'),
+        );
+
+        $transition = $ok ? 'execute' : 'fail';
+
+        if (!$this->doorJobStateMachine->can($doorJob, $transition)) {
+            return ['accepted' => false, 'httpStatus' => 409, 'error' => 'not_dispatchable', 'status' => $status];
+        }
+
+        $this->doorJobStateMachine->apply($doorJob, $transition);
+
+        $newStatus = $doorJob->getStatus();
         $resultCode = $ok ? 'OK' : 'ERR';
         $resultMessage = $ok ? 'Door open executed' : 'Door open failed';
 

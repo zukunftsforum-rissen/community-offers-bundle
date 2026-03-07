@@ -20,7 +20,7 @@ final class DeviceTokenAuthenticator extends AbstractAuthenticator
     {
     }
 
-    public function supports(Request $request): bool|null
+    public function supports(Request $request): bool
     {
         return str_starts_with($request->getPathInfo(), '/api/device');
     }
@@ -46,7 +46,7 @@ final class DeviceTokenAuthenticator extends AbstractAuthenticator
         return null; // request läuft normal weiter
     }
 
-    public function onAuthenticationFailure(Request $request, AuthenticationException $exception): JsonResponse|null
+    public function onAuthenticationFailure(Request $request, AuthenticationException $exception): JsonResponse
     {
         return new JsonResponse(['error' => 'unauthorized'], 401);
     }

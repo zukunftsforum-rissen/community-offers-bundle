@@ -21,7 +21,6 @@ final class DeviceController extends AbstractController
     #[Route('/poll', name: 'co_device_poll', methods: ['POST'])]
     public function poll(Request $request): JsonResponse
     {
-        /** @var DeviceApiUser $user */
         $user = $this->getUser();
         if (!$user instanceof DeviceApiUser) {
             return new JsonResponse(['error' => 'unauthorized'], 401);

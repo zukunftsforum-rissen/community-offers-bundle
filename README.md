@@ -1,45 +1,36 @@
-# community-offers-bundle
+# Community Offers Bundle
 
-## Test Levels
+Open source Contao bundle for managing community resources and shared spaces.
 
-This bundle currently uses `phpunit` unit tests (see `tests/Unit`).
+The bundle provides a system for:
 
-### Unit tests
+* lending tools and devices
+* controlling access to shared spaces
+* integrating Raspberry Pi door controllers
+* managing member permissions
 
-- Scope: one class/service/controller with all external boundaries replaced by test doubles.
-- Boundaries mocked/stubbed: Contao `Database` singleton, router, mailer, cache, framework init.
-- No Symfony kernel boot, no real database connection, no real HTTP stack.
+The project was developed for the **Zukunftsforum Rissen community project** and is intended to be reusable for other community initiatives.
 
-### Workflow-style unit tests
+## Features
 
-Some tests cover multi-step business flows (for example create request -> DOI confirm -> resend state checks in `AccessRequestServiceTest`, and member open door -> device poll -> device confirm in `DeviceControllerTest`, including timeout handling, device binding, and area-based job filtering).
+* Device lending management
+* Door access control API
+* Raspberry Pi polling endpoint
+* Door job queue
+* Contao backend integration
+* Permission based access
 
-Covered device workflow scenarios include:
+⚠️ This software controls physical devices.
+Use it at your own risk.
 
-- open -> poll -> confirm success (`accepted=true`, final `executed`)
-- open -> poll -> confirm failure (`ok=false`, final `failed`)
-- open -> poll -> confirm after timeout (`accepted=false`, final `expired/TIMEOUT`)
-- open -> poll by device A, confirm by device B (`accepted=false`, job remains bound to device A)
-- open in area X, poll by device with area Y (no jobs dispatched)
+## Installation
 
-- These are still unit tests in this project.
-- They are integration-like in flow coverage, but still isolated by doubles.
+Install via Composer:
 
-### Integration / E2E tests
-
-Not part of the current `Unit` suite.
-
-- Integration tests would boot more framework/runtime pieces and use real persistence or HTTP boundaries.
-- E2E tests would exercise full user flows through real endpoints/UI.
-
-### Run tests
-
-```bash
-composer run test:unit
+```
+composer require zukunftsforum-rissen/community-offers-bundle
 ```
 
-## Recent test coverage additions (2026-03)
+## License
 
-- Added workflow-style unit tests for access request and device lifecycles.
-- Extended device workflow coverage with timeout handling, device binding checks, and area-filtered polling.
-- Improved test-level documentation in key unit test classes and README.
+MIT

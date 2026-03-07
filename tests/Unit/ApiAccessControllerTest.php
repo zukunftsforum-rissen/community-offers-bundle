@@ -10,12 +10,18 @@ use PHPUnit\Framework\TestCase;
 use Psr\Cache\CacheItemInterface;
 use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Bundle\SecurityBundle\Security;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Workflow\Definition;
+use Symfony\Component\Workflow\MarkingStore\MethodMarkingStore;
+use Symfony\Component\Workflow\StateMachine;
+use Symfony\Component\Workflow\Transition;
 use ZukunftsforumRissen\CommunityOffersBundle\Controller\Api\AccessController;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\AccessRequestService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\AccessService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorJobService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService;
+use ZukunftsforumRissen\CommunityOffersBundle\Workflow\DoorJobWorkflowSubscriber;
 
 class ApiAccessControllerTest extends TestCase
 {
@@ -302,7 +308,7 @@ class ApiAccessControllerTest extends TestCase
         $cache->expects($this->once())->method('getItem')->willReturn($rateItem);
         $cache->expects($this->never())->method('save');
 
-        $doorJobs = new DoorJobService($db, $cache);
+        $doorJobs = new DoorJobService($db, $cache,  $this->createDoorJobStateMachine());
 
         $controller = $this->createController(
             $security,
@@ -332,6 +338,7 @@ class ApiAccessControllerTest extends TestCase
         $doorJobs ??= new DoorJobService(
             $this->createStub(Connection::class),
             $this->createStub(CacheItemPoolInterface::class),
+            $this->createDoorJobStateMachine()
         );
 
         return new AccessController($security, $accessService, $accessRequestService, $doorJobs, $logging);
@@ -342,8 +349,7 @@ class ApiAccessControllerTest extends TestCase
         $user = $this->getMockBuilder(FrontendUser::class)
             ->disableOriginalConstructor()
             ->onlyMethods([])
-            ->getMock()
-        ;
+            ->getMock();
 
         $user->id = $id;
         $user->firstname = $firstname;
@@ -351,5 +357,29 @@ class ApiAccessControllerTest extends TestCase
         $user->email = $email;
 
         return $user;
+    }
+
+    private function createDoorJobStateMachine(): StateMachine
+    {
+        $definition = new Definition(
+            ['pending', 'dispatched', 'executed', 'failed', 'expired'],
+            [
+                new Transition('dispatch', 'pending', 'dispatched'),
+                new Transition('execute', 'dispatched', 'executed'),
+                new Transition('fail', 'dispatched', 'failed'),
+                new Transition('expire_pending', 'pending', 'expired'),
+                new Transition('expire_dispatched', 'dispatched', 'expired'),
+            ]
+        );
+
+        $dispatcher = new EventDispatcher();
+        $dispatcher->addSubscriber(new DoorJobWorkflowSubscriber(30));
+
+        return new StateMachine(
+            $definition,
+            new MethodMarkingStore(true, 'status'),
+            $dispatcher,
+            'door_job'
+        );
     }
 }

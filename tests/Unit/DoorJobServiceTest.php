@@ -9,6 +9,13 @@ use PHPUnit\Framework\TestCase;
 use Psr\Cache\CacheItemInterface;
 use Psr\Cache\CacheItemPoolInterface;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorJobService;
+use Symfony\Component\Workflow\Definition;
+use Symfony\Component\Workflow\MarkingStore\MethodMarkingStore;
+use Symfony\Component\Workflow\StateMachine;
+use Symfony\Component\Workflow\Transition;
+use Symfony\Component\EventDispatcher\EventDispatcher;
+use ZukunftsforumRissen\CommunityOffersBundle\Workflow\DoorJobWorkflowSubscriber;
+
 
 /**
  * Unit tests for door job lifecycle and confirmation rules.
@@ -41,7 +48,7 @@ class DoorJobServiceTest extends TestCase
         $cache->expects($this->once())->method('getItem')->willReturn($rateItem);
         $cache->expects($this->never())->method('save');
 
-        $service = new DoorJobService($db, $cache);
+        $service = new DoorJobService($db, $cache, $this->createDoorJobStateMachine());
 
         $result = $service->createOpenJob(10, 'depot', '127.0.0.1', 'phpunit');
 
@@ -87,7 +94,7 @@ class DoorJobServiceTest extends TestCase
         ;
         $cache->expects($this->once())->method('save')->with($rateItem)->willReturn(true);
 
-        $service = new DoorJobService($db, $cache);
+        $service = new DoorJobService($db, $cache, $this->createDoorJobStateMachine());
 
         $result = $service->createOpenJob(10, 'depot', '127.0.0.1', 'phpunit');
 
@@ -145,7 +152,7 @@ class DoorJobServiceTest extends TestCase
         ;
         $cache->expects($this->exactly(3))->method('save')->willReturn(true);
 
-        $service = new DoorJobService($db, $cache);
+        $service = new DoorJobService($db, $cache, $this->createDoorJobStateMachine());
 
         $result = $service->createOpenJob(10, 'depot', '127.0.0.1', 'phpunit');
 
@@ -272,6 +279,30 @@ class DoorJobServiceTest extends TestCase
 
     private function createService(Connection $db): DoorJobService
     {
-        return new DoorJobService($db, $this->createStub(CacheItemPoolInterface::class));
+        return new DoorJobService($db, $this->createStub(CacheItemPoolInterface::class), $this->createDoorJobStateMachine());
+    }
+
+    private function createDoorJobStateMachine(): StateMachine
+    {
+        $definition = new Definition(
+            ['pending', 'dispatched', 'executed', 'failed', 'expired'],
+            [
+                new Transition('dispatch', 'pending', 'dispatched'),
+                new Transition('execute', 'dispatched', 'executed'),
+                new Transition('fail', 'dispatched', 'failed'),
+                new Transition('expire_pending', 'pending', 'expired'),
+                new Transition('expire_dispatched', 'dispatched', 'expired'),
+            ]
+        );
+
+        $dispatcher = new EventDispatcher();
+        $dispatcher->addSubscriber(new DoorJobWorkflowSubscriber(30));
+
+        return new StateMachine(
+            $definition,
+            new MethodMarkingStore(true, 'status'),
+            $dispatcher,
+            'door_job'
+        );
     }
 }

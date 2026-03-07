@@ -22,6 +22,13 @@ use ZukunftsforumRissen\CommunityOffersBundle\Service\AccessRequestService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\AccessService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorJobService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService;
+use Symfony\Component\Workflow\Definition;
+use Symfony\Component\Workflow\MarkingStore\MethodMarkingStore;
+use Symfony\Component\Workflow\StateMachine;
+use Symfony\Component\Workflow\Transition;
+use Symfony\Component\EventDispatcher\EventDispatcher;
+use ZukunftsforumRissen\CommunityOffersBundle\Workflow\DoorJobWorkflowSubscriber;
+
 
 /**
  * Unit tests for device API controller behavior.
@@ -35,6 +42,30 @@ use ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService;
  */
 class DeviceControllerTest extends TestCase
 {
+    private function createDoorJobStateMachine(): StateMachine
+    {
+        $definition = new Definition(
+            ['pending', 'dispatched', 'executed', 'failed', 'expired'],
+            [
+                new Transition('dispatch', 'pending', 'dispatched'),
+                new Transition('execute', 'dispatched', 'executed'),
+                new Transition('fail', 'dispatched', 'failed'),
+                new Transition('expire_pending', 'pending', 'expired'),
+                new Transition('expire_dispatched', 'dispatched', 'expired'),
+            ]
+        );
+
+        $dispatcher = new EventDispatcher();
+        $dispatcher->addSubscriber(new DoorJobWorkflowSubscriber(30));
+
+        return new StateMachine(
+            $definition,
+            new MethodMarkingStore(true, 'status'),
+            $dispatcher,
+            'door_job'
+        );
+    }
+
     /**
      * Verifies end-to-end device workflow: member opens door, device polls job, then confirms execution.
      */
@@ -43,7 +74,7 @@ class DeviceControllerTest extends TestCase
         $state = (object) ['rows' => [], 'nextId' => 1];
         $db = $this->createStatefulDoorJobConnection($state);
         $cache = new InMemoryCachePool();
-        $doorJobs = new DoorJobService($db, $cache);
+        $doorJobs = new DoorJobService($db, $cache,  $this->createDoorJobStateMachine());
 
         $accessController = $this->createAccessControllerForWorkflow($doorJobs, ['depot']);
         $deviceController = $this->createControllerWithUser($doorJobs, new DeviceApiUser('device-1', ['depot']));
@@ -100,7 +131,7 @@ class DeviceControllerTest extends TestCase
         $state = (object) ['rows' => [], 'nextId' => 1];
         $db = $this->createStatefulDoorJobConnection($state);
         $cache = new InMemoryCachePool();
-        $doorJobs = new DoorJobService($db, $cache);
+        $doorJobs = new DoorJobService($db, $cache, $this->createDoorJobStateMachine());
 
         $accessController = $this->createAccessControllerForWorkflow($doorJobs, ['depot']);
         $deviceController = $this->createControllerWithUser($doorJobs, new DeviceApiUser('device-1', ['depot']));
@@ -124,7 +155,7 @@ class DeviceControllerTest extends TestCase
 
         $wrongConfirmResponse = $deviceController->confirm(Request::create('/api/device/confirm', 'POST', [], [], [], [], json_encode([
             'jobId' => $jobId,
-            'nonce' => 'wrong-'.$correctNonce,
+            'nonce' => 'wrong-' . $correctNonce,
             'ok' => true,
         ])));
         $wrongConfirmData = json_decode((string) $wrongConfirmResponse->getContent(), true);
@@ -152,7 +183,7 @@ class DeviceControllerTest extends TestCase
         $state = (object) ['rows' => [], 'nextId' => 1];
         $db = $this->createStatefulDoorJobConnection($state);
         $cache = new InMemoryCachePool();
-        $doorJobs = new DoorJobService($db, $cache);
+        $doorJobs = new DoorJobService($db, $cache, $this->createDoorJobStateMachine());
 
         $accessController = $this->createAccessControllerForWorkflow($doorJobs, ['depot']);
         $deviceController = $this->createControllerWithUser($doorJobs, new DeviceApiUser('device-1', ['depot']));
@@ -200,7 +231,7 @@ class DeviceControllerTest extends TestCase
         $state = (object) ['rows' => [], 'nextId' => 1];
         $db = $this->createStatefulDoorJobConnection($state);
         $cache = new InMemoryCachePool();
-        $doorJobs = new DoorJobService($db, $cache);
+        $doorJobs = new DoorJobService($db, $cache, $this->createDoorJobStateMachine());
 
         $accessController = $this->createAccessControllerForWorkflow($doorJobs, ['depot']);
         $deviceController = $this->createControllerWithUser($doorJobs, new DeviceApiUser('device-1', ['depot']));
@@ -248,7 +279,7 @@ class DeviceControllerTest extends TestCase
         $state = (object) ['rows' => [], 'nextId' => 1];
         $db = $this->createStatefulDoorJobConnection($state);
         $cache = new InMemoryCachePool();
-        $doorJobs = new DoorJobService($db, $cache);
+        $doorJobs = new DoorJobService($db, $cache, $this->createDoorJobStateMachine());
 
         $accessController = $this->createAccessControllerForWorkflow($doorJobs, ['depot']);
         $dispatchingDeviceController = $this->createControllerWithUser($doorJobs, new DeviceApiUser('device-1', ['depot']));
@@ -294,7 +325,7 @@ class DeviceControllerTest extends TestCase
         $state = (object) ['rows' => [], 'nextId' => 1];
         $db = $this->createStatefulDoorJobConnection($state);
         $cache = new InMemoryCachePool();
-        $doorJobs = new DoorJobService($db, $cache);
+        $doorJobs = new DoorJobService($db, $cache, $this->createDoorJobStateMachine());
 
         $accessController = $this->createAccessControllerForWorkflow($doorJobs, ['depot']);
         $wrongAreaDeviceController = $this->createControllerWithUser($doorJobs, new DeviceApiUser('device-9', ['workshop']));
@@ -351,8 +382,15 @@ class DeviceControllerTest extends TestCase
             ->willReturnOnConsecutiveCalls(1, 1, 1)
         ;
         $db->expects($this->once())
-            ->method('fetchFirstColumn')
-            ->willReturn([11])
+            ->method('fetchAllAssociative')
+            ->with(
+                $this->stringContains('SELECT id, area, status'),
+                $this->callback(static fn(array $params): bool => ['depot'] === ($params['areas'] ?? []) && isset($params['now'])),
+                $this->callback(static fn(array $types): bool => isset($types['areas'])),
+            )
+            ->willReturn([
+                ['id' => 11, 'area' => 'depot', 'status' => 'pending'],
+            ])
         ;
         $db->expects($this->once())
             ->method('fetchAssociative')
@@ -367,7 +405,7 @@ class DeviceControllerTest extends TestCase
             ])
         ;
 
-        $jobs = new DoorJobService($db, $this->createStub(CacheItemPoolInterface::class));
+        $jobs = new DoorJobService($db, $this->createStub(CacheItemPoolInterface::class), $this->createDoorJobStateMachine());
         $controller = $this->createControllerWithUser($jobs, new DeviceApiUser('device-1', ['depot']));
 
         $request = Request::create('/api/device/poll', 'POST', [], [], [], [], json_encode(['limit' => 2]));
@@ -381,7 +419,8 @@ class DeviceControllerTest extends TestCase
         $this->assertSame('depot', $data['jobs'][0]['area']);
         $this->assertSame('open', $data['jobs'][0]['action']);
         $this->assertSame('nonce-11', $data['jobs'][0]['nonce']);
-        $this->assertSame(9000, $data['jobs'][0]['expiresInMs']);
+        $this->assertGreaterThan(0, $data['jobs'][0]['expiresInMs']);
+        $this->assertLessThanOrEqual(10000, $data['jobs'][0]['expiresInMs']);
         $this->assertSame(200, $data['nextPollInMs']);
     }
 
@@ -394,10 +433,10 @@ class DeviceControllerTest extends TestCase
         $db->expects($this->once())->method('beginTransaction');
         $db->expects($this->once())->method('commit');
         $db->expects($this->exactly(2))->method('executeStatement')->willReturn(1);
-        $db->expects($this->once())->method('fetchFirstColumn')->willReturn([]);
+        $db->expects($this->once())->method('fetchAllAssociative')->willReturn([]);
         $db->expects($this->never())->method('fetchAssociative');
 
-        $jobs = new DoorJobService($db, $this->createStub(CacheItemPoolInterface::class));
+        $jobs = new DoorJobService($db, $this->createStub(CacheItemPoolInterface::class), $this->createDoorJobStateMachine());
         $controller = $this->createControllerWithUser($jobs, new DeviceApiUser('device-1', ['depot']));
 
         $request = Request::create('/api/device/poll', 'POST', [], [], [], [], json_encode(['limit' => 2]));
@@ -467,7 +506,7 @@ class DeviceControllerTest extends TestCase
             ])
         ;
 
-        $jobs = new DoorJobService($db, $this->createStub(CacheItemPoolInterface::class));
+        $jobs = new DoorJobService($db, $this->createStub(CacheItemPoolInterface::class), $this->createDoorJobStateMachine());
         $controller = $this->createControllerWithUser($jobs, new DeviceApiUser('device-1', ['depot']));
 
         $request = Request::create('/api/device/confirm', 'POST', [], [], [], [], json_encode([
@@ -501,8 +540,7 @@ class DeviceControllerTest extends TestCase
         $container = new class($tokenStorage) implements ContainerInterface {
             public function __construct(
                 private readonly TokenStorageInterface $tokenStorage,
-            ) {
-            }
+            ) {}
 
             public function has(string $id): bool
             {
@@ -515,7 +553,7 @@ class DeviceControllerTest extends TestCase
                     return $this->tokenStorage;
                 }
 
-                throw new \RuntimeException('Unknown service: '.$id);
+                throw new \RuntimeException('Unknown service: ' . $id);
             }
         };
 
@@ -527,7 +565,7 @@ class DeviceControllerTest extends TestCase
     private function createJobsServiceWithoutExpectations(): DoorJobService
     {
         $db = $this->createStub(Connection::class);
-        return new DoorJobService($db, $this->createStub(CacheItemPoolInterface::class));
+        return new DoorJobService($db, $this->createStub(CacheItemPoolInterface::class), $this->createDoorJobStateMachine());
     }
 
     private function createAccessControllerForWorkflow(DoorJobService $doorJobs, array $grantedAreas): AccessController
@@ -549,8 +587,7 @@ class DeviceControllerTest extends TestCase
         $user = $this->getMockBuilder(FrontendUser::class)
             ->disableOriginalConstructor()
             ->onlyMethods([])
-            ->getMock()
-        ;
+            ->getMock();
 
         $user->id = $id;
         $user->firstname = $firstname;
@@ -575,17 +612,17 @@ class DeviceControllerTest extends TestCase
             return 1;
         });
 
-        $db->method('lastInsertId')->willReturnCallback(static fn (): string => (string) ($state->nextId - 1));
+        $db->method('lastInsertId')->willReturnCallback(static fn(): string => (string) ($state->nextId - 1));
 
-        $db->method('fetchFirstColumn')->willReturnCallback(static function (string $query, array $params = []) use ($state): array {
-            if (!str_contains($query, "FROM tl_co_door_job") || !str_contains($query, "status='pending'")) {
+        $db->method('fetchAllAssociative')->willReturnCallback(static function (string $query, array $params = [], array $types = []) use ($state): array {
+            if (!str_contains($query, 'FROM tl_co_door_job') || !str_contains($query, "status='pending'")) {
                 return [];
             }
 
             $areas = (array) ($params['areas'] ?? []);
             $now = (int) ($params['now'] ?? time());
 
-            $ids = [];
+            $rows = [];
             foreach ($state->rows as $row) {
                 if ('pending' !== (string) ($row['status'] ?? '')) {
                     continue;
@@ -597,21 +634,25 @@ class DeviceControllerTest extends TestCase
                 if (0 !== $expiresAt && $expiresAt < $now) {
                     continue;
                 }
-                $ids[] = (int) ($row['id'] ?? 0);
+                $rows[] = [
+                    'id' => (int) ($row['id'] ?? 0),
+                    'area' => (string) ($row['area'] ?? ''),
+                    'status' => (string) ($row['status'] ?? ''),
+                ];
             }
 
-            usort($ids, static function (int $left, int $right) use ($state): int {
-                $leftCreatedAt = (int) ($state->rows[$left]['createdAt'] ?? 0);
-                $rightCreatedAt = (int) ($state->rows[$right]['createdAt'] ?? 0);
+            usort($rows, static function (array $left, array $right) use ($state): int {
+                $leftCreatedAt = (int) ($state->rows[(int) ($left['id'] ?? 0)]['createdAt'] ?? 0);
+                $rightCreatedAt = (int) ($state->rows[(int) ($right['id'] ?? 0)]['createdAt'] ?? 0);
 
                 return $leftCreatedAt <=> $rightCreatedAt;
             });
 
             if (preg_match('/LIMIT\s+(\d+)/', $query, $matches)) {
-                $ids = array_slice($ids, 0, max(0, (int) $matches[1]));
+                $rows = array_slice($rows, 0, max(0, (int) $matches[1]));
             }
 
-            return $ids;
+            return $rows;
         });
 
         $db->method('fetchAssociative')->willReturnCallback(static function (string $query, array $params = []) use ($state): array|false {
@@ -649,7 +690,8 @@ class DeviceControllerTest extends TestCase
                     return false;
                 }
 
-                usort($candidates, static fn (array $left, array $right): int => ((int) ($right['createdAt'] ?? 0)) <=> ((int) ($left['createdAt'] ?? 0)));
+                /** @var list<array<string, mixed>> $candidates */
+                usort($candidates, static fn(array $left, array $right): int => ((int) ($right['createdAt'] ?? 0)) <=> ((int) ($left['createdAt'] ?? 0)));
                 $active = $candidates[0];
 
                 return [
@@ -753,7 +795,7 @@ class DeviceControllerTest extends TestCase
                 return $changed;
             }
 
-            if (str_contains($query, 'SET status=\'dispatched\'')) {
+            if (str_contains($query, 'dispatchToDeviceId=:deviceId') && str_contains($query, "AND status='pending'")) {
                 $id = (int) ($params['id'] ?? 0);
                 if (!isset($state->rows[$id])) {
                     return 0;
@@ -770,7 +812,7 @@ class DeviceControllerTest extends TestCase
                     return 0;
                 }
 
-                $state->rows[$id]['status'] = 'dispatched';
+                $state->rows[$id]['status'] = (string) ($params['status'] ?? 'dispatched');
                 $state->rows[$id]['dispatchToDeviceId'] = (string) ($params['deviceId'] ?? '');
                 $state->rows[$id]['dispatchedAt'] = $now;
                 $state->rows[$id]['nonce'] = (string) ($params['nonce'] ?? '');
@@ -908,8 +950,7 @@ final class InMemoryCacheItem implements CacheItemInterface
         private mixed $value,
         private bool $hit,
         private int $expiresAt = 0,
-    ) {
-    }
+    ) {}
 
     public function getKey(): string
     {

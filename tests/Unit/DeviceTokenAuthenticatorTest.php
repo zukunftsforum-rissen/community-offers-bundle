@@ -217,7 +217,6 @@ class DeviceTokenAuthenticatorTest extends TestCase
         );
         $data = json_decode((string) $response->getContent(), true);
 
-        $this->assertNotNull($response);
         $this->assertSame(401, $response->getStatusCode());
         $this->assertIsArray($data);
         $this->assertSame(['error' => 'unauthorized'], $data);

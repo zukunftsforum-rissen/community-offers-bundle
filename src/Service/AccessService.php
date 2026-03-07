@@ -50,7 +50,7 @@ class AccessService
      */
     public function getKnownAreas(): array
     {
-        return array_values(array_map('strval', array_keys($this->areaGroups)));
+        return array_keys($this->areaGroups);
     }
 
     /**

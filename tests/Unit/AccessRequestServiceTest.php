@@ -173,7 +173,6 @@ class AccessRequestServiceTest extends TestCase
         $this->assertSame(serialize(['depot', 'sharing']), $insertCalls[0][8]);
 
         $this->assertInstanceOf(Email::class, $capturedMail);
-        $this->assertNotNull($capturedMail);
         /** @var Email $capturedMail */
         $text = $capturedMail->getTextBody() ?? '';
         $this->assertStringContainsString('https://example.org/confirm/create', $text);
@@ -369,7 +368,6 @@ class AccessRequestServiceTest extends TestCase
         $this->assertSame(serialize(['depot']), $insertCalls[0][8]);
 
         $this->assertInstanceOf(Email::class, $capturedMail);
-        $this->assertNotNull($capturedMail);
         /** @var Email $capturedMail */
         $text = $capturedMail->getTextBody() ?? '';
         $this->assertStringContainsString('https://example.org/confirm/new-token', $text);
@@ -457,7 +455,6 @@ class AccessRequestServiceTest extends TestCase
         $this->assertSame(19, $updateCalls[0][3]);
 
         $this->assertInstanceOf(Email::class, $capturedMail);
-        $this->assertNotNull($capturedMail);
         /** @var Email $capturedMail */
         $text = $capturedMail->getTextBody() ?? '';
         $this->assertStringContainsString('https://example.org/confirm/token', $text);
@@ -859,7 +856,6 @@ class AccessRequestServiceTest extends TestCase
         $this->assertSame(serialize([]), $insertCalls[0][8]);
 
         $this->assertInstanceOf(Email::class, $capturedMail);
-        $this->assertNotNull($capturedMail);
         /** @var Email $capturedMail */
         $text = $capturedMail->getTextBody() ?? '';
         $this->assertStringContainsString('- Sie möchten nutzen: -', $text);
@@ -1078,7 +1074,6 @@ class AccessRequestServiceTest extends TestCase
 
         $this->assertSame('ok', $createResult);
         $this->assertInstanceOf(Email::class, $capturedMail);
-        $this->assertNotNull($capturedMail);
         /** @var Email $capturedMail */
         $text = $capturedMail->getTextBody() ?? '';
 

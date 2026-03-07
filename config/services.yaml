@@ -53,3 +53,13 @@ services:
         # Default-Gateway (Dev/Prod erstmal Mock, später austauschen)
     ZukunftsforumRissen\CommunityOffersBundle\Door\DoorGatewayInterface:
         alias: ZukunftsforumRissen\CommunityOffersBundle\Door\MockDoorGateway
+
+    ZukunftsforumRissen\CommunityOffersBundle\Service\DoorJobService:
+        arguments:
+            $doorJobStateMachine: '@state_machine.door_job'
+
+    ZukunftsforumRissen\CommunityOffersBundle\Workflow\DoorJobWorkflowSubscriber:
+        arguments:
+            $confirmWindowSeconds: 30
+        tags:
+            - { name: kernel.event_subscriber }

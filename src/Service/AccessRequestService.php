@@ -79,7 +79,7 @@ class AccessRequestService
                 $street,
                 $postal,
                 $city,
-                serialize(array_values($requestedAreas)),
+                serialize($requestedAreas),
                 $tokenHash,
                 '',
                 '',
@@ -280,13 +280,14 @@ class AccessRequestService
             break;
         }
 
-        // bestätigt, aber noch nicht freigegeben -> nicht erneut senden
-        if (null !== $matchId && '' !== $matchConfirmed) {
-            return ['code' => 'pending_confirmed'];
-        }
+        // bestätigt
+        if (null !== $matchId) {
+            // noch nicht freigegeben -> nicht erneut senden
+            if ('' !== $matchConfirmed) {
+                return ['code' => 'pending_confirmed'];
+            }
+            // unbestätigt -> Cooldown / Resend
 
-        // unbestätigt -> Cooldown / Resend
-        if (null !== $matchId && '' === $matchConfirmed) {
             $age = time() - (int) $matchTstamp;
             $remaining = self::ADDITIONAL_REQUEST_COOLDOWN - $age;
 
@@ -301,10 +302,10 @@ class AccessRequestService
 
             Database::getInstance()
                 ->prepare("
-                    UPDATE tl_co_access_request
-                    SET tstamp=?, token=?, tokenExpiresAt=?, emailConfirmed=''
-                    WHERE id=?
-                ")
+                        UPDATE tl_co_access_request
+                        SET tstamp=?, token=?, tokenExpiresAt=?, emailConfirmed=''
+                        WHERE id=?
+                    ")
                 ->execute(time(), $tokenHash, $expiresAt, $matchId)
             ;
 

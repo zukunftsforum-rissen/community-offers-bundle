@@ -11,8 +11,9 @@ $GLOBALS['TL_DCA']['tl_co_door_job'] = [
             'keys' => [
                 'id' => 'primary',
                 'status,expiresAt' => 'index',
-                'area' => 'index',
+                'area,status' => 'index',
                 'dispatchToDeviceId' => 'index',
+                'correlationId' => 'index',
             ],
         ],
     ],
@@ -38,12 +39,19 @@ $GLOBALS['TL_DCA']['tl_co_door_job'] = [
     ],
 
     'palettes' => [
-        'default' => '{job_legend},createdAt,expiresAt,area,status,requestedByMemberId;{dispatch_legend},dispatchToDeviceId,dispatchedAt,executedAt,attempts;{result_legend},resultCode,resultMessage;{meta_legend},requestIp,userAgent,nonce',
+        'default' => '{job_legend},createdAt,expiresAt,area,status,requestedByMemberId;{dispatch_legend},dispatchToDeviceId,dispatchedAt,executedAt,attempts;{result_legend},resultCode,resultMessage;{meta_legend},correlationId,requestIp,userAgent,nonce',
     ],
 
     'fields' => [
         'id' => ['sql' => "int(10) unsigned NOT NULL auto_increment"],
         'tstamp' => ['sql' => "int(10) unsigned NOT NULL default 0"],
+
+        'correlationId' => [
+            'label' => &$GLOBALS['TL_LANG']['tl_co_door_job']['correlationId'],
+            'inputType' => 'text',
+            'eval' => ['readonly' => true, 'tl_class' => 'w50'],
+            'sql' => "varchar(36) NOT NULL default ''",
+        ],
 
         'createdAt' => [
             'label' => &$GLOBALS['TL_LANG']['tl_co_door_job']['createdAt'],

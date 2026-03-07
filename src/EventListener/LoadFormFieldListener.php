@@ -17,7 +17,8 @@ class LoadFormFieldListener
     public function __construct(
         private readonly Security $security,
         private readonly AccessService $accessService,
-    ) {}
+    ) {
+    }
 
     /**
      * @param array<string, mixed> $formData
@@ -36,7 +37,7 @@ class LoadFormFieldListener
 
         // Textfield for User's Name.
         if (($widget->name ?? null) === 'fullName') {
-            $widget->value = trim(($user->firstname ?? '') . ' ' . ($user->lastname ?? ''));
+            $widget->value = trim(($user->firstname ?? '').' '.($user->lastname ?? ''));
             $widget->readonly = true;
             $widget->disabled = true; // optional: verhindert Mitsenden
 
@@ -48,20 +49,14 @@ class LoadFormFieldListener
             $granted = $this->accessService->getGrantedAreasForMemberId((int) $user->id);
 
             $options = [];
-            /** @var \Contao\Widget&object{options: array<int, array<string,mixed>>} $widget */
+            /** @var Widget&object{options: array<int, array<string, mixed>>} $widget */
             $rawOptions = $widget->options;
-            if (\is_array($rawOptions)) {
-                $options = $rawOptions;
-            }
-
-            if (!\is_array($options)) {
-                return $widget;
-            }
+            $options = $rawOptions;
 
             $options = array_values(array_filter(
                 $options,
                 static function ($opt) use ($granted): bool {
-                    if (!\is_array($opt) || !isset($opt['value'])) {
+                    if (!isset($opt['value'])) {
                         return true;
                     }
 

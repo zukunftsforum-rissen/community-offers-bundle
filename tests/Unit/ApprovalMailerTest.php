@@ -39,7 +39,6 @@ class ApprovalMailerTest extends TestCase
         $service->sendApprovalMail('user@example.org', 'Max', 'Mustermann', ['Werkstatt', 'Tauschhaus']);
 
         $this->assertInstanceOf(Email::class, $capturedMail);
-        $this->assertNotNull($capturedMail);
         /** @var Email $capturedMail */
         $this->assertSame('admin@example.org', $capturedMail->getFrom()[0]->getAddress());
         $this->assertSame('reply@example.org', $capturedMail->getReplyTo()[0]->getAddress());
@@ -81,8 +80,7 @@ class ApprovalMailerTest extends TestCase
         $service->sendApprovalMail('user@example.org', 'Max', '', []);
 
         $this->assertInstanceOf(Email::class, $capturedMail);
-        $this->assertNotNull($capturedMail);
-        /** @var Email $capturedMail */
+       /** @var Email $capturedMail */
         $text = $capturedMail->getTextBody() ?? '';
 
         $this->assertStringContainsString('Hallo Max,', $text);
@@ -117,7 +115,6 @@ class ApprovalMailerTest extends TestCase
         $service->sendApprovalMail('user@example.org', '', 'Mustermann', ['Werkstatt']);
 
         $this->assertInstanceOf(Email::class, $capturedMail);
-        $this->assertNotNull($capturedMail);
         /** @var Email $capturedMail */
         $text = $capturedMail->getTextBody() ?? '';
 

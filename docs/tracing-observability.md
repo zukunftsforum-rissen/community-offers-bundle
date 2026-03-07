@@ -130,7 +130,8 @@ Wenn du Alerts willst, starte klein:
 
 ### 7.2 DB-Erweiterung (optional)
 
--   `ALTER TABLE tl_co_door_job ADD correlationId VARCHAR(32) DEFAULT '';`
+-   ALTER TABLE tl_co_door_job
+    ADD correlationId CHAR(36) NOT NULL DEFAULT '';
 -   Index auf correlationId (optional)
 
 ### 7.3 Audit Table (optional)

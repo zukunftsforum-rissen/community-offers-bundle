@@ -3,11 +3,12 @@ import os
 from pathlib import Path
 from collections import defaultdict
 
-OUT=Path("docs/ai/generated/change-impact.md")
+BASE_DIR = Path(__file__).resolve().parents[2]
+OUT = BASE_DIR / "docs/ai/generated/change-impact.md"
 
-index=defaultdict(list)
+index = defaultdict(list)
 
-for root,_,files in os.walk("."):
+for root, _, files in os.walk(BASE_DIR):
     for file in files:
         if file.endswith((".php",".js",".yaml",".yml",".twig")):
             path=Path(root)/file

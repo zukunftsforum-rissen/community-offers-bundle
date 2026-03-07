@@ -1,18 +1,27 @@
-
 import os
 from pathlib import Path
 
-SRC=Path("src")
-TEST=Path("tests")
-OUT=Path("docs/ai/generated/test-map.md")
+BASE_DIR = Path(__file__).resolve().parents[2]
+SRC = BASE_DIR / "src"
+TEST = BASE_DIR / "tests"
+OUT = BASE_DIR / "docs/ai/generated/test-map.md"
 
-classes=[f.replace(".php","") for f in os.listdir(SRC) if f.endswith(".php")]
-tests=[f.replace("Test.php","") for f in os.listdir(TEST) if f.endswith("Test.php")]
+classes = []
+for root, _, files in os.walk(SRC):
+    for file in files:
+        if file.endswith(".php"):
+            classes.append(file.replace(".php", ""))
 
-OUT.parent.mkdir(parents=True,exist_ok=True)
+tests = []
+for root, _, files in os.walk(TEST):
+    for file in files:
+        if file.endswith("Test.php"):
+            tests.append(file.replace("Test.php", ""))
 
-with open(OUT,"w") as f:
+OUT.parent.mkdir(parents=True, exist_ok=True)
+
+with open(OUT, "w", encoding="utf-8") as f:
     f.write("# Test Coverage Map\n\n")
-    for c in classes:
-        status="tested" if c in tests else "missing tests"
+    for c in sorted(classes):
+        status = "tested" if c in tests else "missing tests"
         f.write(f"- {c}: {status}\n")

@@ -2,11 +2,12 @@
 import os,re
 from pathlib import Path
 
-SRC_DIR=Path("src")
-OUT_FILE=Path("docs/ai/generated/class-index.md")
+BASE_DIR = Path(__file__).resolve().parents[2]
+SRC_DIR = BASE_DIR / "src"
+OUT_FILE = BASE_DIR / "docs/ai/generated/class-index.md"
 
-class_pattern=re.compile(r"class\s+(\w+)")
-method_pattern=re.compile(r"public function\s+(\w+)\(")
+class_pattern = re.compile(r"class\s+(\w+)")
+method_pattern = re.compile(r"public function\s+(\w+)\(")
 
 classes=[]
 

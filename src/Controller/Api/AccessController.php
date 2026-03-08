@@ -201,11 +201,6 @@ final class AccessController
 
         $cid = $this->correlationIds->create();
 
-        $this->logging->start('open', [
-            'slug' => $slug,
-            'cid' => $cid,
-        ]);
-
         $user = $this->security->getUser();
         if (!$user instanceof FrontendUser) {
             $this->logging->warning('open.unauthenticated', [
@@ -228,6 +223,13 @@ final class AccessController
 
         $memberId = (int) $user->id;
 
+        $this->logging->info('door_open.attempt', [
+            'cid' => $cid,
+            'memberId' => $memberId,
+            'area' => $slug,
+            'ip' => $request->getClientIp(),
+        ]);
+
         $this->audit->audit(
             action: 'door_open',
             area: $slug,
@@ -235,15 +237,18 @@ final class AccessController
             message: 'Door open requested',
             correlationId: $cid,
             memberId: $memberId,
-            context: ['ip' => $request->getClientIp()],
+            context: [
+                'ip' => $request->getClientIp(),
+                'userAgent' => $request->headers->get('User-Agent'),
+            ],
         );
 
         $areas = $this->accessService->getGrantedAreasForMemberId($memberId);
         if (!\in_array($slug, $areas, true)) {
-            $this->logging->warning('open.forbidden', [
+            $this->logging->warning('door_open.forbidden', [
                 'cid' => $cid,
                 'memberId' => $memberId,
-                'slug' => $slug,
+                'area' => $slug,
                 'ip' => $request->getClientIp(),
             ]);
 
@@ -251,10 +256,10 @@ final class AccessController
                 action: 'door_open',
                 area: $slug,
                 result: 'forbidden',
-                message: 'Member has no access to requested area',
+                message: 'Door open forbidden',
                 correlationId: $cid,
                 memberId: $memberId,
-                context: ['slug' => $slug],
+                context: ['ip' => $request->getClientIp()],
             );
 
             return new JsonResponse(['success' => false, 'message' => 'Forbidden'], 403);
@@ -281,9 +286,11 @@ final class AccessController
         if (isset($result['jobId'])) {
             $payload['accepted'] = true;
             $payload['jobId'] = (int) $result['jobId'];
+
             if (isset($result['status'])) {
                 $payload['status'] = (string) $result['status'];
             }
+
             if (isset($result['expiresAt'])) {
                 $payload['expiresAt'] = (int) $result['expiresAt'];
             }
@@ -296,18 +303,66 @@ final class AccessController
         }
 
         $response = new JsonResponse($payload, $status);
+
         if (429 === $status && isset($result['retryAfterSeconds'])) {
             $response->headers->set('Retry-After', (string) (int) $result['retryAfterSeconds']);
         }
 
-        $this->logging->info('open.result', [
-            'cid' => $cid,
-            'memberId' => $memberId,
-            'slug' => $slug,
-            'httpStatus' => $status,
-            'ok' => (bool) $result['ok'],
-            'jobId' => $result['jobId'] ?? null,
-        ]);
+        if ((bool) $result['ok']) {
+            $this->logging->info('door_open.granted', [
+                'cid' => $cid,
+                'memberId' => $memberId,
+                'area' => $slug,
+                'jobId' => $result['jobId'] ?? null,
+                'status' => $result['status'] ?? null,
+                'httpStatus' => $status,
+            ]);
+        } elseif (429 === $status) {
+            $this->logging->warning('door_open.rate_limited', [
+                'cid' => $cid,
+                'memberId' => $memberId,
+                'area' => $slug,
+                'retryAfterSeconds' => $result['retryAfterSeconds'] ?? null,
+                'httpStatus' => $status,
+            ]);
+
+            $this->audit->audit(
+                action: 'door_open',
+                area: $slug,
+                result: 'rate_limited',
+                message: 'Door open rate limited',
+                correlationId: $cid,
+                memberId: $memberId,
+                context: [
+                    'retryAfterSeconds' => $result['retryAfterSeconds'] ?? null,
+                    'httpStatus' => $status,
+                ],
+            );
+        } else {
+            $this->logging->error('door_open.error', [
+                'cid' => $cid,
+                'memberId' => $memberId,
+                'area' => $slug,
+                'httpStatus' => $status,
+                'message' => $result['message'],
+                'jobId' => $result['jobId'] ?? null,
+            ]);
+
+            $this->audit->audit(
+                action: 'door_open',
+                area: $slug,
+                result: 'error',
+                message: 'Door open failed',
+                correlationId: $cid,
+                memberId: $memberId,
+                context: [
+                    'httpStatus' => $status,
+                    'message' => $result['message'],
+                    'jobId' => $result['jobId'] ?? null,
+                    'status' => $result['status'] ?? null,
+                ],
+            );
+        }
 
         return $response;
     }

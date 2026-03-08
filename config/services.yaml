@@ -52,6 +52,12 @@ services:
                 target: fields.memberId.options,
                 method: getMemberOptions,
             }
+            - {
+                name: contao.callback,
+                table: tl_co_door_log,
+                target: list.operations.workflow.button,
+                method: workflowButton,
+            }
 
     ZukunftsforumRissen\CommunityOffersBundle\Service\ApprovalMailer:
         arguments:
@@ -64,14 +70,13 @@ services:
         arguments:
             $areaGroups: "%community_offers.area_groups%"
 
-
         # Default-Gateway (Dev/Prod erstmal Mock, später austauschen)
     ZukunftsforumRissen\CommunityOffersBundle\Door\DoorGatewayInterface:
         alias: ZukunftsforumRissen\CommunityOffersBundle\Door\MockDoorGateway
 
     ZukunftsforumRissen\CommunityOffersBundle\Service\DoorJobService:
         arguments:
-            $doorJobStateMachine: '@state_machine.door_job'
+            $doorJobStateMachine: "@state_machine.door_job"
 
     ZukunftsforumRissen\CommunityOffersBundle\Workflow\DoorJobWorkflowSubscriber:
         arguments:

@@ -23,8 +23,7 @@ $GLOBALS['TL_DCA']['tl_co_door_log'] = [
     'list' => [
         'sorting' => [
             'mode' => 2,
-            'fields' => ['tstamp DESC', 'id DESC'],
-            'flag' => 1,
+            'fields' => ['tstamp DESC'],
             'panelLayout' => 'filter;sort,search,limit',
         ],
         'label' => [
@@ -48,6 +47,11 @@ $GLOBALS['TL_DCA']['tl_co_door_log'] = [
                 'icon' => 'delete.svg',
                 'attributes' => 'onclick="if(!confirm(\'' . ($GLOBALS['TL_LANG']['MSC']['deleteConfirm'] ?? 'Delete?') . '\'))return false;Backend.getScrollOffset()"',
             ],
+            'workflow' => [
+                'label' => &$GLOBALS['TL_LANG']['tl_co_door_log']['workflow'],
+                'href' => '',
+                'icon' => 'history.svg',
+            ],
         ],
     ],
     'palettes' => [
@@ -67,8 +71,9 @@ $GLOBALS['TL_DCA']['tl_co_door_log'] = [
             'sql' => "int(10) unsigned NOT NULL default 0",
         ],
         'correlationId' => [
-            'label' => &$GLOBALS['TL_LANG']['tl_co_door_job']['correlationId'],
+            'label' => &$GLOBALS['TL_LANG']['tl_co_door_log']['correlationId'],
             'search' => true,
+            'filter' => true,
             'inputType' => 'text',
             'eval' => ['readonly' => true, 'tl_class' => 'w50'],
             'sql' => "varchar(36) NOT NULL default ''",
@@ -77,13 +82,8 @@ $GLOBALS['TL_DCA']['tl_co_door_log'] = [
             'label' => &$GLOBALS['TL_LANG']['tl_co_door_log']['memberId'],
             'filter' => true,
             'search' => true,
-            'inputType' => 'select',
-            'options_callback' => [DoorLogCallback::class, 'getMemberOptions'],
-            'eval' => [
-                'chosen' => true,
-                'includeBlankOption' => true,
-                'tl_class' => 'w50',
-            ],
+            'inputType' => 'text',
+            'eval' => ['readonly' => true, 'tl_class' => 'w50'],
             'sql' => "int(10) unsigned NOT NULL default 0",
         ],
         'area' => [
@@ -99,7 +99,7 @@ $GLOBALS['TL_DCA']['tl_co_door_log'] = [
             'label' => &$GLOBALS['TL_LANG']['tl_co_door_log']['action'],
             'filter' => true,
             'inputType' => 'select',
-            'options' => ['door_open', 'request_access'],
+            'options' => ['door_open', 'door_dispatch', 'door_confirm', 'request_access'],
             'reference' => &$GLOBALS['TL_LANG']['tl_co_door_log']['actions'],
             'eval' => ['includeBlankOption' => true, 'chosen' => true, 'tl_class' => 'w50'],
             'sql' => "varchar(64) NOT NULL default ''",
@@ -108,7 +108,19 @@ $GLOBALS['TL_DCA']['tl_co_door_log'] = [
             'label' => &$GLOBALS['TL_LANG']['tl_co_door_log']['result'],
             'filter' => true,
             'inputType' => 'select',
-            'options' => ['attempt', 'granted', 'forbidden', 'unknown_area', 'unauthenticated', 'rate_limited', 'error'],
+            'options' => [
+                'attempt',
+                'granted',
+                'forbidden',
+                'unknown_area',
+                'unauthenticated',
+                'rate_limited',
+                'dispatched',
+                'confirmed',
+                'failed',
+                'timeout',
+                'error',
+            ],
             'reference' => &$GLOBALS['TL_LANG']['tl_co_door_log']['results'],
             'eval' => ['includeBlankOption' => true, 'chosen' => true, 'tl_class' => 'w50'],
             'sql' => "varchar(32) NOT NULL default ''",

@@ -28,7 +28,7 @@ final class DeviceController extends AbstractController
 
         $user = $this->getUser();
         if (!$user instanceof DeviceApiUser) {
-            $this->logging->warning('device.poll.unauthorized', [
+            $this->logging->warning('door_dispatch.unauthorized', [
                 'ip' => $request->getClientIp(),
             ]);
 
@@ -57,11 +57,16 @@ final class DeviceController extends AbstractController
             ];
         }
 
-        $this->logging->info('device.poll.result', [
+        $this->logging->info('door_dispatch.poll_result', [
             'deviceId' => $deviceId,
             'areas' => $areas,
             'limit' => $limit,
             'jobsReturned' => \count($jobs),
+            'jobIds' => array_map(static fn (array $job): int => (int) $job['jobId'], $jobs),
+            'correlationIds' => array_values(array_filter(array_map(
+                static fn (array $job): string => (string) $job['correlationId'],
+                $jobs,
+            ))),
         ]);
 
         $now = time();
@@ -80,7 +85,7 @@ final class DeviceController extends AbstractController
 
         $user = $this->getUser();
         if (!$user instanceof DeviceApiUser) {
-            $this->logging->warning('device.confirm.unauthorized', [
+            $this->logging->warning('door_confirm.unauthorized', [
                 'ip' => $request->getClientIp(),
             ]);
 
@@ -94,21 +99,32 @@ final class DeviceController extends AbstractController
         $nonce = (string) ($payload['nonce'] ?? '');
         $ok = (bool) ($payload['ok'] ?? false);
         $meta = \is_array($payload['meta'] ?? null) ? $payload['meta'] : [];
+        $cid = (string) ($payload['correlationId'] ?? ($meta['correlationId'] ?? ''));
 
         if ($jobId <= 0 || '' === $nonce) {
-            $this->logging->warning('device.confirm.bad_request', [
+            $this->logging->warning('door_confirm.bad_request', [
                 'deviceId' => $deviceId,
                 'jobId' => $jobId,
+                'cid' => $cid,
             ]);
 
             return new JsonResponse(['error' => 'bad_request'], 400);
         }
 
-        $result = $this->jobs->confirmJobDetailed($deviceId, $jobId, $nonce, $ok, $meta);
-
-        $this->logging->info('device.confirm.result', [
+        $this->logging->info('door_confirm.request_received', [
             'deviceId' => $deviceId,
             'jobId' => $jobId,
+            'cid' => $cid,
+            'ok' => $ok,
+        ]);
+
+        $result = $this->jobs->confirmJobDetailed($deviceId, $jobId, $nonce, $ok, $meta);
+
+        $level = (bool) $result['accepted'] ? 'info' : 'warning';
+        $this->logging->{$level}('door_confirm.result', [
+            'deviceId' => $deviceId,
+            'jobId' => $jobId,
+            'cid' => $cid,
             'accepted' => (bool) $result['accepted'],
             'httpStatus' => (int) $result['httpStatus'],
             'status' => $result['status'] ?? null,

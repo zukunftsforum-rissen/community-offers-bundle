@@ -385,7 +385,7 @@ final class DoorJobService
                             'correlationId' => $jobCid,
                         ];
 
-                        $this->logging->info('door_job.dispatched', [
+                        $this->logging->info('door_dispatch.dispatched', [
                             'cid' => $jobCid,
                             'jobId' => (int) $row2['id'],
                             'deviceId' => $deviceId,
@@ -393,9 +393,9 @@ final class DoorJobService
                         ]);
 
                         $this->audit->audit(
-                            action: 'door_open',
+                            action: 'door_dispatch',
                             area: (string) $row2['area'],
-                            result: 'attempt',
+                            result: 'dispatched',
                             message: 'Door job dispatched to device',
                             context: ['jobId' => (int) $row2['id'], 'deviceId' => $deviceId],
                             correlationId: $jobCid,
@@ -460,6 +460,24 @@ final class DoorJobService
         $memberId = (int) ($job['requestedByMemberId'] ?? 0);
         $cid = (string) ($job['correlationId'] ?? '');
 
+        $this->logging->info('door_confirm.attempt', [
+            'cid' => $cid,
+            'jobId' => $jobId,
+            'deviceId' => $deviceId,
+            'area' => $area,
+            'ok' => $ok,
+        ]);
+
+        $this->audit->audit(
+            action: 'door_confirm',
+            area: $area,
+            result: 'attempt',
+            message: 'Device confirm received',
+            context: ['jobId' => $jobId, 'deviceId' => $deviceId, 'ok' => $ok],
+            correlationId: $cid,
+            memberId: $memberId,
+        );
+
         if (\in_array($status, ['executed', 'failed', 'expired'], true)) {
             if ($jobDevice === $deviceId && '' !== $jobNonce && hash_equals($jobNonce, $nonce)) {
                 $this->logging->info('door_job.confirm_idempotent', [
@@ -512,9 +530,9 @@ final class DoorJobService
             ]);
 
             $this->audit->audit(
-                action: 'door_open',
+                action: 'door_confirm',
                 area: $area,
-                result: 'error',
+                result: 'forbidden',
                 message: 'Door confirm rejected due to wrong nonce',
                 context: ['jobId' => $jobId, 'deviceId' => $deviceId],
                 correlationId: $cid,
@@ -546,6 +564,16 @@ final class DoorJobService
                      resultCode='TIMEOUT', resultMessage='Confirm timeout'
                  WHERE id=:id AND status='dispatched'",
                 ['id' => $jobId],
+            );
+
+            $this->audit->audit(
+                action: 'door_confirm',
+                area: $area,
+                result: 'timeout',
+                message: 'Confirm timeout',
+                context: ['jobId' => $jobId, 'deviceId' => $deviceId],
+                correlationId: $cid,
+                memberId: $memberId,
             );
 
             $this->logging->warning('door_job.confirm_timeout', [
@@ -619,14 +647,27 @@ final class DoorJobService
         ]);
 
         $this->audit->audit(
-            action: 'door_open',
+            action: 'door_confirm',
             area: $area,
-            result: $ok ? 'granted' : 'error',
+            result: $ok ? 'confirmed' : 'failed',
             message: $ok ? 'Door execution confirmed' : 'Door execution failed',
-            context: ['jobId' => $jobId, 'deviceId' => $deviceId, 'status' => $newStatus, 'meta' => $meta],
+            context: [
+                'jobId' => $jobId,
+                'deviceId' => $deviceId,
+                'status' => $newStatus,
+                'meta' => $meta,
+            ],
             correlationId: $cid,
             memberId: $memberId,
         );
+
+        $this->logging->info('door_confirm.confirmed', [
+            'cid' => $cid,
+            'jobId' => $jobId,
+            'deviceId' => $deviceId,
+            'status' => $newStatus,
+            'ok' => $ok,
+        ]);
 
         return ['accepted' => true, 'httpStatus' => 200, 'status' => $newStatus];
     }

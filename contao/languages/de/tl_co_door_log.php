@@ -2,16 +2,17 @@
 
 $GLOBALS['TL_LANG']['tl_co_door_log']['log_legend'] = 'Protokoll';
 
-$GLOBALS['TL_LANG']['tl_co_door_log']['tstamp'] = ['Zeit', 'Zeitpunkt des Vorgangs'];
-$GLOBALS['TL_LANG']['tl_co_door_log']['memberId'] = ['Mitglied', 'ID des Mitglieds'];
-$GLOBALS['TL_LANG']['tl_co_door_log']['area'] = ['Bereich', 'Tür/Bereich'];
-$GLOBALS['TL_LANG']['tl_co_door_log']['action'] = ['Aktion', 'z. B. door_open'];
-$GLOBALS['TL_LANG']['tl_co_door_log']['result'] = ['Ergebnis', 'z. B. granted/forbidden/rate_limited/error'];
-$GLOBALS['TL_LANG']['tl_co_door_log']['ip'] = ['IP', 'Client-IP'];
+$GLOBALS['TL_LANG']['tl_co_door_log']['tstamp']    = ['Zeit', 'Zeitpunkt des Vorgangs'];
+$GLOBALS['TL_LANG']['tl_co_door_log']['memberId']  = ['Mitglied', 'ID des Mitglieds'];
+$GLOBALS['TL_LANG']['tl_co_door_log']['area']      = ['Bereich', 'Tür/Bereich'];
+$GLOBALS['TL_LANG']['tl_co_door_log']['action']    = ['Aktion', 'z. B. door_open'];
+$GLOBALS['TL_LANG']['tl_co_door_log']['result']    = ['Ergebnis', 'z. B. granted/forbidden/rate_limited/error'];
+$GLOBALS['TL_LANG']['tl_co_door_log']['ip']        = ['IP', 'Client-IP'];
 $GLOBALS['TL_LANG']['tl_co_door_log']['userAgent'] = ['User-Agent', 'Browser/Client'];
-$GLOBALS['TL_LANG']['tl_co_door_log']['message'] = ['Message', 'Kurzinfo'];
-$GLOBALS['TL_LANG']['tl_co_door_log']['context'] = ['Context', 'Zusätzliche Daten (JSON)'];
-
+$GLOBALS['TL_LANG']['tl_co_door_log']['message']   = ['Message', 'Kurzinfo'];
+$GLOBALS['TL_LANG']['tl_co_door_log']['context']   = ['Context', 'Zusätzliche Daten (JSON)'];
+$GLOBALS['TL_LANG']['tl_co_door_log']['workflow']  = ['Workflow', 'Workflow zu dieser Correlation-ID anzeigen'];
+$GLOBALS['TL_LANG']['tl_co_door_log']['correlationId'] = ['Correlation-ID', 'Eindeutige ID des kompletten Workflows'];
 // ===== Optionen =====
 
 $GLOBALS['TL_LANG']['tl_co_door_log']['areas'] = [
@@ -22,6 +23,8 @@ $GLOBALS['TL_LANG']['tl_co_door_log']['areas'] = [
 ];
 
 $GLOBALS['TL_LANG']['tl_co_door_log']['actions'] = [
+    'door_confirm'   => 'Bestätigen',
+    'door_dispatch'  => 'Ausliefern',
     'door_open'      => 'Tür öffnen',
     'request_access' => 'Zugang beantragen',
 ];
@@ -34,4 +37,8 @@ $GLOBALS['TL_LANG']['tl_co_door_log']['results'] = [
     'unauthenticated'  => 'Nicht angemeldet',
     'rate_limited'     => 'Rate-Limit',
     'error'            => 'Fehler',
+    'dispatched'       => 'Ausgeliefert',
+    'confirmed'        => 'Bestätigt',
+    'failed'           => 'Fehlgeschlagen',
+    'timeout'          => 'Zeitüberschreitung',
 ];

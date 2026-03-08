@@ -7,9 +7,16 @@ namespace ZukunftsforumRissen\CommunityOffersBundle\DataContainer;
 use Contao\Config;
 use Contao\Database;
 use Contao\Date;
+use Contao\StringUtil;
+use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 
 final class DoorLogCallback
 {
+    public function __construct(
+        private readonly ParameterBagInterface $params,
+    ) {
+    }
+
     /**
      * @param array<string, mixed> $row
      */
@@ -112,8 +119,8 @@ final class DoorLogCallback
             $id = (int) ($row['id'] ?? 0);
             $name = trim((string) ($row['firstname'] ?? '').' '.(string) ($row['lastname'] ?? ''));
             $email = (string) ($row['email'] ?? '');
-            $label = '' !== $name ? $name : '#'.$id;
 
+            $label = '' !== $name ? $name : '#'.$id;
             if ('' !== $email) {
                 $label .= ' <'.$email.'>';
             }
@@ -122,5 +129,30 @@ final class DoorLogCallback
         }
 
         return $options;
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     */
+    public function workflowButton(array $row, string|null $href = null, string|null $label = null, string|null $title = null, string|null $icon = null, string|null $attributes = null): string
+    {
+        $cid = (string) ($row['correlationId'] ?? '');
+
+        if ('' === $cid) {
+            return '';
+        }
+
+        $backendPrefix = rtrim((string) $this->params->get('contao.backend.route_prefix'), '/');
+        $url = $backendPrefix.'/door-workflow?cid='.rawurlencode($cid);
+
+        $icon = $icon ?: 'show.svg';
+
+        return \sprintf(
+            '<a href="%s" title="%s"%s><img src="system/themes/flexible/icons/%s" width="16" height="16" alt=""></a>',
+            StringUtil::specialchars($url),
+            StringUtil::specialchars($title ?? 'Workflow anzeigen'),
+            $attributes ?? '',
+            StringUtil::specialchars($icon),
+        );
     }
 }

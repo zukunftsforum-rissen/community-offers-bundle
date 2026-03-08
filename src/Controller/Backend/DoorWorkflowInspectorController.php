@@ -59,6 +59,15 @@ final class DoorWorkflowInspectorController extends AbstractController
             $warnings = $this->timelineService->analyzeWorkflow($timeline);
         }
 
+        $diagramUrl = null;
+
+        if ('' !== $cid) {
+            $timeline = $this->timelineService->getTimeline($cid);
+            $plantUml = $this->diagramService->buildPlantUml($cid, $timeline);
+            $durationMs = $this->timelineService->getDurationMs($cid);
+            $diagramUrl = $this->diagramService->buildServerSvgUrl($plantUml);
+        }
+
         return new Response($this->twig->render(
             'be_door_workflow_inspector.html.twig',
             [
@@ -67,6 +76,7 @@ final class DoorWorkflowInspectorController extends AbstractController
                 'timeline' => $timeline,
                 'plantUml' => $plantUml,
                 'durationMs' => $durationMs,
+                'diagramUrl' => $diagramUrl,
                 'warnings' => $warnings,
             ],
         ));
@@ -83,7 +93,8 @@ final class DoorWorkflowInspectorController extends AbstractController
 
         $timeline = $this->timelineService->getTimeline($cid);
         $plantUml = $this->diagramService->buildPlantUml($cid, $timeline);
-        $svg = $this->diagramService->renderSvg($plantUml);
+        $diagramUrl = $this->diagramService->buildServerSvgUrl($plantUml);
+        $svg = file_get_contents($diagramUrl);
 
         return new Response(
             $svg,

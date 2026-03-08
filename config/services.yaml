@@ -11,6 +11,10 @@ parameters:
         depot: 3
         swap-house: 4
 
+when@test:
+    imports:
+        - { resource: services_test.yaml }
+
 services:
     _defaults:
         autowire: true
@@ -41,23 +45,23 @@ services:
     ZukunftsforumRissen\CommunityOffersBundle\DataContainer\DoorLogCallback:
         tags:
             - {
-                name: contao.callback,
-                table: tl_co_door_log,
-                target: list.label.label_callback,
-                method: labelCallback,
-            }
+                  name: contao.callback,
+                  table: tl_co_door_log,
+                  target: list.label.label_callback,
+                  method: labelCallback,
+              }
             - {
-                name: contao.callback,
-                table: tl_co_door_log,
-                target: fields.memberId.options,
-                method: getMemberOptions,
-            }
+                  name: contao.callback,
+                  table: tl_co_door_log,
+                  target: fields.memberId.options,
+                  method: getMemberOptions,
+              }
             - {
-                name: contao.callback,
-                table: tl_co_door_log,
-                target: list.operations.workflow.button,
-                method: workflowButton,
-            }
+                  name: contao.callback,
+                  table: tl_co_door_log,
+                  target: list.operations.workflow.button,
+                  method: workflowButton,
+              }
 
     ZukunftsforumRissen\CommunityOffersBundle\Service\ApprovalMailer:
         arguments:

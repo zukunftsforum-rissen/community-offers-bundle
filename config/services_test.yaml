@@ -1,0 +1,12 @@
+services:
+  test.ZukunftsforumRissen\CommunityOffersBundle\Service\DoorJobService:
+    alias: ZukunftsforumRissen\CommunityOffersBundle\Service\DoorJobService
+    public: true
+
+  test.ZukunftsforumRissen\CommunityOffersBundle\Service\DoorWorkflowTimelineService:
+    alias: ZukunftsforumRissen\CommunityOffersBundle\Service\DoorWorkflowTimelineService
+    public: true
+
+  test.ZukunftsforumRissen\CommunityOffersBundle\Service\DoorWorkflowDiagramService:
+    alias: ZukunftsforumRissen\CommunityOffersBundle\Service\DoorWorkflowDiagramService
+    public: true

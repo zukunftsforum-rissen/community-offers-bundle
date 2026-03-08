@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 namespace ZukunftsforumRissen\CommunityOffersBundle\Service;
 
-use Symfony\Component\Process\Exception\ProcessFailedException;
-use Symfony\Component\Process\Process;
-
 final class DoorWorkflowDiagramService
 {
     /**
@@ -62,16 +59,79 @@ final class DoorWorkflowDiagramService
         return implode("\n", $lines)."\n";
     }
 
-    public function renderSvg(string $plantUml): string
+    public function buildServerSvgUrl(string $plantUml, string $baseUrl = 'https://www.plantuml.com/plantuml/svg/'): string
     {
-        $process = new Process(['plantuml', '-tsvg', '-pipe']);
-        $process->setInput($plantUml);
-        $process->run();
+        return rtrim($baseUrl, '/').'/'.$this->encodeForPlantUmlServer($plantUml);
+    }
 
-        if (!$process->isSuccessful()) {
-            throw new ProcessFailedException($process);
+    private function encodeForPlantUmlServer(string $text): string
+    {
+        $compressed = gzdeflate($text, 9);
+
+        if (false === $compressed) {
+            throw new \RuntimeException('Could not compress PlantUML text.');
         }
 
-        return $process->getOutput();
+        return $this->encode64($compressed);
+    }
+
+    private function encode64(string $data): string
+    {
+        $res = '';
+        $length = \strlen($data);
+
+        for ($i = 0; $i < $length; $i += 3) {
+            $b1 = \ord($data[$i]);
+            $b2 = $i + 1 < $length ? \ord($data[$i + 1]) : 0;
+            $b3 = $i + 2 < $length ? \ord($data[$i + 2]) : 0;
+
+            $res .= $this->append3bytes($b1, $b2, $b3);
+        }
+
+        return $res;
+    }
+
+    private function append3bytes(int $b1, int $b2, int $b3): string
+    {
+        $c1 = $b1 >> 2;
+        $c2 = (($b1 & 0x3) << 4) | ($b2 >> 4);
+        $c3 = (($b2 & 0xF) << 2) | ($b3 >> 6);
+        $c4 = $b3 & 0x3F;
+
+        $r = '';
+        $r .= $this->encode6bit($c1 & 0x3F);
+        $r .= $this->encode6bit($c2 & 0x3F);
+        $r .= $this->encode6bit($c3 & 0x3F);
+        $r .= $this->encode6bit($c4 & 0x3F);
+
+        return $r;
+    }
+
+    private function encode6bit(int $b): string
+    {
+        if ($b < 10) {
+            return \chr(48 + $b);
+        }
+
+        $b -= 10;
+        if ($b < 26) {
+            return \chr(65 + $b);
+        }
+
+        $b -= 26;
+        if ($b < 26) {
+            return \chr(97 + $b);
+        }
+
+        $b -= 26;
+        if (0 === $b) {
+            return '-';
+        }
+
+        if (1 === $b) {
+            return '_';
+        }
+
+        return '?';
     }
 }

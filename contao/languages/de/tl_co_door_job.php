@@ -29,8 +29,8 @@ $GLOBALS['TL_LANG']['tl_co_door_job']['areas'] = [
 
 $GLOBALS['TL_LANG']['tl_co_door_job']['statuses'] = [
     'pending' => 'Wartend',
-    'dispatched' => 'Ausgeliefert',
-    'executed' => 'Ausgeführt',
+    'dispatched' => 'Vom Gerät abgeholt',
+    'executed' => 'Tür entriegelt',
     'failed' => 'Fehlgeschlagen',
     'expired' => 'Abgelaufen',
 ];

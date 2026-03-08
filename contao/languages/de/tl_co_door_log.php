@@ -23,22 +23,22 @@ $GLOBALS['TL_LANG']['tl_co_door_log']['areas'] = [
 ];
 
 $GLOBALS['TL_LANG']['tl_co_door_log']['actions'] = [
-    'door_confirm'   => 'Bestätigen',
-    'door_dispatch'  => 'Ausliefern',
-    'door_open'      => 'Tür öffnen',
+    'door_confirm'   => 'Türstatus melden',
+    'door_dispatch'  => 'Job abholen',
+    'door_open'      => 'Türöffnung anfragen',
     'request_access' => 'Zugang beantragen',
 ];
 
 $GLOBALS['TL_LANG']['tl_co_door_log']['results'] = [
-    'attempt'          => 'Versuch',
-    'granted'          => 'Gewährt',
+    'attempt'          => 'Öffnung angefragt',
+    'granted'          => 'Auftrag erstellt',
     'forbidden'        => 'Kein Zugriff',
     'unknown_area'     => 'Unbekannter Bereich',
     'unauthenticated'  => 'Nicht angemeldet',
-    'rate_limited'     => 'Rate-Limit',
+    'rate_limited'     => 'Zu viele Anfragen',
     'error'            => 'Fehler',
-    'dispatched'       => 'Ausgeliefert',
-    'confirmed'        => 'Bestätigt',
+    'dispatched'       => 'Vom Gerät abgeholt',
+    'confirmed'        => 'Entriegelung bestätigt',
     'failed'           => 'Fehlgeschlagen',
     'timeout'          => 'Zeitüberschreitung',
 ];

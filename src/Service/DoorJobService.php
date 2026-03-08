@@ -20,8 +20,7 @@ final class DoorJobService
         private readonly WorkflowInterface $doorJobStateMachine,
         private readonly LoggingService $logging,
         private readonly DoorAuditLogger $audit,
-    ) {
-    }
+    ) {}
 
     public function getConfirmWindowSeconds(): int
     {
@@ -194,7 +193,7 @@ final class DoorJobService
         if ('' === $correlationId) {
             $correlationId = uuid_create(UUID_TYPE_RANDOM);
         }
-
+        
         $this->db->insert('tl_co_door_job', [
             'tstamp' => $now,
             'createdAt' => $now,
@@ -336,7 +335,7 @@ final class DoorJobService
 
                 $dtNow = (new \DateTimeImmutable())->setTimestamp($now);
                 $job->setDispatchedAt($dtNow);
-                $job->setConfirmExpiresAt($dtNow->modify('+'.self::CONFIRM_WINDOW_SECONDS.' seconds'));
+                $job->setConfirmExpiresAt($dtNow->modify('+' . self::CONFIRM_WINDOW_SECONDS . ' seconds'));
 
                 if (!$this->doorJobStateMachine->can($job, 'dispatch')) {
                     continue;
@@ -551,7 +550,7 @@ final class DoorJobService
                 '',
                 $status,
                 (new \DateTimeImmutable())->setTimestamp($dispatchedAt),
-                (new \DateTimeImmutable())->setTimestamp($dispatchedAt)->modify('+'.self::CONFIRM_WINDOW_SECONDS.' seconds'),
+                (new \DateTimeImmutable())->setTimestamp($dispatchedAt)->modify('+' . self::CONFIRM_WINDOW_SECONDS . ' seconds'),
             );
 
             if ($this->doorJobStateMachine->can($doorJob, 'expire_dispatched')) {
@@ -590,7 +589,7 @@ final class DoorJobService
             '',
             $status,
             (new \DateTimeImmutable())->setTimestamp($dispatchedAt),
-            (new \DateTimeImmutable())->setTimestamp($dispatchedAt)->modify('+'.self::CONFIRM_WINDOW_SECONDS.' seconds'),
+            (new \DateTimeImmutable())->setTimestamp($dispatchedAt)->modify('+' . self::CONFIRM_WINDOW_SECONDS . ' seconds'),
         );
 
         $transition = $ok ? 'execute' : 'fail';
@@ -613,8 +612,8 @@ final class DoorJobService
         $resultMessage = $ok ? 'Door open executed' : 'Door open failed';
 
         if ($meta) {
-            $suffix = ' | '.substr((string) (json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: ''), 0, 200);
-            $resultMessage = substr($resultMessage.$suffix, 0, 255);
+            $suffix = ' | ' . substr((string) (json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: ''), 0, 200);
+            $resultMessage = substr($resultMessage . $suffix, 0, 255);
         }
 
         $this->db->executeStatement(
@@ -637,14 +636,6 @@ final class DoorJobService
                 'nonce' => $nonce,
             ],
         );
-
-        $this->logging->info('door_job.confirmed', [
-            'cid' => $cid,
-            'jobId' => $jobId,
-            'deviceId' => $deviceId,
-            'status' => $newStatus,
-            'ok' => $ok,
-        ]);
 
         $this->audit->audit(
             action: 'door_confirm',

@@ -60,6 +60,13 @@ $GLOBALS['TL_DCA']['tl_co_door_job'] = [
             'sql' => "int(10) unsigned NOT NULL default 0",
         ],
 
+        'createdAtMs' => [
+            'label' => &$GLOBALS['TL_LANG']['tl_co_door_job']['createdAtMs'],
+            'inputType' => 'text',
+            'eval' => ['readonly' => true, 'tl_class' => 'w50'],
+            'sql' => "bigint(20) unsigned NOT NULL default 0",
+        ],
+
         'expiresAt' => [
             'label' => &$GLOBALS['TL_LANG']['tl_co_door_job']['expiresAt'],
             'inputType' => 'text',
@@ -120,11 +127,23 @@ $GLOBALS['TL_DCA']['tl_co_door_job'] = [
             'sql' => "int(10) unsigned NOT NULL default 0",
         ],
 
+        'dispatchedAtMs' => [
+            'inputType' => 'text',
+            'eval' => ['readonly' => true, 'tl_class' => 'w50'],
+            'sql' => "bigint(20) unsigned NOT NULL default 0",
+        ],
+
         'executedAt' => [
             'label' => &$GLOBALS['TL_LANG']['tl_co_door_job']['executedAt'],
             'inputType' => 'text',
             'eval' => ['readonly' => true, 'tl_class' => 'w50'],
             'sql' => "int(10) unsigned NOT NULL default 0",
+        ],
+
+        'executedAtMs' => [
+            'inputType' => 'text',
+            'eval' => ['readonly' => true, 'tl_class' => 'w50'],
+            'sql' => "bigint(20) unsigned NOT NULL default 0",
         ],
 
         'nonce' => [

@@ -13,12 +13,14 @@ use Symfony\Component\Security\Http\Authenticator\AbstractAuthenticator;
 use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
 use Symfony\Component\Security\Http\Authenticator\Passport\SelfValidatingPassport;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\DeviceAuthService;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService;
 
 final class DeviceTokenAuthenticator extends AbstractAuthenticator
 {
-    public function __construct(private readonly DeviceAuthService $auth)
-    {
-    }
+    public function __construct(
+        private readonly DeviceAuthService $auth,
+        private readonly LoggingService $logging,
+    ) {}
 
     public function supports(Request $request): bool
     {
@@ -28,17 +30,41 @@ final class DeviceTokenAuthenticator extends AbstractAuthenticator
     public function authenticate(Request $request): SelfValidatingPassport
     {
         $token = $this->extractToken($request);
+
+        $this->logging->info('device_auth.authenticate_start', [
+            'path' => $request->getPathInfo(),
+            'hasAuthorizationHeader' => null !== $request->headers->get('Authorization'),
+            'hasXDeviceTokenHeader' => null !== $request->headers->get('X-Device-Token'),
+            'tokenPresent' => null !== $token && '' !== $token,
+            'tokenPrefix' => $token ? substr($token, 0, 8) : null,
+            'tokenHashPrefix' => $token ? substr(hash('sha256', $token), 0, 12) : null,
+        ]);
+
         $ctx = $this->auth->authenticate($token);
 
         if (!$ctx) {
+            $this->logging->warning('device_auth.authenticate_failed', [
+                'path' => $request->getPathInfo(),
+                'tokenPresent' => null !== $token && '' !== $token,
+                'tokenPrefix' => $token ? substr($token, 0, 8) : null,
+                'tokenHashPrefix' => $token ? substr(hash('sha256', $token), 0, 12) : null,
+            ]);
+
             throw new CustomUserMessageAuthenticationException('Invalid device token');
         }
 
         $deviceId = $ctx['deviceId'];
         $areas = $ctx['areas'];
 
+        $this->logging->info('device_auth.authenticate_success', [
+            'deviceId' => $deviceId,
+            'areas' => $areas,
+            'tokenHashPrefix' => $token ? substr(hash('sha256', $token), 0, 12) : null,
+        ]);
+
         return new SelfValidatingPassport(
-            new UserBadge($deviceId, static fn () => new DeviceApiUser($deviceId, $areas)));
+            new UserBadge($deviceId, static fn() => new DeviceApiUser($deviceId, $areas))
+        );
     }
 
     public function onAuthenticationSuccess(Request $request, TokenInterface $token, string $firewallName): JsonResponse|null

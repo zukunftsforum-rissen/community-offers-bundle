@@ -6,30 +6,28 @@ namespace ZukunftsforumRissen\CommunityOffersBundle\Controller\Backend;
 
 use Contao\BackendUser;
 use Contao\CoreBundle\Exception\AccessDeniedException;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Contao\CoreBundle\Controller\Backend\AbstractBackendController;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
-use Twig\Environment;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorWorkflowDiagramService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorWorkflowTimelineService;
 
 #[Route(
     path: '%contao.backend.route_prefix%/door-workflow',
+    name: 'community_offers.door_workflow_inspector',
     defaults: ['_scope' => 'backend'],
 )]
 #[IsGranted('ROLE_USER')]
-final class DoorWorkflowInspectorController extends AbstractController
+final class DoorWorkflowInspectorController extends AbstractBackendController
 {
     public function __construct(
         private readonly DoorWorkflowTimelineService $timelineService,
         private readonly DoorWorkflowDiagramService $diagramService,
-        private readonly Environment $twig,
         private readonly Security $security,
-    ) {
-    }
+    ) {}
 
     #[Route('', name: 'co_be_door_workflow_inspector', methods: ['GET'])]
     public function __invoke(Request $request): Response
@@ -51,6 +49,7 @@ final class DoorWorkflowInspectorController extends AbstractController
             $timeline = $this->timelineService->getTimeline($cid);
             $plantUml = $this->diagramService->buildPlantUml($cid, $timeline);
             $durationMs = $this->timelineService->getDurationMs($cid);
+            $diagramUrl = $this->diagramService->buildServerSvgUrl($plantUml);
         }
 
         $warnings = [];
@@ -61,14 +60,7 @@ final class DoorWorkflowInspectorController extends AbstractController
 
         $diagramUrl = null;
 
-        if ('' !== $cid) {
-            $timeline = $this->timelineService->getTimeline($cid);
-            $plantUml = $this->diagramService->buildPlantUml($cid, $timeline);
-            $durationMs = $this->timelineService->getDurationMs($cid);
-            $diagramUrl = $this->diagramService->buildServerSvgUrl($plantUml);
-        }
-
-        return new Response($this->twig->render(
+        return $this->render(
             'be_door_workflow_inspector.html.twig',
             [
                 'cid' => $cid,
@@ -79,7 +71,7 @@ final class DoorWorkflowInspectorController extends AbstractController
                 'diagramUrl' => $diagramUrl,
                 'warnings' => $warnings,
             ],
-        ));
+        );
     }
 
     #[Route('/diagram/{cid}.svg', name: 'co_be_door_workflow_diagram', methods: ['GET'])]

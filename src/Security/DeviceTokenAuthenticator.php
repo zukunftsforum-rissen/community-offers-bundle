@@ -20,7 +20,8 @@ final class DeviceTokenAuthenticator extends AbstractAuthenticator
     public function __construct(
         private readonly DeviceAuthService $auth,
         private readonly LoggingService $logging,
-    ) {}
+    ) {
+    }
 
     public function supports(Request $request): bool
     {
@@ -63,7 +64,7 @@ final class DeviceTokenAuthenticator extends AbstractAuthenticator
         ]);
 
         return new SelfValidatingPassport(
-            new UserBadge($deviceId, static fn() => new DeviceApiUser($deviceId, $areas))
+            new UserBadge($deviceId, static fn () => new DeviceApiUser($deviceId, $areas)),
         );
     }
 

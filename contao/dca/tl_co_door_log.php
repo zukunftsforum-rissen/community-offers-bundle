@@ -50,7 +50,8 @@ $GLOBALS['TL_DCA']['tl_co_door_log'] = [
             'workflow' => [
                 'label' => &$GLOBALS['TL_LANG']['tl_co_door_log']['workflow'],
                 'href' => '',
-                'icon' => 'history.svg',
+                'icon' => 'bundles/communityoffers/icons/workflow-grey.svg',
+                'button_callback' => [\ZukunftsforumRissen\CommunityOffersBundle\DataContainer\DoorLogCallback::class, 'workflowButton'],
             ],
         ],
     ],

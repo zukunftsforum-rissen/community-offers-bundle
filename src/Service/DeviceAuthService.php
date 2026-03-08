@@ -12,8 +12,8 @@ final class DeviceAuthService
     public function __construct(
         private readonly Connection $db,
         private readonly LoggingService $logging,
-    ) {}
-
+    ) {
+    }
 
     /**
      * @return array{deviceId:string, areas:?array<string>}|null
@@ -38,7 +38,7 @@ final class DeviceAuthService
                     FROM tl_co_device
                     WHERE apiTokenHash = :hash
                     LIMIT 1',
-            ['hash' => $hash]
+            ['hash' => $hash],
         );
 
         if (!$device) {
@@ -49,7 +49,7 @@ final class DeviceAuthService
             return null;
         }
 
-        if ((string) ($device['enabled'] ?? '') !== '1') {
+        if ('1' !== (string) ($device['enabled'] ?? '')) {
             $this->logging->warning('device_auth.lookup_disabled', [
                 'deviceId' => (string) ($device['deviceId'] ?? ''),
                 'enabled' => (string) ($device['enabled'] ?? ''),

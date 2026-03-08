@@ -163,7 +163,9 @@ class DeviceTokenAuthenticatorTest extends TestCase
     public function testAuthenticateThrowsWhenXDeviceTokenContainsOnlyWhitespace(): void
     {
         $db = $this->createConnectionExpectingNoLookup();
-        $authenticator = new DeviceTokenAuthenticator(new DeviceAuthService($db));
+        $logging = $this->createMock(\ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService::class);
+        $authService = new DeviceAuthService($db, $logging);
+        $authenticator = new DeviceTokenAuthenticator($authService, $logging);
 
         $request = Request::create('/api/device/poll', 'POST');
         $request->headers->set('X-Device-Token', '   ');
@@ -180,7 +182,9 @@ class DeviceTokenAuthenticatorTest extends TestCase
     public function testAuthenticateThrowsWhenTokenIsInvalid(): void
     {
         $db = $this->createConnectionExpectingNoLookup();
-        $authenticator = new DeviceTokenAuthenticator(new DeviceAuthService($db));
+        $logging = $this->createMock(\ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService::class);
+        $authService = new DeviceAuthService($db, $logging);
+        $authenticator = new DeviceTokenAuthenticator($authService, $logging);
 
         $this->expectException(CustomUserMessageAuthenticationException::class);
         $this->expectExceptionMessage('Invalid device token');
@@ -232,17 +236,23 @@ class DeviceTokenAuthenticatorTest extends TestCase
             ->method('fetchAssociative')
             ->with(
                 $this->stringContains('FROM tl_co_device'),
-                $this->callback(static fn (array $params): bool => isset($params['hash']) && hash('sha256', $rawToken) === $params['hash']),
+                $this->callback(static fn(array $params): bool => isset($params['hash']) && hash('sha256', $rawToken) === $params['hash']),
             )
             ->willReturn($row)
         ;
 
-        return new DeviceTokenAuthenticator(new DeviceAuthService($db));
+        $logging = $this->createMock(\ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService::class);
+        $authService = new DeviceAuthService($db, $logging);
+        $authenticator = new DeviceTokenAuthenticator($authService, $logging);
+        
+        return $authenticator;
     }
 
     private function createAuthenticatorWithStubConnection(): DeviceTokenAuthenticator
     {
-        return new DeviceTokenAuthenticator(new DeviceAuthService($this->createStub(Connection::class)));
+        $logging = $this->createMock(\ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService::class);
+        $authService = new DeviceAuthService($this->createStub(Connection::class), $logging);
+        return new DeviceTokenAuthenticator($authService, $logging);
     }
 
     private function createConnectionExpectingNoLookup(): Connection

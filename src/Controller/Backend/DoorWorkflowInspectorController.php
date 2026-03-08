@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace ZukunftsforumRissen\CommunityOffersBundle\Controller\Backend;
 
 use Contao\BackendUser;
-use Contao\CoreBundle\Exception\AccessDeniedException;
 use Contao\CoreBundle\Controller\Backend\AbstractBackendController;
+use Contao\CoreBundle\Exception\AccessDeniedException;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -27,7 +27,8 @@ final class DoorWorkflowInspectorController extends AbstractBackendController
         private readonly DoorWorkflowTimelineService $timelineService,
         private readonly DoorWorkflowDiagramService $diagramService,
         private readonly Security $security,
-    ) {}
+    ) {
+    }
 
     #[Route('', name: 'co_be_door_workflow_inspector', methods: ['GET'])]
     public function __invoke(Request $request): Response
@@ -60,18 +61,15 @@ final class DoorWorkflowInspectorController extends AbstractBackendController
 
         $diagramUrl = null;
 
-        return $this->render(
-            'be_door_workflow_inspector.html.twig',
-            [
-                'cid' => $cid,
-                'recent' => $recent,
-                'timeline' => $timeline,
-                'plantUml' => $plantUml,
-                'durationMs' => $durationMs,
-                'diagramUrl' => $diagramUrl,
-                'warnings' => $warnings,
-            ],
-        );
+        return $this->render('be_door_workflow_inspector.html.twig', [
+            'cid' => $cid,
+            'recent' => $recent,
+            'timeline' => $timeline,
+            'plantUml' => $plantUml,
+            'durationMs' => $durationMs,
+            'diagramUrl' => $diagramUrl,
+            'warnings' => $warnings,
+        ]);
     }
 
     #[Route('/diagram/{cid}.svg', name: 'co_be_door_workflow_diagram', methods: ['GET'])]

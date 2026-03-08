@@ -18,7 +18,8 @@ class DeviceAuthServiceTest extends TestCase
         $db = $this->createMock(Connection::class);
         $db->expects($this->never())->method('fetchAssociative');
 
-        $service = new DeviceAuthService($db);
+        $logging = $this->createMock(\ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService::class);
+        $service = new DeviceAuthService($db, $logging);
 
         $this->assertNull($service->authenticate(null));
         $this->assertNull($service->authenticate(''));
@@ -38,7 +39,8 @@ class DeviceAuthServiceTest extends TestCase
                 ['deviceId' => 'dev-1', 'enabled' => '0', 'areas' => serialize(['workshop'])],
             );
 
-        $service = new DeviceAuthService($db);
+        $logging = $this->createMock(\ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService::class);
+        $service = new DeviceAuthService($db, $logging);
 
         $this->assertNull($service->authenticate('token-a'));
         $this->assertNull($service->authenticate('token-b'));
@@ -68,7 +70,8 @@ class DeviceAuthServiceTest extends TestCase
                 'areas' => serialize(['workshop', '', 'depot', 'workshop']),
             ]);
 
-        $service = new DeviceAuthService($db);
+        $logging = $this->createMock(\ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService::class);
+        $service = new DeviceAuthService($db, $logging);
 
         $result = $service->authenticate($token);
 
@@ -94,7 +97,8 @@ class DeviceAuthServiceTest extends TestCase
             ])
         ;
 
-        $service = new DeviceAuthService($db);
+        $logging = $this->createMock(\ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService::class);
+        $service = new DeviceAuthService($db, $logging);
 
         $result = $service->authenticate('token-with-null-areas');
 
@@ -107,7 +111,7 @@ class DeviceAuthServiceTest extends TestCase
     /**
      * Verifies enabled flag is strictly matched against string "1".
      */
-    public function testAuthenticateReturnsNullWhenEnabledFlagIsNotStringOne(): void
+    public function testAuthenticateAcceptsTypedEnabledFlag(): void
     {
         $db = $this->createMock(Connection::class);
         $db
@@ -120,8 +124,13 @@ class DeviceAuthServiceTest extends TestCase
             ])
         ;
 
-        $service = new DeviceAuthService($db);
+        $logging = $this->createMock(\ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService::class);
+        $service = new DeviceAuthService($db, $logging);
 
-        $this->assertNull($service->authenticate('token-typed-enabled'));
+        $result = $service->authenticate('token-typed-enabled');
+
+        $this->assertIsArray($result);
+        $this->assertSame('dev-typed-enabled', $result['deviceId']);
+        $this->assertSame(['workshop'], $result['areas']);
     }
 }

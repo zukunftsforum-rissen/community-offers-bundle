@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace ZukunftsforumRissen\CommunityOffersBundle\DataContainer;
 
-use Contao\Backend;
 use Contao\Config;
 use Contao\Database;
 use Contao\Date;
@@ -14,7 +13,8 @@ final class DoorLogCallback
 {
     public function __construct(
         private readonly ParameterBagInterface $params,
-    ) {}
+    ) {
+    }
 
     /**
      * @param array<string, mixed> $row
@@ -35,7 +35,8 @@ final class DoorLogCallback
             if (!\array_key_exists($memberId, $memberCache)) {
                 $member = Database::getInstance()
                     ->prepare('SELECT firstname, lastname, email FROM tl_member WHERE id=?')
-                    ->execute($memberId);
+                    ->execute($memberId)
+                ;
 
                 if ($member->numRows > 0) {
                     /** @var array<string, mixed> $memberRow */
@@ -53,15 +54,15 @@ final class DoorLogCallback
 
             $memberData = $memberCache[$memberId];
             if (\is_array($memberData)) {
-                $name = trim(($memberData['firstname'] ?? '') . ' ' . ($memberData['lastname'] ?? ''));
+                $name = trim(($memberData['firstname'] ?? '').' '.($memberData['lastname'] ?? ''));
                 $email = (string) ($memberData['email'] ?? '');
 
-                $memberLabel = '' !== $name ? $name : '#' . $memberId;
+                $memberLabel = '' !== $name ? $name : '#'.$memberId;
                 if ('' !== $email) {
-                    $memberLabel .= ' <' . $email . '>';
+                    $memberLabel .= ' <'.$email.'>';
                 }
             } else {
-                $memberLabel = '#' . $memberId;
+                $memberLabel = '#'.$memberId;
             }
         }
 
@@ -89,7 +90,7 @@ final class DoorLogCallback
             $area,
             $action,
             $result,
-            '' !== $correlationId ? ' | CID ' . $correlationId : '',
+            '' !== $correlationId ? ' | CID '.$correlationId : '',
         ));
     }
 
@@ -107,19 +108,20 @@ final class DoorLogCallback
                 LEFT JOIN tl_member m ON m.id = l.memberId
                 WHERE l.memberId > 0
                 ORDER BY m.lastname, m.firstname
-            ');
+            ')
+        ;
 
         while ($result->next()) {
             /** @var array<string, mixed> $row */
             $row = $result->row();
 
             $id = (int) ($row['id'] ?? 0);
-            $name = trim((string) ($row['firstname'] ?? '') . ' ' . (string) ($row['lastname'] ?? ''));
+            $name = trim((string) ($row['firstname'] ?? '').' '.(string) ($row['lastname'] ?? ''));
             $email = (string) ($row['email'] ?? '');
 
-            $label = '' !== $name ? $name : '#' . $id;
+            $label = '' !== $name ? $name : '#'.$id;
             if ('' !== $email) {
-                $label .= ' <' . $email . '>';
+                $label .= ' <'.$email.'>';
             }
 
             $options[$id] = $label;
@@ -131,14 +133,14 @@ final class DoorLogCallback
     /**
      * @param array<string, mixed> $row
      */
-    public function workflowButton(array $row, ?string $href = null, string $label = '', string $title = '', string $icon = '', string $attributes = ''): string
+    public function workflowButton(array $row, string|null $href = null, string $label = '', string $title = '', string $icon = '', string $attributes = ''): string
     {
         $cid = (string) ($row['correlationId'] ?? '');
 
         if ('' === $cid) {
             return '<span title="Kein Workflow vorhanden">'
-                . '<img src="/bundles/communityoffers/icons/workflow-disabled.svg" alt="Kein Workflow" width="16" height="16">'
-                . '</span>';
+                .'<img src="/bundles/communityoffers/icons/workflow-disabled.svg" alt="Kein Workflow" width="16" height="16">'
+                .'</span>';
         }
 
         $result = (string) ($row['result'] ?? '');
@@ -151,9 +153,9 @@ final class DoorLogCallback
         };
 
         $backendPrefix = rtrim((string) $this->params->get('contao.backend.route_prefix'), '/');
-        $url = $backendPrefix . '/door-workflow?cid=' . rawurlencode($cid);
+        $url = $backendPrefix.'/door-workflow?cid='.rawurlencode($cid);
 
-        return sprintf(
+        return \sprintf(
             '<a href="%s" title="%s"%s><img src="%s" alt="%s" width="16" height="16"></a>',
             htmlspecialchars($url, ENT_QUOTES),
             htmlspecialchars($title ?: 'Workflow-Inspector öffnen', ENT_QUOTES),

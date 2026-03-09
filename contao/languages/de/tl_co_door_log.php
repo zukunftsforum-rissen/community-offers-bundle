@@ -13,6 +13,7 @@ $GLOBALS['TL_LANG']['tl_co_door_log']['message']   = ['Message', 'Kurzinfo'];
 $GLOBALS['TL_LANG']['tl_co_door_log']['context']   = ['Context', 'Zusätzliche Daten (JSON)'];
 $GLOBALS['TL_LANG']['tl_co_door_log']['workflow']  = ['Workflow', 'Workflow zu dieser Correlation-ID anzeigen'];
 $GLOBALS['TL_LANG']['tl_co_door_log']['correlationId'] = ['Correlation-ID', 'Eindeutige ID des kompletten Workflows'];
+$GLOBALS['TL_LANG']['tl_co_door_log']['deviceId']  = ['Device', 'Technische Geräte-ID'];
 // ===== Optionen =====
 
 $GLOBALS['TL_LANG']['tl_co_door_log']['areas'] = [
@@ -42,3 +43,4 @@ $GLOBALS['TL_LANG']['tl_co_door_log']['results'] = [
     'failed'           => 'Fehlgeschlagen',
     'timeout'          => 'Zeitüberschreitung',
 ];
+

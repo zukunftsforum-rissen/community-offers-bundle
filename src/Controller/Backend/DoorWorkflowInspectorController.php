@@ -7,11 +7,9 @@ namespace ZukunftsforumRissen\CommunityOffersBundle\Controller\Backend;
 use Contao\BackendUser;
 use Contao\CoreBundle\Controller\Backend\AbstractBackendController;
 use Contao\CoreBundle\Exception\AccessDeniedException;
-use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Security\Http\Attribute\IsGranted;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorWorkflowDiagramService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorWorkflowTimelineService;
 
@@ -20,23 +18,20 @@ use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorWorkflowTimelineServic
     name: 'community_offers.door_workflow_inspector',
     defaults: ['_scope' => 'backend'],
 )]
-#[IsGranted('ROLE_USER')]
 final class DoorWorkflowInspectorController extends AbstractBackendController
 {
     public function __construct(
         private readonly DoorWorkflowTimelineService $timelineService,
         private readonly DoorWorkflowDiagramService $diagramService,
-        private readonly Security $security,
-    ) {
-    }
+    ) {}
 
     #[Route('', name: 'co_be_door_workflow_inspector', methods: ['GET'])]
     public function __invoke(Request $request): Response
     {
-        $user = $this->security->getUser();
+        $user = $this->getUser();
 
-        if (!$user instanceof BackendUser || !$user->isAdmin) {
-            throw new AccessDeniedException('Access denied.');
+        if (!$user instanceof BackendUser) {
+            throw new AccessDeniedException('Backend login required.');
         }
 
         $cid = trim((string) $request->query->get('cid', ''));
@@ -45,6 +40,8 @@ final class DoorWorkflowInspectorController extends AbstractBackendController
         $timeline = [];
         $plantUml = '';
         $durationMs = null;
+
+        $diagramUrl = null;
 
         if ('' !== $cid) {
             $timeline = $this->timelineService->getTimeline($cid);
@@ -59,15 +56,16 @@ final class DoorWorkflowInspectorController extends AbstractBackendController
             $warnings = $this->timelineService->analyzeWorkflow($timeline);
         }
 
-        $diagramUrl = null;
-
-        return $this->render('be_door_workflow_inspector.html.twig', [
+        return $this->render('@CommunityOffers/workflow/be_door_workflow_inspector.html.twig', [
             'cid' => $cid,
             'recent' => $recent,
             'timeline' => $timeline,
             'plantUml' => $plantUml,
             'durationMs' => $durationMs,
             'diagramUrl' => $diagramUrl,
+            'title' => 'Workflow Inspector',
+            'backendRoutePrefix' => (string) $this->getParameter('contao.backend.route_prefix'),
+            'correlationId' => $cid,
             'warnings' => $warnings,
         ]);
     }

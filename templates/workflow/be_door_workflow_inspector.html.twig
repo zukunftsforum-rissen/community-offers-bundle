@@ -1,0 +1,267 @@
+{% extends "@CommunityOffers/layout/internal_tool.html.twig" %}
+
+{% block main %}
+	<style>
+		.wf-ok {
+			color: #2e7d32;
+			font-weight: bold;
+		}
+		.wf-error {
+			color: #c62828;
+			font-weight: bold;
+		}
+		.wf-warn {
+			color: #ef6c00;
+			font-weight: bold;
+		}
+		.wf-neutral {
+			color: #555;
+		}
+		.wf-muted {
+			color: #666;
+		}
+
+		.wf-open {
+			color: #1976d2;
+			font-weight: 600;
+		}
+		.wf-dispatch {
+			color: #6a1b9a;
+			font-weight: 600;
+		}
+		.wf-confirm {
+			color: #2e7d32;
+			font-weight: 600;
+		}
+
+		.phase-app {
+			color: #1976d2;
+			font-weight: 600;
+		}
+		.phase-device {
+			color: #6a1b9a;
+			font-weight: 600;
+		}
+		.phase-door {
+			color: #2e7d32;
+			font-weight: 600;
+		}
+		.phase-system {
+			color: #666;
+			font-weight: 600;
+		}
+
+		.flow-complete {
+			color: #2e7d32;
+			font-weight: 600;
+		}
+		.flow-in-progress {
+			color: #ef6c00;
+			font-weight: 600;
+		}
+		.flow-pending {
+			color: #666;
+			font-weight: 600;
+		}
+
+		.ampel {
+			display: inline-block;
+			width: 12px;
+			height: 12px;
+			border-radius: 50%;
+			vertical-align: middle;
+			margin-right: 6px;
+			border: 1px solid rgba(0, 0, 0, .15);
+		}
+
+		.ampel-green {
+			background: #2e7d32;
+		}
+		.ampel-yellow {
+			background: #ef6c00;
+		}
+		.ampel-red {
+			background: #c62828;
+		}
+	</style>
+
+	<h1>Door Workflow Inspector</h1>
+
+	<form method="get">
+		<label for="cid">Correlation ID</label>
+		<input type="text" id="cid" name="cid" value="{{ cid }}" placeholder="Correlation ID eingeben" style="width:420px;">
+		<button type="submit">Anzeigen</button>
+	</form>
+
+	<h2>Letzte Workflows</h2>
+	<table class="tl_listing">
+		<thead>
+			<tr>
+				<th>Ampel</th>
+				<th>CID</th>
+				<th>Area</th>
+				<th>Member</th>
+				<th>Flow</th>
+				<th>Start</th>
+				<th>Ende</th>
+				<th>Dauer</th>
+				<th>Status</th>
+			</tr>
+		</thead>
+		<tbody>
+			{% for row in recent %}
+				<tr>
+					<td>
+						<span class="ampel {{ row.trafficLight }}"></span>
+						{{ row.trafficLightLabel }}
+					</td>
+
+					<td>
+						<a href="?cid={{ row.correlationId }}">{{ row.correlationId|slice(0, 8) }}</a>
+					</td>
+
+					<td>
+						{% if row.area == 'workshop' %}
+							Werkstatt
+						{% elseif row.area == 'sharing' %}
+							Sharing
+						{% elseif row.area == 'depot' %}
+							Depot
+						{% elseif row.area == 'swap-house' %}
+							Tauschhaus
+						{% else %}
+							{{ row.area }}
+						{% endif %}
+					</td>
+
+					<td>{{ row.memberName }}</td>
+
+					<td class="{{ row.flowClass }}">{{ row.flow }}</td>
+
+					<td>{{ row.startedAt|date('Y-m-d H:i:s') }}</td>
+
+					<td>{{ row.finishedAt|date('Y-m-d H:i:s') }}</td>
+
+					<td>{{ row.durationMs }}
+						ms</td>
+
+					<td class="
+						{% if row.trafficLight == 'ampel-green' %}wf-ok
+						{% elseif row.trafficLight == 'ampel-yellow' %}wf-warn
+						{% else %}wf-error{% endif %}
+					">
+						{{ row.statusIcon }}
+						{{ row.statusLabel }}
+					</td>
+				</tr>
+			{% else %}
+				<tr>
+					<td colspan="9" class="wf-muted">Keine Workflows gefunden.</td>
+				</tr>
+			{% endfor %}
+		</tbody>
+	</table>
+
+	{% if warnings %}
+		<div style="margin:15px 0;padding:10px;border:1px solid #c62828;background:#ffebee;">
+			<strong>Workflow Warnungen:</strong>
+			<ul>
+				{% for w in warnings %}
+					<li>{{ w }}</li>
+				{% endfor %}
+			</ul>
+		</div>
+	{% endif %}
+
+	{% if cid %}
+		<h2>Timeline für
+			{{ cid }}</h2>
+
+		{% if durationMs is not null %}
+			<p>
+				<strong>Gesamtdauer:</strong>
+				{{ durationMs }}
+				ms</p>
+		{% endif %}
+
+		<table class="tl_listing">
+			<thead>
+				<tr>
+					<th>Zeit</th>
+					<th>Area</th>
+					<th>Phase</th>
+					<th>Aktion</th>
+					<th>Ergebnis</th>
+					<th>Message</th>
+				</tr>
+			</thead>
+			<tbody>
+				{% for row in timeline %}
+					<tr>
+						<td>{{ row.tstamp|date('Y-m-d H:i:s') }}</td>
+
+						<td>
+							{% if row.area == 'workshop' %}
+								Werkstatt
+							{% elseif row.area == 'sharing' %}
+								Sharing
+							{% elseif row.area == 'depot' %}
+								Depot
+							{% elseif row.area == 'swap-house' %}
+								Tauschhaus
+							{% else %}
+								{{ row.area }}
+							{% endif %}
+						</td>
+
+						<td class="{{ row.phaseClass }}">{{ row.phaseLabel }}</td>
+
+						<td class="
+							{% if row.action == 'door_open' %}wf-open
+							{% elseif row.action == 'door_dispatch' %}wf-dispatch
+							{% elseif row.action == 'door_confirm' %}wf-confirm
+							{% endif %}
+						">
+							{{ row.actionLabel }}
+						</td>
+
+						<td class="
+							{% if row.result in ['confirmed', 'granted', 'dispatched'] %}wf-ok
+							{% elseif row.result in ['failed', 'timeout', 'error', 'forbidden'] %}wf-error
+							{% elseif row.result == 'rate_limited' %}wf-warn
+							{% else %}wf-neutral{% endif %}
+						">
+							{% if row.action == 'door_open' and row.result == 'attempt' %}
+								• Öffnung angefragt
+							{% elseif row.action == 'door_open' and row.result == 'granted' %}
+								✔ Auftrag erstellt
+							{% elseif row.action == 'door_dispatch' and row.result == 'dispatched' %}
+								📡 Vom Gerät abgeholt
+							{% elseif row.action == 'door_confirm' and row.result == 'attempt' %}
+								• Türöffner ausgelöst
+							{% elseif row.action == 'door_confirm' and row.result == 'confirmed' %}
+								✔ Entriegelung bestätigt
+							{% else %}
+								{{ row.resultIcon }} {{ row.resultLabel }}
+							{% endif %}	
+						</td>
+
+						<td>{{ row.message }}</td>
+					</tr>
+				{% else %}
+					<tr>
+						<td colspan="6" class="wf-muted">Keine Einträge für diese CID.</td>
+					</tr>
+				{% endfor %}
+			</tbody>
+		</table>
+
+		<h2>PlantUML</h2>
+		<textarea style="width:100%;min-height:320px;">{{ plantUml }}</textarea>
+
+		<h3>Diagramm</h3>
+		{% if diagramUrl %}
+			<img src="{{ diagramUrl }}" alt="Door Workflow Diagramm">
+		{% endif %}
+	{% endif %}
+{% endblock %}

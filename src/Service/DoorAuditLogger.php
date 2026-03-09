@@ -38,13 +38,14 @@ class DoorAuditLogger
         Database::getInstance()
             ->prepare('
                 INSERT INTO tl_co_door_log
-                (tstamp, correlationId, memberId, area, action, result, ip, userAgent, message, context)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (tstamp, correlationId, memberId, deviceId, area, action, result, ip, userAgent, message, context)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ')
             ->execute(
                 time(),
                 mb_substr($correlationId, 0, 36),
                 $memberId,
+                $context['deviceId'] ?? '',
                 $area,
                 $action,
                 $result,

@@ -20,3 +20,4 @@ $GLOBALS['BE_MOD']['community_offers']['devices'] = [
 $GLOBALS['BE_MOD']['community_offers']['door_jobs'] = [
     'tables' => ['tl_co_door_job'],
 ];
+

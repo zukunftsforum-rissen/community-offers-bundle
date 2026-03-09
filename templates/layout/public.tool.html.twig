@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="de">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>{{ title|default('Community Offers') }}</title>
+
+		<style>
+			body {
+				margin: 0;
+				font-family: system-ui, -apple-system, sans-serif;
+				background: #f4f6f8;
+				color: #1f2933;
+			}
+
+			.co-header {
+				background: #0b3d5c;
+				color: #fff;
+				padding: 14px 20px;
+			}
+
+			.co-header h1 {
+				margin: 0;
+				font-size: 20px;
+			}
+
+			.co-main {
+				padding: 24px;
+			}
+		</style>
+
+		{% block head %}{% endblock %}
+	</head>
+
+	<body>
+
+		<header class="co-header">
+			<h1>Community Offers –
+				{{ title|default('Simulator') }}</h1>
+		</header>
+
+		<main class="co-main"> {% block main %}{% endblock %}
+			</main>
+
+		</body>
+	</html>

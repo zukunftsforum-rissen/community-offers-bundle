@@ -1,4 +1,33 @@
 # config/routes.yaml
 community_offers_controllers:
-    resource: '../src/Controller/'
+    resource: "../src/Controller/"
     type: attribute
+
+co_door_simulator:
+    path: /door-simulator
+    controller: ZukunftsforumRissen\CommunityOffersBundle\Controller\DoorSimulatorController
+    methods: [GET]
+
+co_door_simulator_poll:
+    path: /door-simulator/poll
+    controller: ZukunftsforumRissen\CommunityOffersBundle\Controller\DoorSimulatorPollController
+    methods: [POST]
+
+co_door_simulator_confirm:
+    path: /door-simulator/confirm
+    controller: ZukunftsforumRissen\CommunityOffersBundle\Controller\DoorSimulatorConfirmController
+    methods: [POST]
+
+co_device_monitor:
+    path: /%contao.backend.route_prefix%/device-monitor
+    controller: ZukunftsforumRissen\CommunityOffersBundle\Controller\DeviceMonitorController
+    methods: [GET]
+    defaults:
+        _scope: backend
+
+co_door_workflow_inspector:
+    path: /%contao.backend.route_prefix%/door-workflow
+    controller: ZukunftsforumRissen\CommunityOffersBundle\Controller\Backend\DoorWorkflowInspectorController
+    methods: [GET]
+    defaults:
+        _scope: backend

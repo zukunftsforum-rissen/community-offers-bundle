@@ -1,0 +1,90 @@
+{% extends "@CommunityOffers/layout/public.tool.html.twig" %}
+
+{% block main %}
+	<div class="co-sim-page">
+		<header class="co-sim-topbar">
+			<div>
+				<h1>Tür-/Device-Simulator</h1>
+				<p class="co-sim-subtitle">
+					Zwei Schuppen, vier Türen, ein laufender Pi-Simulator im Browser.
+				</p>
+			</div>
+
+			<aside class="co-sim-status" aria-live="polite">
+				<div class="co-sim-status__row">
+					<span class="co-sim-status__label">Device</span>
+					<strong id="sim-device-name">{{ deviceName }}</strong>
+				</div>
+				<div class="co-sim-status__row">
+					<span class="co-sim-status__label">Verbindung</span>
+					<strong id="sim-connection-state">Startet…</strong>
+				</div>
+				<div class="co-sim-status__row">
+					<span class="co-sim-status__label">Letzter Poll</span>
+					<strong id="sim-last-poll">–</strong>
+				</div>
+				<div class="co-sim-status__row">
+					<span class="co-sim-status__label">Letzter Job</span>
+					<strong id="sim-last-job">–</strong>
+				</div>
+				<div class="co-sim-status__row">
+					<span class="co-sim-status__label">Status</span>
+					<strong id="sim-last-status">Bereit</strong>
+				</div>
+			</aside>
+		</header>
+
+		<section class="co-sim-log-wrap">
+			<div class="co-sim-log-header">
+				<h2>Ablauf</h2>
+				<button type="button" class="co-sim-clear-log" id="sim-clear-log">Log leeren</button>
+			</div>
+			<div class="co-sim-log" id="sim-log"></div>
+		</section>
+
+		<section class="co-sheds">
+			{% for shed in sheds %}
+				<article class="co-shed" data-shed-key="{{ shed.key }}">
+					<h2 class="co-shed__title">{{ shed.label }}</h2>
+
+					<div class="co-shed__scene">
+						<div class="co-building">
+							<div class="co-building__roof"></div>
+							<div class="co-building__body"></div>
+
+							<div class="co-person" data-person-for="{{ shed.key }}" aria-hidden="true">
+								<div class="co-person__head"></div>
+								<div class="co-person__body"></div>
+							</div>
+
+							<div class="co-doors">
+								{% for door in shed.doors %}
+									<div class="co-door" data-area="{{ door.area }}" data-label="{{ door.label }}" data-shed-key="{{ shed.key }}" data-busy="0">
+										<div class="co-door__leaf"></div>
+										<div class="co-door__knob"></div>
+										<div class="co-door__glow"></div>
+										<div class="co-door__caption">{{ door.label }}</div>
+										<div class="co-door__state">Bereit</div>
+									</div>
+								{% endfor %}
+							</div>
+						</div>
+					</div>
+				</article>
+			{% endfor %}
+		</section>
+	</div>
+
+	<link rel="stylesheet" href="{{ asset('bundles/communityoffers/simulator/simulator.css') }}">
+
+	<script>
+		window.CO_SIMULATOR_CONFIG = {
+		deviceName: {{ deviceName|json_encode|raw }},
+		pollIntervalMs: {{ pollIntervalMs }},
+		pollUrl: {{ pollUrl|json_encode|raw }},
+		confirmUrl: {{ confirmUrl|json_encode|raw }}
+		};
+	</script>
+
+	<script src="{{ asset('bundles/communityoffers/simulator/simulator.js') }}" defer></script>
+{% endblock %}

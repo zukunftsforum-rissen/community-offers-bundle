@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="de">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>{{ title|default('Community Offers Tool') }}</title>
+
+		<style>
+			body {
+				margin: 0;
+				font-family: system-ui, -apple-system, sans-serif;
+				background: #f4f6f8;
+				color: #1f2933;
+			}
+
+			.co-header {
+				background: #0b3d5c;
+				color: #fff;
+				padding: 14px 20px;
+			}
+
+			.co-header h1 {
+				margin: 0;
+				font-size: 20px;
+			}
+
+			.co-nav {
+				margin-top: 10px;
+				display: flex;
+				gap: 10px;
+			}
+
+			.co-nav a {
+				color: #fff;
+				text-decoration: none;
+				padding: 6px 10px;
+				border-radius: 6px;
+				background: rgba(255, 255, 255, 0.15);
+			}
+
+			.co-main {
+				padding: 24px;
+			}
+		</style>
+
+		{% block head %}{% endblock %}
+	</head>
+
+	{% set bePrefix = backendRoutePrefix|default('/contao') %}
+
+	<body>
+
+		<header class="co-header">
+			<h1>Community Offers –
+				{{ title|default('Tool') }}</h1>
+
+			<nav class="co-nav">
+				<a href="{{ path('co_device_monitor') }}">Device Monitor</a>
+				<a href="{{ path('co_door_workflow_inspector') }}">Workflow Inspector</a>
+				<a href="{{ bePrefix }}">Zurück ins Backend</a>
+			</nav>
+		</header>
+
+		<main class="co-main"> {% block main %}{% endblock %}
+			</main>
+
+		</body>
+	</html>

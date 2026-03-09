@@ -1,0 +1,349 @@
+.co-sim-page {
+    padding: 24px;
+    max-width: 1400px;
+}
+
+.co-sim-topbar {
+    display: flex;
+    gap: 24px;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+}
+
+.co-sim-topbar h1 {
+    margin: 0 0 8px;
+}
+
+.co-sim-subtitle {
+    margin: 0;
+    color: #5b6470;
+}
+
+.co-sim-status {
+    min-width: 320px;
+    background: #fff;
+    border: 1px solid #d7dde4;
+    border-radius: 16px;
+    padding: 16px 18px;
+    box-shadow: 0 8px 24px rgb(0 0 0 / 6%);
+}
+
+.co-sim-status__row {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 6px 0;
+    border-bottom: 1px solid #eef2f6;
+}
+
+.co-sim-status__row:last-child {
+    border-bottom: 0;
+}
+
+.co-sim-status__label {
+    color: #66707d;
+}
+
+.co-sim-log-wrap {
+    margin-bottom: 24px;
+    background: #fff;
+    border: 1px solid #d7dde4;
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 8px 24px rgb(0 0 0 / 4%);
+}
+
+.co-sim-log-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.co-sim-log-header h2 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.co-sim-clear-log {
+    border: 1px solid #ccd5df;
+    background: #f7f9fb;
+    border-radius: 10px;
+    padding: 8px 12px;
+    cursor: pointer;
+}
+
+.co-sim-log {
+    max-height: 220px;
+    overflow: auto;
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+.co-sim-log__entry {
+    padding: 7px 0;
+    border-bottom: 1px dashed #e7ecf1;
+}
+
+.co-sim-log__entry:last-child {
+    border-bottom: 0;
+}
+
+.co-sim-log__time {
+    color: #738090;
+    margin-right: 8px;
+}
+
+.co-sheds {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+    gap: 24px;
+}
+
+.co-shed {
+    background: #fff;
+    border: 1px solid #d7dde4;
+    border-radius: 18px;
+    padding: 16px;
+    box-shadow: 0 10px 28px rgb(0 0 0 / 5%);
+}
+
+.co-shed__title {
+    margin: 0 0 12px;
+}
+
+.co-shed__scene {
+    position: relative;
+    border-radius: 16px;
+    overflow: hidden;
+    min-height: 360px;
+    background: linear-gradient(to bottom,
+            #bfe4ff 0%,
+            #dff3ff 52%,
+            #83bd67 52%,
+            #6ea554 100%);
+}
+
+.co-shed__sky,
+.co-shed__ground {
+    position: absolute;
+    inset: 0;
+}
+
+.co-building {
+    position: absolute;
+    left: 50%;
+    bottom: 48px;
+    transform: translateX(-50%);
+    width: 310px;
+    height: 250px;
+}
+
+.co-building__roof {
+    position: absolute;
+    inset: 0 10px auto;
+    height: 72px;
+    background: #7a4d36;
+    clip-path: polygon(0 100%, 50% 0, 100% 100%);
+    filter: drop-shadow(0 4px 4px rgb(0 0 0 / 15%));
+}
+
+.co-building__body {
+    position: absolute;
+    inset: 62px 28px 0;
+    background: linear-gradient(to bottom, #a56f4e, #8d5d42);
+    border-radius: 10px 10px 8px 8px;
+    box-shadow: inset 0 -10px 0 rgb(0 0 0 / 8%);
+}
+
+.co-doors {
+    position: absolute;
+    inset: auto 62px 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 26px;
+    z-index: 4;
+}
+
+.co-door {
+    position: relative;
+    height: 150px;
+    perspective: 700px;
+}
+
+.co-door__leaf {
+    position: absolute;
+    left: 0;
+    bottom: 30px;
+    width: 86px;
+    height: 110px;
+    background: linear-gradient(to right, #563321, #70442d);
+    border: 3px solid #3f2518;
+    border-radius: 8px 8px 0 0;
+    transform-origin: left center;
+    transition:
+        transform 0.45s ease,
+        filter 0.2s ease,
+        box-shadow 0.2s ease;
+    box-shadow: inset -10px 0 0 rgb(255 255 255 / 8%);
+}
+
+.co-door__knob {
+    position: absolute;
+    left: 70px;
+    bottom: 82px;
+    width: 8px;
+    height: 8px;
+    background: #d8b45c;
+    border-radius: 50%;
+    z-index: 5;
+}
+
+.co-door__glow {
+    position: absolute;
+    left: -8px;
+    bottom: 22px;
+    width: 104px;
+    height: 126px;
+    border-radius: 12px 12px 0 0;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    background: radial-gradient(circle,
+            rgb(255 224 130 / 45%) 0%,
+            rgb(255 224 130 / 0%) 72%);
+    pointer-events: none;
+}
+
+.co-door__caption {
+    position: absolute;
+    left: 50%;
+    bottom: 8px;
+    transform: translateX(-50%);
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.co-door__state {
+    position: absolute;
+    left: 50%;
+    bottom: -12px;
+    transform: translateX(-50%);
+    font-size: 12px;
+    color: #4d5967;
+    white-space: nowrap;
+}
+
+.co-door.is-unlocking .co-door__leaf {
+    filter: brightness(1.18);
+    box-shadow: 0 0 18px rgb(255 214 102 / 30%);
+}
+
+.co-door.is-unlocking .co-door__glow {
+    opacity: 1;
+}
+
+.co-door.is-open .co-door__leaf {
+    transform: rotateY(-68deg);
+}
+
+.co-person {
+    position: absolute;
+    left: 8px;
+    bottom: 34px;
+    width: 34px;
+    height: 88px;
+    z-index: 8;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.co-person.is-visible {
+    opacity: 1;
+}
+
+.co-person__head {
+    position: absolute;
+    top: 0;
+    left: 9px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #f1c8a2;
+}
+
+.co-person__body {
+    position: absolute;
+    top: 16px;
+    left: 13px;
+    width: 8px;
+    height: 34px;
+    background: #285ea8;
+    border-radius: 4px;
+}
+
+.co-person__body::before,
+.co-person__body::after {
+    content: "";
+    position: absolute;
+    background: inherit;
+}
+
+.co-person__body::before {
+    left: -8px;
+    top: 6px;
+    width: 8px;
+    height: 24px;
+    border-radius: 4px;
+}
+
+.co-person__body::after {
+    right: -8px;
+    top: 6px;
+    width: 8px;
+    height: 24px;
+    border-radius: 4px;
+}
+
+.co-person::after {
+    content: "";
+    position: absolute;
+    left: 10px;
+    top: 50px;
+    width: 14px;
+    height: 32px;
+    background: transparent;
+    box-shadow:
+        -5px 0 0 0 #2d2d2d,
+        5px 0 0 0 #2d2d2d;
+}
+
+.co-person.is-walking {
+    transition: transform 1.15s linear;
+}
+
+@media (width <=640px) {
+    .co-sheds {
+        grid-template-columns: 1fr;
+    }
+
+    .co-building {
+        width: 280px;
+    }
+
+    .co-doors {
+        left: 48px;
+        right: 48px;
+        gap: 18px;
+    }
+
+    .co-door__leaf {
+        width: 76px;
+    }
+
+    .co-door__knob {
+        left: 62px;
+    }
+}

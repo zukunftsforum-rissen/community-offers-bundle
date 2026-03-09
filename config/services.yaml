@@ -87,3 +87,4 @@ services:
             $confirmWindowSeconds: 30
         tags:
             - { name: kernel.event_subscriber }
+

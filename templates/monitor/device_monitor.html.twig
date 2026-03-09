@@ -1,0 +1,104 @@
+{% extends "@CommunityOffers/layout/internal_tool.html.twig" %}
+
+{% block main %}
+	<h1>Device Monitor</h1>
+	<p>Überblick über registrierte Devices und ihre letzten Aktivitäten.</p>
+
+	<table class="co-monitor-table">
+		<thead>
+			<tr>
+				<th>Device</th>
+				<th>Aktiv</th>
+				<th>Status</th>
+				<th>Areas</th>
+				<th>Letzter Poll</th>
+				<th>Letzter Confirm</th>
+				<th>Letzte Area</th>
+				<th>Workflow</th>
+			</tr>
+		</thead>
+		<tbody>
+			{% for device in devices %}
+				<tr>
+					<td>
+						<strong>{{ device.name }}</strong>
+					</td>
+					<td>{{ device.enabled ? 'ja' : 'nein' }}</td>
+					<td>
+						{% if device.onlineState == 'online' %}
+							<span style="color:#16a34a">● online</span>
+						{% elseif device.onlineState == 'idle' %}
+							<span style="color:#f59e0b">● idle</span>
+						{% elseif device.onlineState == 'offline' %}
+							<span style="color:#dc2626">● offline</span>
+						{% else %}
+							unknown
+						{% endif %}
+					</td>
+					<td>
+						{% if device.areas is not empty %}
+							{{ device.areas|join(', ') }}
+						{% else %}
+							–
+						{% endif %}
+					</td>
+					<td>{{ device.lastPollAt ?: '–' }}</td>
+					<td>{{ device.lastConfirmAt ?: '–' }}</td>
+					<td>{{ device.lastArea ?: '–' }}</td>
+					<td>
+						{% if device.lastCorrelationId %}
+							<a href="{{ path('co_door_workflow_inspector', { cid: device.lastCorrelationId }) }}">anzeigen</a>
+						{% else %}
+							–
+						{% endif %}
+					</td>
+				</tr>
+			{% else %}
+				<tr>
+					<td colspan="8">Keine Devices gefunden.</td>
+				</tr>
+			{% endfor %}
+		</tbody>
+	</table>
+
+	<style>
+		.co-monitor-table {
+			width: 100%;
+			border-collapse: collapse;
+			background: #fff;
+			border-radius: 12px;
+			overflow: hidden;
+		}
+
+		.co-monitor-table th,
+		.co-monitor-table td {
+			padding: 10px 12px;
+			border-bottom: 1px solid #e5e9ef;
+			text-align: left;
+			vertical-align: top;
+		}
+
+		.co-monitor-table th {
+			background: #eef3f8;
+		}
+	</style>
+	<script>
+		setInterval(() => {
+fetch(window.location.href, {
+headers: {
+"X-Device-Monitor": "1"
+}
+}).then(r => r.text()).then(html => {
+const parser = new DOMParser();
+const doc = parser.parseFromString(html, "text/html");
+
+const newTable = doc.querySelector(".co-monitor-table");
+const currentTable = document.querySelector(".co-monitor-table");
+
+if (newTable && currentTable) {
+currentTable.innerHTML = newTable.innerHTML;
+}
+}).catch(() => {});
+}, 3000);
+	</script>
+{% endblock %}

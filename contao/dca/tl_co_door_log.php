@@ -17,6 +17,7 @@ $GLOBALS['TL_DCA']['tl_co_door_log'] = [
                 'tstamp' => 'index',
                 'action' => 'index',
                 'result' => 'index',
+                'deviceId' => 'index',
             ],
         ],
     ],
@@ -27,7 +28,7 @@ $GLOBALS['TL_DCA']['tl_co_door_log'] = [
             'panelLayout' => 'filter;sort,search,limit',
         ],
         'label' => [
-            'fields' => ['tstamp', 'correlationId', 'memberId', 'area', 'action', 'result'],
+            'fields' => ['tstamp', 'correlationId', 'memberId', 'deviceId', 'area', 'action', 'result'],
             'label_callback' => [DoorLogCallback::class, 'labelCallback'],
         ],
         'global_operations' => [
@@ -57,7 +58,7 @@ $GLOBALS['TL_DCA']['tl_co_door_log'] = [
     ],
     'palettes' => [
         '__selector__' => [],
-        'default' => '{log_legend},tstamp,correlationId,memberId,area,action,result,ip,userAgent,message,context',
+        'default' => '{log_legend},tstamp,correlationId,memberId,deviceId,area,action,result,ip,userAgent,message,context',
     ],
     'fields' => [
         'id' => [
@@ -78,6 +79,14 @@ $GLOBALS['TL_DCA']['tl_co_door_log'] = [
             'inputType' => 'text',
             'eval' => ['readonly' => true, 'tl_class' => 'w50'],
             'sql' => "varchar(36) NOT NULL default ''",
+        ],
+        'deviceId' => [
+            'label' => &$GLOBALS['TL_LANG']['tl_co_door_log']['deviceId'],
+            'search' => true,
+            'filter' => true,
+            'inputType' => 'text',
+            'eval' => ['readonly' => true, 'tl_class' => 'w50'],
+            'sql' => "varchar(64) NOT NULL default ''",
         ],
         'memberId' => [
             'label' => &$GLOBALS['TL_LANG']['tl_co_door_log']['memberId'],

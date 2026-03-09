@@ -18,8 +18,7 @@ final class DeviceController extends AbstractController
     public function __construct(
         private readonly DoorJobService $jobs,
         private readonly LoggingService $logging,
-    ) {
-    }
+    ) {}
 
     #[Route('/poll', name: 'co_device_poll', methods: ['POST'])]
     public function poll(Request $request): JsonResponse
@@ -62,9 +61,9 @@ final class DeviceController extends AbstractController
             'areas' => $areas,
             'limit' => $limit,
             'jobsReturned' => \count($jobs),
-            'jobIds' => array_map(static fn (array $job): int => (int) $job['jobId'], $jobs),
+            'jobIds' => array_map(static fn(array $job): int => (int) $job['jobId'], $jobs),
             'correlationIds' => array_values(array_filter(array_map(
-                static fn (array $job): string => (string) $job['correlationId'],
+                static fn(array $job): string => (string) $job['correlationId'],
                 $jobs,
             ))),
         ]);
@@ -101,6 +100,10 @@ final class DeviceController extends AbstractController
         $meta = \is_array($payload['meta'] ?? null) ? $payload['meta'] : [];
         $cid = (string) ($payload['correlationId'] ?? ($meta['correlationId'] ?? ''));
 
+        if ('' !== $cid && !isset($meta['correlationId'])) {
+            $meta['correlationId'] = $cid;
+        }
+        
         if ($jobId <= 0 || '' === $nonce) {
             $this->logging->warning('door_confirm.bad_request', [
                 'deviceId' => $deviceId,

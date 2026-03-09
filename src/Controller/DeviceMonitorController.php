@@ -7,7 +7,6 @@ namespace ZukunftsforumRissen\CommunityOffersBundle\Controller;
 use Contao\BackendUser;
 use Contao\CoreBundle\Exception\AccessDeniedException;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\Response;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\DeviceMonitorService;
 
@@ -15,7 +14,6 @@ final class DeviceMonitorController extends AbstractController
 {
     public function __construct(
         private readonly DeviceMonitorService $deviceMonitorService,
-        private readonly Security $security,
     ) {
     }
 

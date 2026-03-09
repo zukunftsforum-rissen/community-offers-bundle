@@ -42,12 +42,11 @@ final class SimulatorDeviceService
 
         return [
             'jobs' => array_map(static fn (array $job): array => [
-                'jobId' => $job['jobId'] ?? $job['id'] ?? null,
-                'area' => $job['area'] ?? $job['areaKey'] ?? null,
-                'action' => $job['action'] ?? 'open',
-                'nonce' => $job['nonce'] ?? null,
-                'expiresInMs' => $job['expiresInMs'] ?? null,
-                'correlationId' => $job['correlationId'] ?? null,
+                'jobId' => $job['jobId'],
+                'area' => $job['area'],
+                'nonce' => $job['nonce'],
+                'expiresInMs' => $job['expiresInMs'],
+                'correlationId' => $job['correlationId'],
             ], $jobs),
         ];
     }
@@ -73,7 +72,6 @@ final class SimulatorDeviceService
         $nonce = trim((string) ($payload['nonce'] ?? ''));
         $ok = (bool) ($payload['ok'] ?? true);
         $meta = \is_array($payload['meta'] ?? null) ? $payload['meta'] : ['source' => 'door-simulator'];
-        $correlationId = isset($payload['correlationId']) ? (string) $payload['correlationId'] : null;
 
         if ($jobId <= 0 || '' === $nonce) {
             throw new BadRequestHttpException('jobId and nonce are required.');

@@ -74,7 +74,7 @@ final class DoorWorkflowInspectorController extends AbstractBackendController
     #[Route('/diagram/{cid}.svg', name: 'co_be_door_workflow_diagram', methods: ['GET'])]
     public function diagram(string $cid): Response
     {
-        $user = $this->security->getUser();
+        $user = $this->getUser();
 
         if (!$user instanceof BackendUser || !$user->isAdmin) {
             throw new AccessDeniedException('Access denied.');

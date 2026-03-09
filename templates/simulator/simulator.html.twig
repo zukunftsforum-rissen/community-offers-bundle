@@ -1,6 +1,14 @@
 {% extends "@CommunityOffers/layout/public.tool.html.twig" %}
 
+
 {% block main %}
+	<audio id="sound-door-buzzer">
+		<source src="/bundles/communityoffers/sounds/door_opener.wav" type="audio/wav">
+	</audio>
+	<audio id="sound-door-click">
+		<source src="/bundles/communityoffers/sounds/door_click.wav" type="audio/wav">
+	</audio>
+
 	<div class="co-sim-page">
 		<header class="co-sim-topbar">
 			<div>
@@ -42,6 +50,15 @@
 			<div class="co-sim-log" id="sim-log"></div>
 		</section>
 
+		<section class="co-sim-play-wrap">
+			<div class="co-sim-play-header">
+				<button type="button" id="enable-sound" class="co-enable-sound">
+					Ton aktivieren
+				</button>
+			</div>
+			<div class="co-sim-play" id="sim-play"></div>
+		</section>
+
 		<section class="co-sheds">
 			{% for shed in sheds %}
 				<article class="co-shed" data-shed-key="{{ shed.key }}">
@@ -79,11 +96,11 @@
 
 	<script>
 		window.CO_SIMULATOR_CONFIG = {
-		deviceName: {{ deviceName|json_encode|raw }},
-		pollIntervalMs: {{ pollIntervalMs }},
-		pollUrl: {{ pollUrl|json_encode|raw }},
-		confirmUrl: {{ confirmUrl|json_encode|raw }}
-		};
+deviceName: {{ deviceName|json_encode|raw }},
+pollIntervalMs: {{ pollIntervalMs }},
+pollUrl: {{ pollUrl|json_encode|raw }},
+confirmUrl: {{ confirmUrl|json_encode|raw }}
+};
 	</script>
 
 	<script src="{{ asset('bundles/communityoffers/simulator/simulator.js') }}" defer></script>

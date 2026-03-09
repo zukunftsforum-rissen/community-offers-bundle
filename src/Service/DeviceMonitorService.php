@@ -10,7 +10,8 @@ final class DeviceMonitorService
 {
     public function __construct(
         private readonly Connection $connection,
-    ) {}
+    ) {
+    }
 
     /**
      * @return list<array<string, mixed>>
@@ -18,7 +19,7 @@ final class DeviceMonitorService
     public function getOverview(): array
     {
         $devices = $this->connection->fetchAllAssociative(
-            'SELECT id, name, enabled, areas, lastSeen, tstamp FROM tl_co_device ORDER BY name ASC'
+            'SELECT id, name, enabled, areas, lastSeen, tstamp FROM tl_co_device ORDER BY name ASC',
         );
 
         $result = [];
@@ -33,7 +34,7 @@ final class DeviceMonitorService
                    AND action IN (\'device_poll\', \'door_dispatch\')
                  ORDER BY id DESC
                  LIMIT 1',
-                ['deviceId' => $deviceId]
+                ['deviceId' => $deviceId],
             );
 
             $lastConfirm = $this->connection->fetchAssociative(
@@ -43,7 +44,7 @@ final class DeviceMonitorService
                    AND action = \'door_confirm\'
                  ORDER BY id DESC
                  LIMIT 1',
-                ['deviceId' => $deviceId]
+                ['deviceId' => $deviceId],
             );
 
             $lastPollAt = $this->formatTimestamp($lastPoll['tstamp'] ?? null);
@@ -52,8 +53,8 @@ final class DeviceMonitorService
 
             $result[] = [
                 'id' => $deviceId,
-                'name' => (string) ($device['name'] ?? ('Device #' . $deviceId)),
-                'enabled' => (string) ($device['enabled'] ?? '') === '1',
+                'name' => (string) ($device['name'] ?? 'Device #'.$deviceId),
+                'enabled' => '1' === (string) ($device['enabled'] ?? ''),
                 'areas' => $this->normalizeAreas($device['areas'] ?? ''),
                 'lastPollAt' => $lastPollAt,
                 'lastConfirmAt' => $lastConfirmAt,
@@ -88,7 +89,7 @@ final class DeviceMonitorService
         return [];
     }
 
-    private function deriveOnlineState(?string $lastPollAt, int $lastSeen): string
+    private function deriveOnlineState(string|null $lastPollAt, int $lastSeen): string
     {
         $ts = null;
 
@@ -99,11 +100,11 @@ final class DeviceMonitorService
             }
         }
 
-        if (($ts === null || $ts <= 0) && $lastSeen > 0) {
+        if ((null === $ts || $ts <= 0) && $lastSeen > 0) {
             $ts = $lastSeen;
         }
 
-        if ($ts === null || $ts <= 0) {
+        if (null === $ts || $ts <= 0) {
             return 'unknown';
         }
 
@@ -120,7 +121,7 @@ final class DeviceMonitorService
         return 'offline';
     }
 
-    private function formatTimestamp(mixed $value): ?string
+    private function formatTimestamp(mixed $value): string|null
     {
         $ts = (int) $value;
 

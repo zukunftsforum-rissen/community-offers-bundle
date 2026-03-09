@@ -16,7 +16,8 @@ final class DeviceMonitorController extends AbstractController
     public function __construct(
         private readonly DeviceMonitorService $deviceMonitorService,
         private readonly Security $security,
-    ) {}
+    ) {
+    }
 
     public function __invoke(): Response
     {

@@ -13,7 +13,8 @@ final class DoorSimulatorConfirmController extends AbstractController
 {
     public function __construct(
         private readonly SimulatorDeviceService $simulatorDeviceService,
-    ) {}
+    ) {
+    }
 
     public function __invoke(Request $request): JsonResponse
     {

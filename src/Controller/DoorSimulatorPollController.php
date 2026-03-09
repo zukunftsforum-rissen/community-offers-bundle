@@ -12,7 +12,8 @@ final class DoorSimulatorPollController extends AbstractController
 {
     public function __construct(
         private readonly SimulatorDeviceService $simulatorDeviceService,
-    ) {}
+    ) {
+    }
 
     public function __invoke(): JsonResponse
     {

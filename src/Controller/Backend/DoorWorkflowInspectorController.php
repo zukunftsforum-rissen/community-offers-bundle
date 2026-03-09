@@ -23,7 +23,8 @@ final class DoorWorkflowInspectorController extends AbstractBackendController
     public function __construct(
         private readonly DoorWorkflowTimelineService $timelineService,
         private readonly DoorWorkflowDiagramService $diagramService,
-    ) {}
+    ) {
+    }
 
     #[Route('', name: 'co_be_door_workflow_inspector', methods: ['GET'])]
     public function __invoke(Request $request): Response

@@ -77,34 +77,37 @@
         }
 
         function playUnlockSound() {
-            try {
-                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-
-                if (!AudioContextClass) {
-                    return;
-                }
-
-                const ctx = new AudioContextClass();
-                const oscillator = ctx.createOscillator();
-                const gain = ctx.createGain();
-
-                oscillator.type = 'square';
-                oscillator.frequency.setValueAtTime(980, ctx.currentTime);
-                oscillator.frequency.exponentialRampToValueAtTime(520, ctx.currentTime + 0.07);
-                oscillator.frequency.exponentialRampToValueAtTime(360, ctx.currentTime + 0.16);
-
-                gain.gain.setValueAtTime(0.0001, ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.08, ctx.currentTime + 0.01);
-                gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.2);
-
-                oscillator.connect(gain);
-                gain.connect(ctx.destination);
-
-                oscillator.start();
-                oscillator.stop(ctx.currentTime + 0.22);
-            } catch (error) {
-                log('Audio konnte nicht abgespielt werden: ' + error);
+            if (!soundEnabled) {
+                return;
             }
+
+            const buzzer = document.getElementById('sound-door-buzzer');
+
+            if (!buzzer) {
+                return;
+            }
+
+            buzzer.currentTime = 0;
+            buzzer.play().catch((error) => {
+                log('Buzzer konnte nicht abgespielt werden: ' + error);
+            });
+        }
+
+        function playDoorClickSound() {
+            if (!soundEnabled) {
+                return;
+            }
+
+            const click = document.getElementById('sound-door-click');
+
+            if (!click) {
+                return;
+            }
+
+            click.currentTime = 0;
+            click.play().catch((error) => {
+                log('Klick konnte nicht abgespielt werden: ' + error);
+            });
         }
 
         function getDoorByArea(area) {
@@ -139,11 +142,10 @@
             }
 
             if (person) {
-                person.classList.remove('is-visible', 'is-walking');
-                person.style.transform = '';
+                person.classList.remove('is-visible', 'is-approaching', 'is-entering', 'is-inside');
+                person.style.transform = 'translateX(0)';
             }
         }
-
         function computePersonTargetX(door) {
             const allDoors = Array.from(door.parentElement.querySelectorAll('.co-door'));
             const index = allDoors.indexOf(door);
@@ -151,18 +153,32 @@
             return index === 0 ? 110 : 225;
         }
 
+
+        function computePersonApproachX(door) {
+            const allDoors = Array.from(door.parentElement.querySelectorAll('.co-door'));
+            const index = allDoors.indexOf(door);
+
+            return index === 0 ? 82 : 198;
+        }
+
+        function computePersonEnterX(door) {
+            const allDoors = Array.from(door.parentElement.querySelectorAll('.co-door'));
+            const index = allDoors.indexOf(door);
+
+            return index === 0 ? 122 : 238;
+        }
+
         async function animateDoor(area, label) {
             const door = getDoorByArea(area);
 
             if (!door) {
-                log('Keine Tür für Area "' + area + '" gefunden.');
+                log('Keine Tür für Area "' + label + '" gefunden.');
                 return;
             }
 
             const person = getPersonForDoor(door);
 
             if (door.getAttribute('data-busy') === '1') {
-                log('Tür "' + label + '" ist bereits in Bewegung.');
                 return;
             }
 
@@ -173,43 +189,68 @@
             setLastStatus('Entriegelung läuft');
             setDoorState(door, 'Entriegelt…');
             door.classList.add('is-unlocking');
+
             playUnlockSound();
-            log('Entriegelung für "' + label + '" gestartet.');
+            await sleep(180);
+            playDoorClickSound();
+            await sleep(80);
+            door.classList.add('is-open');
 
-            await sleep(450);
+            // Männchen sicher sichtbar machen
+            if (person) {
+                person.classList.remove('is-hidden', 'is-approaching', 'is-entering');
+                person.classList.add('is-visible');
+                person.style.transform = 'translateX(0)';
+                void person.offsetWidth; // Reflow erzwingen
+            }
 
+            // einen Frame warten, damit opacity/transform sauber greifen
+            await new Promise((resolve) => requestAnimationFrame(resolve));
+
+            // zur Tür gehen
+            if (person) {
+                person.classList.add('is-approaching');
+                person.style.transform = 'translateX(' + computePersonApproachX(door) + 'px)';
+            }
+
+            setDoorState(door, 'Geht zur Tür…');
+            setLastStatus('Person geht zur Tür');
+
+            await sleep(520);
+
+            // Tür öffnet direkt nach dem Klack
             door.classList.add('is-open');
             setDoorState(door, 'Offen');
             setLastStatus('Tür offen');
-            log('Tür "' + label + '" geöffnet.');
 
             if (person) {
-                person.classList.add('is-visible');
-                person.style.transform = 'translateX(' + computePersonTargetX(door) + 'px)';
-                await sleep(140);
-                person.classList.add('is-walking');
+                person.classList.remove('is-approaching');
+                person.classList.add('is-entering');
+                person.style.transform = 'translateX(' + computePersonEnterX(door) + 'px)';
             }
 
             setDoorState(door, 'Betreten…');
             setLastStatus('Männchen tritt ein');
-            log('Männchen betritt "' + label + '".');
 
-            await sleep(1200);
+            await sleep(900);
 
-            if (person) {
-                person.classList.remove('is-walking');
-                person.style.opacity = '0';
-            }
-
+            door.classList.remove('is-open', 'is-unlocking');
             setDoorState(door, 'Schließt…');
             setLastStatus('Tür schließt');
-            log('Tür "' + label + '" schließt.');
 
-            await sleep(500);
+            await sleep(350);
 
-            resetDoorAndPerson(door, person);
-            runningAreas.delete(area);
+            if (person) {
+                person.classList.remove('is-visible', 'is-approaching', 'is-entering');
+                person.classList.add('is-hidden');
+                person.style.transform = 'translateX(0)';
+            }
+
+            setDoorState(door, 'Bereit');
             setLastStatus('Bereit');
+
+            door.setAttribute('data-busy', '0');
+            runningAreas.delete(area);
         }
 
         async function confirmJob(jobId, nonce, correlationId, label) {
@@ -258,16 +299,8 @@
             return job.area || job.areaKey || job.doorKey || null;
         }
 
-        function getJobId(job) {
-            return job.jobId || job.id || null;
-        }
-
         function getJobNonce(job) {
             return job.nonce || null;
-        }
-
-        function getJobCorrelationId(job) {
-            return job.correlationId || null;
         }
 
         async function handleJob(job) {
@@ -366,42 +399,54 @@
             log('Pi-Simulator gestoppt.');
         }
 
-        function startPolling() {
-            if (pollTimer) {
-                window.clearInterval(pollTimer);
-            }
-
-            pollDevice();
-            pollTimer = window.setInterval(pollDevice, POLL_INTERVAL_MS);
-            log('Pi-Simulator gestartet.');
-        }
-
-        function stopPolling() {
-            if (pollTimer) {
-                window.clearInterval(pollTimer);
-                pollTimer = null;
-            }
-
-            setConnectionState('Gestoppt');
-            log('Pi-Simulator gestoppt.');
-        }
-
-
-        function getJobArea(job) {
-            return job.area || job.areaKey || null;
-        }
-
         function getJobId(job) {
             return job.jobId || job.id || null;
-        }
-
-        function getJobNonce(job) {
-            return job.nonce || null;
         }
 
         function getJobCorrelationId(job) {
             return job.correlationId || null;
         }
+
+
+        let soundEnabled = false;
+
+        function unlockAudio() {
+            const buzzer = document.getElementById('sound-door-buzzer');
+            const click = document.getElementById('sound-door-click');
+
+            [buzzer, click].forEach((audio) => {
+                if (!audio) {
+                    return;
+                }
+
+                const p = audio.play();
+
+                if (p) {
+                    p.then(() => {
+                        audio.pause();
+                        audio.currentTime = 0;
+                    }).catch(() => { });
+                }
+            });
+
+            soundEnabled = true;
+
+            const button = document.getElementById('enable-sound');
+            if (button) {
+                button.textContent = 'Ton aktiviert';
+                button.disabled = true;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const button = document.getElementById('enable-sound');
+
+            if (button) {
+                button.addEventListener('click', unlockAudio);
+            }
+
+            startPolling();
+        });
 
         document.addEventListener('DOMContentLoaded', function () {
             if (elClearLog) {
@@ -409,6 +454,30 @@
                     elLog.innerHTML = '';
                 });
             }
+
+            const unlockAudioOnce = function () {
+                const buzzer = document.getElementById('sound-door-buzzer');
+                const click = document.getElementById('sound-door-click');
+
+                [buzzer, click].forEach(function (audio) {
+                    if (!audio) {
+                        return;
+                    }
+
+                    const p = audio.play();
+
+                    if (p) {
+                        p.then(function () {
+                            audio.pause();
+                            audio.currentTime = 0;
+                        }).catch(function () {
+                            // ignorieren
+                        });
+                    }
+                });
+            };
+
+            document.body.addEventListener('click', unlockAudioOnce, { once: true });
 
             startPolling();
 

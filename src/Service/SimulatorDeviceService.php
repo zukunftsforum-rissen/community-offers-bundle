@@ -7,14 +7,14 @@ namespace ZukunftsforumRissen\CommunityOffersBundle\Service;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorJobService;
 
 final class SimulatorDeviceService
 {
     public function __construct(
         private readonly Connection $connection,
         private readonly DoorJobService $doorJobService,
-    ) {}
+    ) {
+    }
 
     /**
      * @return array<string, mixed>
@@ -23,7 +23,7 @@ final class SimulatorDeviceService
     {
         $device = $this->connection->fetchAssociative(
             'SELECT * FROM tl_co_device WHERE name = ? AND enabled = ? LIMIT 1',
-            [$deviceName, '1']
+            [$deviceName, '1'],
         );
 
         if (!$device) {
@@ -31,7 +31,7 @@ final class SimulatorDeviceService
         }
 
         $deviceId = (string) ($device['id'] ?? '');
-        if ($deviceId === '') {
+        if ('' === $deviceId) {
             throw new NotFoundHttpException('Simulator device id missing.');
         }
 
@@ -41,28 +41,27 @@ final class SimulatorDeviceService
         $jobs = $this->doorJobService->dispatchJobs($deviceId, $areas, $limit);
 
         return [
-            'jobs' => array_map(static function (array $job): array {
-                return [
-                    'jobId' => $job['jobId'] ?? $job['id'] ?? null,
-                    'area' => $job['area'] ?? $job['areaKey'] ?? null,
-                    'action' => $job['action'] ?? 'open',
-                    'nonce' => $job['nonce'] ?? null,
-                    'expiresInMs' => $job['expiresInMs'] ?? null,
-                    'correlationId' => $job['correlationId'] ?? null,
-                ];
-            }, $jobs),
+            'jobs' => array_map(static fn (array $job): array => [
+                'jobId' => $job['jobId'] ?? $job['id'] ?? null,
+                'area' => $job['area'] ?? $job['areaKey'] ?? null,
+                'action' => $job['action'] ?? 'open',
+                'nonce' => $job['nonce'] ?? null,
+                'expiresInMs' => $job['expiresInMs'] ?? null,
+                'correlationId' => $job['correlationId'] ?? null,
+            ], $jobs),
         ];
     }
 
     /**
      * @param array<string, mixed> $payload
+     *
      * @return array<string, mixed>
      */
     public function confirm(array $payload, string $deviceName = 'shed-simulator'): array
     {
         $device = $this->connection->fetchAssociative(
             'SELECT * FROM tl_co_device WHERE name = ? AND enabled = ? LIMIT 1',
-            [$deviceName, '1']
+            [$deviceName, '1'],
         );
 
         if (!$device) {
@@ -85,7 +84,7 @@ final class SimulatorDeviceService
             $jobId,
             $nonce,
             $ok,
-            $meta
+            $meta,
         );
 
         return [
@@ -96,19 +95,20 @@ final class SimulatorDeviceService
 
     /**
      * @param array<string, mixed> $device
+     *
      * @return list<string>
      */
     private function extractAreas(array $device): array
     {
         $areasRaw = $device['areas'] ?? '';
 
-        if (!is_string($areasRaw) || $areasRaw === '') {
+        if (!\is_string($areasRaw) || '' === $areasRaw) {
             return [];
         }
 
         $areas = @unserialize($areasRaw);
 
-        if (is_array($areas)) {
+        if (\is_array($areas)) {
             return array_values(array_filter(array_map('strval', $areas)));
         }
 

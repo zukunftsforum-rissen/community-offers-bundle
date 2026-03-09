@@ -1,497 +1,468 @@
+/* Community Offers Door Simulator v4 */
 (function () {
-    (function () {
-        const config = window.CO_SIMULATOR_CONFIG || {};
-        const POLL_URL = config.pollUrl || '/door-simulator/poll';
-        const CONFIRM_URL = config.confirmUrl || '/door-simulator/confirm';
-        const POLL_INTERVAL_MS = Number(config.pollIntervalMs || 2000);
+    const config = window.CO_SIMULATOR_CONFIG || {};
+    const POLL_URL = config.pollUrl || '/door-simulator/poll';
+    const CONFIRM_URL = config.confirmUrl || '/door-simulator/confirm';
+    const POLL_INTERVAL_MS = Number(config.pollIntervalMs || 2000);
 
-        const elConnectionState = document.getElementById('sim-connection-state');
-        const elLastPoll = document.getElementById('sim-last-poll');
-        const elLastJob = document.getElementById('sim-last-job');
-        const elLastStatus = document.getElementById('sim-last-status');
-        const elLog = document.getElementById('sim-log');
-        const elClearLog = document.getElementById('sim-clear-log');
+    const elConnectionState = document.getElementById('sim-connection-state');
+    const elLastPoll = document.getElementById('sim-last-poll');
+    const elLastJob = document.getElementById('sim-last-job');
+    const elLastStatus = document.getElementById('sim-last-status');
+    const elLog = document.getElementById('sim-log');
+    const elClearLog = document.getElementById('sim-clear-log');
 
-        let pollTimer = null;
-        let isPolling = false;
-        const runningAreas = new Set();
+    let pollTimer = null;
+    let isPolling = false;
+    let soundEnabled = false;
+    const runningAreas = new Set();
 
-        function nowTime() {
-            const d = new Date();
-            return d.toLocaleTimeString('de-DE');
+    console.log('CO simulator v4 loaded');
+
+    function nowTime() {
+        const d = new Date();
+        return d.toLocaleTimeString('de-DE');
+    }
+
+    function log(message) {
+        if (!elLog) {
+            return;
         }
 
-        function log(message) {
-            if (!elLog) {
-                return;
-            }
+        const entry = document.createElement('div');
+        entry.className = 'co-sim-log__entry';
+        entry.innerHTML = '<span class="co-sim-log__time">' + escapeHtml(nowTime()) + '</span>' + escapeHtml(message);
 
-            const entry = document.createElement('div');
-            entry.className = 'co-sim-log__entry';
-            entry.innerHTML = '<span class="co-sim-log__time">' + escapeHtml(nowTime()) + '</span>' + escapeHtml(message);
+        elLog.prepend(entry);
 
-            elLog.prepend(entry);
+        while (elLog.children.length > 80) {
+            elLog.removeChild(elLog.lastChild);
+        }
+    }
 
-            while (elLog.children.length > 80) {
-                elLog.removeChild(elLog.lastChild);
-            }
+    function escapeHtml(value) {
+        return String(value)
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#039;');
+    }
+
+    function setConnectionState(text) {
+        if (elConnectionState) {
+            elConnectionState.textContent = text;
+        }
+    }
+
+    function setLastPoll(text) {
+        if (elLastPoll) {
+            elLastPoll.textContent = text;
+        }
+    }
+
+    function setLastJob(text) {
+        if (elLastJob) {
+            elLastJob.textContent = text;
+        }
+    }
+
+    function setLastStatus(text) {
+        if (elLastStatus) {
+            elLastStatus.textContent = text;
+        }
+    }
+
+    function sleep(ms) {
+        return new Promise(function (resolve) {
+            window.setTimeout(resolve, ms);
+        });
+    }
+
+    function nextFrame() {
+        return new Promise(function (resolve) {
+            window.requestAnimationFrame(resolve);
+        });
+    }
+
+    function playUnlockSound() {
+        if (!soundEnabled) {
+            return;
         }
 
-        function escapeHtml(value) {
-            return String(value)
-                .replaceAll('&', '&amp;')
-                .replaceAll('<', '&lt;')
-                .replaceAll('>', '&gt;')
-                .replaceAll('"', '&quot;')
-                .replaceAll("'", '&#039;');
+        const buzzer = document.getElementById('sound-door-buzzer');
+
+        if (!buzzer) {
+            return;
         }
 
-        function setConnectionState(text) {
-            if (elConnectionState) {
-                elConnectionState.textContent = text;
-            }
+        buzzer.currentTime = 0;
+        buzzer.play().catch((error) => {
+            log('Buzzer konnte nicht abgespielt werden: ' + error);
+        });
+    }
+
+    function playDoorClickSound() {
+        if (!soundEnabled) {
+            return;
         }
 
-        function setLastPoll(text) {
-            if (elLastPoll) {
-                elLastPoll.textContent = text;
-            }
+        const click = document.getElementById('sound-door-click');
+
+        if (!click) {
+            return;
         }
 
-        function setLastJob(text) {
-            if (elLastJob) {
-                elLastJob.textContent = text;
-            }
+        click.currentTime = 0;
+        click.play().catch((error) => {
+            log('Klick konnte nicht abgespielt werden: ' + error);
+        });
+    }
+
+    function getDoorByArea(area) {
+        return document.querySelector('.co-door[data-area="' + CSS.escape(area) + '"]');
+    }
+
+    function getDoorStateEl(door) {
+        return door ? door.querySelector('.co-door__state') : null;
+    }
+
+    function getPersonForDoor(door) {
+        if (!door) {
+            return null;
         }
 
-        function setLastStatus(text) {
-            if (elLastStatus) {
-                elLastStatus.textContent = text;
-            }
+        const shedKey = door.getAttribute('data-shed-key');
+        return document.querySelector('.co-person[data-person-for="' + CSS.escape(shedKey) + '"]');
+    }
+
+    function setDoorState(door, text) {
+        const stateEl = getDoorStateEl(door);
+        if (stateEl) {
+            stateEl.textContent = text;
+        }
+    }
+
+    function getDoorIndex(door) {
+        const allDoors = Array.from(door.parentElement.querySelectorAll('.co-door'));
+        return allDoors.indexOf(door);
+    }
+
+    function computePersonWaitingX(door) {
+        return getDoorIndex(door) === 0 ? 72 : 188;
+    }
+
+    function computePersonPushX(door) {
+        return getDoorIndex(door) === 0 ? 92 : 208;
+    }
+
+    function computePersonEnterX(door) {
+        return getDoorIndex(door) === 0 ? 128 : 244;
+    }
+
+    function showPersonAtDoor(person, door) {
+        if (!person) {
+            return;
         }
 
-        function sleep(ms) {
-            return new Promise(function (resolve) {
-                window.setTimeout(resolve, ms);
-            });
+        person.classList.remove('is-hidden', 'is-entering', 'is-pushing', 'is-waiting');
+        person.classList.add('is-visible', 'is-waiting');
+        person.style.transform = 'translateX(' + computePersonWaitingX(door) + 'px)';
+    }
+
+    function hidePerson(person) {
+        if (!person) {
+            return;
         }
 
-        function playUnlockSound() {
-            if (!soundEnabled) {
-                return;
-            }
+        person.classList.remove('is-visible', 'is-waiting', 'is-pushing', 'is-entering');
+        person.classList.add('is-hidden');
+        person.style.transform = 'translateX(0)';
+    }
 
-            const buzzer = document.getElementById('sound-door-buzzer');
+    async function animateDoor(area, label) {
+        const door = getDoorByArea(area);
 
-            if (!buzzer) {
-                return;
-            }
-
-            buzzer.currentTime = 0;
-            buzzer.play().catch((error) => {
-                log('Buzzer konnte nicht abgespielt werden: ' + error);
-            });
+        if (!door) {
+            log('Keine Tür für Area "' + label + '" gefunden.');
+            return;
         }
 
-        function playDoorClickSound() {
-            if (!soundEnabled) {
-                return;
-            }
+        const person = getPersonForDoor(door);
 
-            const click = document.getElementById('sound-door-click');
-
-            if (!click) {
-                return;
-            }
-
-            click.currentTime = 0;
-            click.play().catch((error) => {
-                log('Klick konnte nicht abgespielt werden: ' + error);
-            });
+        if (door.getAttribute('data-busy') === '1') {
+            return;
         }
 
-        function getDoorByArea(area) {
-            return document.querySelector('.co-door[data-area="' + CSS.escape(area) + '"]');
+        door.setAttribute('data-busy', '1');
+        runningAreas.add(area);
+
+        setLastJob(label);
+        setLastStatus('Person wartet vor Tür');
+        setDoorState(door, 'Person steht vor Tür…');
+
+        showPersonAtDoor(person, door);
+        await nextFrame();
+        await sleep(160);
+
+        setDoorState(door, 'Summer…');
+        setLastStatus('Summer läuft');
+        door.classList.add('is-unlocking');
+        playUnlockSound();
+
+        await sleep(105);
+
+        setDoorState(door, 'Klack…');
+        setLastStatus('Tür entriegelt');
+        playDoorClickSound();
+
+        await sleep(45);
+
+        door.classList.add('is-open');
+        setDoorState(door, 'Tür wird aufgedrückt…');
+        setLastStatus('Person drückt Tür auf');
+
+        if (person) {
+            person.classList.remove('is-waiting');
+            person.classList.add('is-pushing');
+            person.style.transform = 'translateX(' + computePersonPushX(door) + 'px)';
         }
 
-        function getDoorStateEl(door) {
-            return door ? door.querySelector('.co-door__state') : null;
+        await sleep(240);
+
+        if (person) {
+            person.classList.remove('is-pushing');
+            person.classList.add('is-entering');
+            person.style.transform = 'translateX(' + computePersonEnterX(door) + 'px)';
         }
 
-        function getPersonForDoor(door) {
-            if (!door) {
-                return null;
-            }
+        setDoorState(door, 'Betreten…');
+        setLastStatus('Person tritt ein');
 
-            const shedKey = door.getAttribute('data-shed-key');
-            return document.querySelector('.co-person[data-person-for="' + CSS.escape(shedKey) + '"]');
+        await sleep(620);
+
+        door.classList.remove('is-unlocking', 'is-open');
+        setDoorState(door, 'Schließt…');
+        setLastStatus('Tür schließt');
+
+        await sleep(240);
+
+        hidePerson(person);
+        setDoorState(door, 'Bereit');
+        setLastStatus('Bereit');
+
+        door.setAttribute('data-busy', '0');
+        runningAreas.delete(area);
+    }
+
+    async function confirmJob(jobId, nonce, correlationId, label) {
+        const response = await fetch(CONFIRM_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                jobId: jobId,
+                nonce: nonce,
+                ok: true,
+                correlationId: correlationId,
+                meta: {
+                    source: 'door-simulator'
+                }
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('HTTP ' + response.status);
         }
 
-        function setDoorState(door, text) {
-            const stateEl = getDoorStateEl(door);
-            if (stateEl) {
-                stateEl.textContent = text;
-            }
+        log('Confirm für "' + label + '" gesendet.');
+        setLastStatus('Bestätigt');
+    }
+
+    function normalizeJobs(payload) {
+        if (!payload) {
+            return [];
         }
 
-        function resetDoorAndPerson(door, person) {
-            if (door) {
-                door.classList.remove('is-unlocking', 'is-open');
-                setDoorState(door, 'Bereit');
-                door.setAttribute('data-busy', '0');
-            }
-
-            if (person) {
-                person.classList.remove('is-visible', 'is-approaching', 'is-entering', 'is-inside');
-                person.style.transform = 'translateX(0)';
-            }
-        }
-        function computePersonTargetX(door) {
-            const allDoors = Array.from(door.parentElement.querySelectorAll('.co-door'));
-            const index = allDoors.indexOf(door);
-
-            return index === 0 ? 110 : 225;
+        if (Array.isArray(payload.jobs)) {
+            return payload.jobs;
         }
 
-
-        function computePersonApproachX(door) {
-            const allDoors = Array.from(door.parentElement.querySelectorAll('.co-door'));
-            const index = allDoors.indexOf(door);
-
-            return index === 0 ? 82 : 198;
+        if (payload.job && typeof payload.job === 'object') {
+            return [payload.job];
         }
 
-        function computePersonEnterX(door) {
-            const allDoors = Array.from(door.parentElement.querySelectorAll('.co-door'));
-            const index = allDoors.indexOf(door);
+        return [];
+    }
 
-            return index === 0 ? 122 : 238;
+    function getJobArea(job) {
+        return job.area || job.areaKey || job.doorKey || null;
+    }
+
+    function getJobNonce(job) {
+        return job.nonce || null;
+    }
+
+    function getJobId(job) {
+        return job.jobId || job.id || null;
+    }
+
+    function getJobCorrelationId(job) {
+        return job.correlationId || null;
+    }
+
+    async function handleJob(job) {
+        const area = getJobArea(job);
+        const jobId = getJobId(job);
+        const nonce = getJobNonce(job);
+        const correlationId = getJobCorrelationId(job);
+
+        if (!area) {
+            log('Job ohne Area empfangen.');
+            return;
         }
 
-        async function animateDoor(area, label) {
-            const door = getDoorByArea(area);
+        const door = getDoorByArea(area);
+        const label = door ? (door.getAttribute('data-label') || area) : area;
 
-            if (!door) {
-                log('Keine Tür für Area "' + label + '" gefunden.');
-                return;
-            }
-
-            const person = getPersonForDoor(door);
-
-            if (door.getAttribute('data-busy') === '1') {
-                return;
-            }
-
-            door.setAttribute('data-busy', '1');
-            runningAreas.add(area);
-
-            setLastJob(label);
-            setLastStatus('Entriegelung läuft');
-            setDoorState(door, 'Entriegelt…');
-            door.classList.add('is-unlocking');
-
-            playUnlockSound();
-            await sleep(180);
-            playDoorClickSound();
-            await sleep(80);
-            door.classList.add('is-open');
-
-            // Männchen sicher sichtbar machen
-            if (person) {
-                person.classList.remove('is-hidden', 'is-approaching', 'is-entering');
-                person.classList.add('is-visible');
-                person.style.transform = 'translateX(0)';
-                void person.offsetWidth; // Reflow erzwingen
-            }
-
-            // einen Frame warten, damit opacity/transform sauber greifen
-            await new Promise((resolve) => requestAnimationFrame(resolve));
-
-            // zur Tür gehen
-            if (person) {
-                person.classList.add('is-approaching');
-                person.style.transform = 'translateX(' + computePersonApproachX(door) + 'px)';
-            }
-
-            setDoorState(door, 'Geht zur Tür…');
-            setLastStatus('Person geht zur Tür');
-
-            await sleep(520);
-
-            // Tür öffnet direkt nach dem Klack
-            door.classList.add('is-open');
-            setDoorState(door, 'Offen');
-            setLastStatus('Tür offen');
-
-            if (person) {
-                person.classList.remove('is-approaching');
-                person.classList.add('is-entering');
-                person.style.transform = 'translateX(' + computePersonEnterX(door) + 'px)';
-            }
-
-            setDoorState(door, 'Betreten…');
-            setLastStatus('Männchen tritt ein');
-
-            await sleep(900);
-
-            door.classList.remove('is-open', 'is-unlocking');
-            setDoorState(door, 'Schließt…');
-            setLastStatus('Tür schließt');
-
-            await sleep(350);
-
-            if (person) {
-                person.classList.remove('is-visible', 'is-approaching', 'is-entering');
-                person.classList.add('is-hidden');
-                person.style.transform = 'translateX(0)';
-            }
-
-            setDoorState(door, 'Bereit');
-            setLastStatus('Bereit');
-
-            door.setAttribute('data-busy', '0');
-            runningAreas.delete(area);
+        if (runningAreas.has(area)) {
+            log('Area "' + label + '" läuft bereits.');
+            return;
         }
 
-        async function confirmJob(jobId, nonce, correlationId, label) {
-            const response = await fetch(CONFIRM_URL, {
+        log('Job empfangen für "' + label + '".');
+        setLastJob(label);
+        setLastStatus('Job empfangen');
+
+        await animateDoor(area, label);
+
+        if (!jobId || !nonce) {
+            log('Confirm übersprungen: jobId oder nonce fehlt.');
+            setLastStatus('Confirm unvollständig');
+            return;
+        }
+
+        await confirmJob(jobId, nonce, correlationId, label);
+    }
+
+    async function pollDevice() {
+        if (isPolling) {
+            return;
+        }
+
+        isPolling = true;
+
+        try {
+            setConnectionState('Polling…');
+
+            const response = await fetch(POLL_URL, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
                 credentials: 'same-origin',
-                body: JSON.stringify({
-                    jobId: jobId,
-                    nonce: nonce,
-                    ok: true,
-                    correlationId: correlationId,
-                    meta: {
-                        source: 'door-simulator'
-                    }
-                })
+                body: JSON.stringify({})
             });
+
+            setLastPoll(nowTime());
 
             if (!response.ok) {
                 throw new Error('HTTP ' + response.status);
             }
 
-            log('Confirm für "' + label + '" gesendet.');
-            setLastStatus('Bestätigt');
-        }
+            const payload = await response.json();
+            const jobs = normalizeJobs(payload);
 
-        function normalizeJobs(payload) {
-            if (!payload) {
-                return [];
+            setConnectionState('Verbunden');
+
+            for (const job of jobs) {
+                await handleJob(job);
             }
+        } catch (error) {
+            setConnectionState('Fehler');
+            setLastStatus('Polling fehlgeschlagen');
+            log('Polling fehlgeschlagen: ' + error);
+        } finally {
+            isPolling = false;
+        }
+    }
 
-            if (Array.isArray(payload.jobs)) {
-                return payload.jobs;
-            }
-
-            if (payload.job && typeof payload.job === 'object') {
-                return [payload.job];
-            }
-
-            return [];
+    function startPolling() {
+        if (pollTimer) {
+            window.clearInterval(pollTimer);
         }
 
-        function getJobArea(job) {
-            return job.area || job.areaKey || job.doorKey || null;
+        pollDevice();
+        pollTimer = window.setInterval(pollDevice, POLL_INTERVAL_MS);
+        log('Pi-Simulator gestartet.');
+    }
+
+    function stopPolling() {
+        if (pollTimer) {
+            window.clearInterval(pollTimer);
+            pollTimer = null;
         }
 
-        function getJobNonce(job) {
-            return job.nonce || null;
-        }
+        setConnectionState('Gestoppt');
+        log('Pi-Simulator gestoppt.');
+    }
 
-        async function handleJob(job) {
-            const area = getJobArea(job);
-            const jobId = getJobId(job);
-            const nonce = getJobNonce(job);
-            const correlationId = getJobCorrelationId(job);
+    function unlockAudio() {
+        const buzzer = document.getElementById('sound-door-buzzer');
+        const click = document.getElementById('sound-door-click');
 
-            if (!area) {
-                log('Job ohne Area empfangen.');
+        [buzzer, click].forEach((audio) => {
+            if (!audio) {
                 return;
             }
 
-            const door = getDoorByArea(area);
-            const label = door ? (door.getAttribute('data-label') || area) : area;
+            const p = audio.play();
 
-            if (runningAreas.has(area)) {
-                log('Area "' + label + '" läuft bereits.');
-                return;
+            if (p) {
+                p.then(() => {
+                    audio.pause();
+                    audio.currentTime = 0;
+                }).catch(() => {});
             }
-
-            log('Job empfangen für "' + label + '".');
-            setLastJob(label);
-            setLastStatus('Job empfangen');
-
-            await animateDoor(area, label);
-
-            if (!jobId || !nonce) {
-                log('Confirm übersprungen: jobId oder nonce fehlt.');
-                setLastStatus('Confirm unvollständig');
-                return;
-            }
-
-            await confirmJob(jobId, nonce, correlationId, label);
-        }
-
-        async function pollDevice() {
-            if (isPolling) {
-                return;
-            }
-
-            isPolling = true;
-
-            try {
-                setConnectionState('Polling…');
-
-                const response = await fetch(POLL_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    credentials: 'same-origin',
-                    body: JSON.stringify({})
-                });
-
-                setLastPoll(nowTime());
-
-                if (!response.ok) {
-                    throw new Error('HTTP ' + response.status);
-                }
-
-                const payload = await response.json();
-                const jobs = normalizeJobs(payload);
-
-                setConnectionState('Verbunden');
-
-                for (const job of jobs) {
-                    await handleJob(job);
-                }
-            } catch (error) {
-                setConnectionState('Fehler');
-                setLastStatus('Polling fehlgeschlagen');
-                log('Polling fehlgeschlagen: ' + error);
-            } finally {
-                isPolling = false;
-            }
-        }
-
-        function startPolling() {
-            if (pollTimer) {
-                window.clearInterval(pollTimer);
-            }
-
-            pollDevice();
-            pollTimer = window.setInterval(pollDevice, POLL_INTERVAL_MS);
-            log('Pi-Simulator gestartet.');
-        }
-
-        function stopPolling() {
-            if (pollTimer) {
-                window.clearInterval(pollTimer);
-                pollTimer = null;
-            }
-
-            setConnectionState('Gestoppt');
-            log('Pi-Simulator gestoppt.');
-        }
-
-        function getJobId(job) {
-            return job.jobId || job.id || null;
-        }
-
-        function getJobCorrelationId(job) {
-            return job.correlationId || null;
-        }
-
-
-        let soundEnabled = false;
-
-        function unlockAudio() {
-            const buzzer = document.getElementById('sound-door-buzzer');
-            const click = document.getElementById('sound-door-click');
-
-            [buzzer, click].forEach((audio) => {
-                if (!audio) {
-                    return;
-                }
-
-                const p = audio.play();
-
-                if (p) {
-                    p.then(() => {
-                        audio.pause();
-                        audio.currentTime = 0;
-                    }).catch(() => { });
-                }
-            });
-
-            soundEnabled = true;
-
-            const button = document.getElementById('enable-sound');
-            if (button) {
-                button.textContent = 'Ton aktiviert';
-                button.disabled = true;
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', function () {
-            const button = document.getElementById('enable-sound');
-
-            if (button) {
-                button.addEventListener('click', unlockAudio);
-            }
-
-            startPolling();
         });
 
-        document.addEventListener('DOMContentLoaded', function () {
-            if (elClearLog) {
-                elClearLog.addEventListener('click', function () {
-                    elLog.innerHTML = '';
-                });
-            }
+        soundEnabled = true;
 
-            const unlockAudioOnce = function () {
-                const buzzer = document.getElementById('sound-door-buzzer');
-                const click = document.getElementById('sound-door-click');
+        const button = document.getElementById('enable-sound');
+        if (button) {
+            button.textContent = 'Ton aktiviert';
+            button.disabled = true;
+        }
+    }
 
-                [buzzer, click].forEach(function (audio) {
-                    if (!audio) {
-                        return;
-                    }
-
-                    const p = audio.play();
-
-                    if (p) {
-                        p.then(function () {
-                            audio.pause();
-                            audio.currentTime = 0;
-                        }).catch(function () {
-                            // ignorieren
-                        });
-                    }
-                });
-            };
-
-            document.body.addEventListener('click', unlockAudioOnce, { once: true });
-
-            startPolling();
-
-            document.addEventListener('visibilitychange', function () {
-                if (document.hidden) {
-                    stopPolling();
-                } else {
-                    startPolling();
-                }
+    document.addEventListener('DOMContentLoaded', function () {
+        if (elClearLog) {
+            elClearLog.addEventListener('click', function () {
+                elLog.innerHTML = '';
             });
+        }
 
-            window.addEventListener('beforeunload', function () {
+        const button = document.getElementById('enable-sound');
+        if (button) {
+            button.addEventListener('click', unlockAudio);
+        }
+
+        document.body.addEventListener('click', unlockAudio, { once: true });
+
+        startPolling();
+
+        document.addEventListener('visibilitychange', function () {
+            if (document.hidden) {
                 stopPolling();
-            });
+            } else {
+                startPolling();
+            }
         });
-    })();
+
+        window.addEventListener('beforeunload', function () {
+            stopPolling();
+        });
+    });
 })();

@@ -185,9 +185,9 @@
     border-radius: 8px 8px 0 0;
     transform-origin: left center;
     transition:
-        transform 0.45s ease,
-        filter 0.2s ease,
-        box-shadow 0.2s ease;
+        transform 0.26s ease-out,
+        filter 0.16s ease,
+        box-shadow 0.16s ease;
     box-shadow: inset -10px 0 0 rgb(255 255 255 / 8%);
 }
 
@@ -210,7 +210,7 @@
     height: 126px;
     border-radius: 12px 12px 0 0;
     opacity: 0;
-    transition: opacity 0.2s ease;
+    transition: opacity 0.16s ease;
     background: radial-gradient(circle,
             rgb(255 224 130 / 45%) 0%,
             rgb(255 224 130 / 0%) 72%);
@@ -246,7 +246,7 @@
 }
 
 .co-door.is-open .co-door__leaf {
-    transform: rotateY(-68deg);
+    transform: rotateY(-72deg);
 }
 
 .co-person {
@@ -258,7 +258,7 @@
     z-index: 8;
     opacity: 0;
     transform: translateX(0);
-    transition: opacity 0.18s ease, transform 0.75s linear;
+    transition: opacity 0.16s ease, transform 0.24s linear;
     pointer-events: none;
 }
 
@@ -270,6 +270,14 @@
     opacity: 0;
 }
 
+.co-person.is-waiting {
+    transition: opacity 0.16s ease, transform 0.12s linear;
+}
+
+.co-person.is-entering {
+    transition: opacity 0.16s ease, transform 0.48s linear;
+}
+
 .co-person__body {
     position: absolute;
     top: 16px;
@@ -278,6 +286,12 @@
     height: 34px;
     background: #285ea8;
     border-radius: 4px;
+    transform-origin: top center;
+    transition: transform 0.18s ease;
+}
+
+.co-person.is-pushing .co-person__body {
+    transform: rotate(16deg);
 }
 
 .co-person.is-entering .co-person__body {
@@ -292,8 +306,12 @@
     height: 16px;
     border-radius: 50%;
     background: #f1c8a2;
+    transition: transform 0.18s ease;
 }
 
+.co-person.is-pushing .co-person__head {
+    transform: translateX(2px);
+}
 
 .co-person__body::before,
 .co-person__body::after {

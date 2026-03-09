@@ -1,4 +1,4 @@
-/* Community Offers Door Simulator v5 */
+/* Community Offers Door Simulator v6 */
 (function () {
     const config = window.CO_SIMULATOR_CONFIG || {};
     const POLL_URL = config.pollUrl || '/door-simulator/poll';
@@ -17,7 +17,7 @@
     let soundEnabled = false;
     const runningAreas = new Set();
 
-    console.log('CO simulator v5 loaded');
+    console.log('CO simulator v6 loaded');
 
     function nowTime() {
         const d = new Date();
@@ -242,7 +242,11 @@
         setDoorState(door, 'Betreten…');
         setLastStatus('Person tritt ein');
 
-        await sleep(620);
+        await sleep(420);
+
+        hidePerson(person);
+
+        await sleep(80);
 
         door.classList.remove('is-unlocking', 'is-open');
         setDoorState(door, 'Schließt…');
@@ -251,7 +255,6 @@
 
         await sleep(260);
 
-        hidePerson(person);
         setDoorState(door, 'Bereit');
         setLastStatus('Bereit');
 

@@ -1,4 +1,4 @@
-/* Community Offers Door Simulator v4 */
+/* Community Offers Door Simulator v5 */
 (function () {
     const config = window.CO_SIMULATOR_CONFIG || {};
     const POLL_URL = config.pollUrl || '/door-simulator/poll';
@@ -17,7 +17,7 @@
     let soundEnabled = false;
     const runningAreas = new Set();
 
-    console.log('CO simulator v4 loaded');
+    console.log('CO simulator v5 loaded');
 
     function nowTime() {
         const d = new Date();
@@ -102,21 +102,29 @@
         });
     }
 
-    function playDoorClickSound() {
+    function playAudioById(audioId, fallbackId, logLabel) {
         if (!soundEnabled) {
             return;
         }
 
-        const click = document.getElementById('sound-door-click');
+        const audio = document.getElementById(audioId) || (fallbackId ? document.getElementById(fallbackId) : null);
 
-        if (!click) {
+        if (!audio) {
             return;
         }
 
-        click.currentTime = 0;
-        click.play().catch((error) => {
-            log('Klick konnte nicht abgespielt werden: ' + error);
+        audio.currentTime = 0;
+        audio.play().catch((error) => {
+            log(logLabel + ' konnte nicht abgespielt werden: ' + error);
         });
+    }
+
+    function playDoorOpenSound() {
+        playAudioById('sound-door-open', 'sound-door-click', 'Tür-Öffnen-Sound');
+    }
+
+    function playDoorCloseSound() {
+        playAudioById('sound-door-close', null, 'Tür-Schließen-Sound');
     }
 
     function getDoorByArea(area) {
@@ -210,17 +218,12 @@
         door.classList.add('is-unlocking');
         playUnlockSound();
 
-        await sleep(105);
-
-        setDoorState(door, 'Klack…');
-        setLastStatus('Tür entriegelt');
-        playDoorClickSound();
-
-        await sleep(45);
+        await sleep(180);
 
         door.classList.add('is-open');
         setDoorState(door, 'Tür wird aufgedrückt…');
         setLastStatus('Person drückt Tür auf');
+        playDoorOpenSound();
 
         if (person) {
             person.classList.remove('is-waiting');
@@ -244,8 +247,9 @@
         door.classList.remove('is-unlocking', 'is-open');
         setDoorState(door, 'Schließt…');
         setLastStatus('Tür schließt');
+        playDoorCloseSound();
 
-        await sleep(240);
+        await sleep(260);
 
         hidePerson(person);
         setDoorState(door, 'Bereit');
@@ -412,8 +416,10 @@
     function unlockAudio() {
         const buzzer = document.getElementById('sound-door-buzzer');
         const click = document.getElementById('sound-door-click');
+        const doorOpen = document.getElementById('sound-door-open');
+        const doorClose = document.getElementById('sound-door-close');
 
-        [buzzer, click].forEach((audio) => {
+        [buzzer, click, doorOpen, doorClose].forEach((audio) => {
             if (!audio) {
                 return;
             }

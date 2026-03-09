@@ -2,13 +2,10 @@
 
 
 {% block main %}
-	<audio id="sound-door-buzzer">
-		<source src="/bundles/communityoffers/sounds/door_opener.wav" type="audio/wav">
-	</audio>
-	<audio id="sound-door-click">
-		<source src="/bundles/communityoffers/sounds/door_click.wav" type="audio/wav">
-	</audio>
-
+	<audio id="sound-door-buzzer" preload="auto" src="/bundles/communityoffers/sounds/door_opener.wav"></audio>
+	<audio id="sound-door-open" preload="auto" src="/bundles/communityoffers/sounds/door_open.wav"></audio>
+	<audio id="sound-door-close" preload="auto" src="/bundles/communityoffers/sounds/door_close.wav"></audio>
+	
 	<div class="co-sim-page">
 		<header class="co-sim-topbar">
 			<div>

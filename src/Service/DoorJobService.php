@@ -342,7 +342,7 @@ final class DoorJobService
                     continue;
                 }
 
-                $nonce = bin2hex(random_bytes(16));
+                $nonce = bin2hex(random_bytes(32));
 
                 $this->doorJobStateMachine->apply($job, 'dispatch');
 
@@ -458,10 +458,10 @@ final class DoorJobService
         $jobDevice = (string) ($job['dispatchToDeviceId'] ?? '');
         $jobNonce = (string) ($job['nonce'] ?? '');
         $memberId = (int) ($job['requestedByMemberId'] ?? 0);
-        $cid = (string) ($job['correlationId'] ?? '');
+        $jobCorrelationId = (string) ($job['correlationId'] ?? '');
 
         $this->logging->info('door_confirm.attempt', [
-            'cid' => $cid,
+            'cid' => $jobCorrelationId,
             'jobId' => $jobId,
             'deviceId' => $deviceId,
             'area' => $area,
@@ -474,14 +474,14 @@ final class DoorJobService
             result: 'attempt',
             message: 'Device confirm received',
             context: ['jobId' => $jobId, 'deviceId' => $deviceId, 'ok' => $ok],
-            correlationId: $cid,
+            correlationId: $jobCorrelationId,
             memberId: $memberId,
         );
 
         if (\in_array($status, ['executed', 'failed'], true)) {
             if ($jobDevice === $deviceId && '' !== $jobNonce && hash_equals($jobNonce, $nonce)) {
                 $this->logging->info('door_job.confirm_idempotent', [
-                    'cid' => $cid,
+                    'cid' => $jobCorrelationId,
                     'jobId' => $jobId,
                     'deviceId' => $deviceId,
                     'status' => $status,
@@ -491,7 +491,7 @@ final class DoorJobService
             }
 
             $this->logging->warning('door_job.confirm_forbidden_final_state', [
-                'cid' => $cid,
+                'cid' => $jobCorrelationId,
                 'jobId' => $jobId,
                 'deviceId' => $deviceId,
                 'status' => $status,
@@ -503,7 +503,7 @@ final class DoorJobService
         if ('expired' === $status) {
             if ($jobDevice === $deviceId && '' !== $jobNonce && hash_equals($jobNonce, $nonce)) {
                 $this->logging->warning('door_job.confirm_expired', [
-                    'cid' => $cid,
+                    'cid' => $jobCorrelationId,
                     'jobId' => $jobId,
                     'deviceId' => $deviceId,
                 ]);
@@ -512,7 +512,7 @@ final class DoorJobService
             }
 
             $this->logging->warning('door_job.confirm_forbidden_final_state', [
-                'cid' => $cid,
+                'cid' => $jobCorrelationId,
                 'jobId' => $jobId,
                 'deviceId' => $deviceId,
                 'status' => $status,
@@ -522,7 +522,7 @@ final class DoorJobService
         }
         if ('dispatched' !== $status) {
             $this->logging->warning('door_job.confirm_invalid_state', [
-                'cid' => $cid,
+                'cid' => $jobCorrelationId,
                 'jobId' => $jobId,
                 'status' => $status,
                 'deviceId' => $deviceId,
@@ -533,7 +533,7 @@ final class DoorJobService
 
         if ($jobDevice !== $deviceId) {
             $this->logging->warning('door_job.confirm_wrong_device', [
-                'cid' => $cid,
+                'cid' => $jobCorrelationId,
                 'jobId' => $jobId,
                 'deviceId' => $deviceId,
                 'expectedDeviceId' => $jobDevice,
@@ -544,7 +544,7 @@ final class DoorJobService
 
         if ('' === $jobNonce || !hash_equals($jobNonce, $nonce)) {
             $this->logging->warning('door_job.confirm_wrong_nonce', [
-                'cid' => $cid,
+                'cid' => $jobCorrelationId,
                 'jobId' => $jobId,
                 'deviceId' => $deviceId,
             ]);
@@ -555,7 +555,7 @@ final class DoorJobService
                 result: 'forbidden',
                 message: 'Door confirm rejected due to wrong nonce',
                 context: ['jobId' => $jobId, 'deviceId' => $deviceId],
-                correlationId: $cid,
+                correlationId: $jobCorrelationId,
                 memberId: $memberId,
             );
 
@@ -578,13 +578,60 @@ final class DoorJobService
                 $this->doorJobStateMachine->apply($doorJob, 'expire_dispatched');
             }
 
-            $this->db->executeStatement(
+            $affected = $this->db->executeStatement(
                 "UPDATE tl_co_door_job
-                 SET status='expired', tstamp=UNIX_TIMESTAMP(),
-                     resultCode='TIMEOUT', resultMessage='Confirm timeout'
-                 WHERE id=:id AND status='dispatched'",
-                ['id' => $jobId],
+     SET status='expired',
+         tstamp=UNIX_TIMESTAMP(),
+         resultCode='TIMEOUT',
+         resultMessage='Confirm timeout'
+     WHERE id=:id
+       AND status='dispatched'
+       AND dispatchToDeviceId=:deviceId
+       AND nonce=:nonce",
+                [
+                    'id' => $jobId,
+                    'deviceId' => $deviceId,
+                    'nonce' => $nonce,
+                ],
             );
+
+            if (1 !== $affected) {
+                $freshJob = $this->db->fetchAssociative(
+                    'SELECT status
+         FROM tl_co_door_job
+         WHERE id=:id',
+                    ['id' => $jobId],
+                );
+
+                $freshStatus = (string) ($freshJob['status'] ?? 'expired');
+
+                $this->logging->warning('door_job.confirm_timeout_conflict', [
+                    'cid' => $jobCorrelationId,
+                    'jobId' => $jobId,
+                    'deviceId' => $deviceId,
+                    'freshStatus' => $freshStatus,
+                ]);
+
+                return match ($freshStatus) {
+                    'expired' => [
+                        'accepted' => false,
+                        'httpStatus' => 410,
+                        'error' => 'confirm_timeout',
+                        'status' => 'expired',
+                    ],
+                    'executed', 'failed' => [
+                        'accepted' => true,
+                        'httpStatus' => 200,
+                        'status' => $freshStatus,
+                    ],
+                    default => [
+                        'accepted' => false,
+                        'httpStatus' => 409,
+                        'error' => 'not_dispatchable',
+                        'status' => $freshStatus,
+                    ],
+                };
+            }
 
             $this->audit->audit(
                 action: 'door_confirm',
@@ -592,12 +639,12 @@ final class DoorJobService
                 result: 'timeout',
                 message: 'Confirm timeout',
                 context: ['jobId' => $jobId, 'deviceId' => $deviceId],
-                correlationId: $cid,
+                correlationId: $jobCorrelationId,
                 memberId: $memberId,
             );
 
             $this->logging->warning('door_job.confirm_timeout', [
-                'cid' => $cid,
+                'cid' => $jobCorrelationId,
                 'jobId' => $jobId,
                 'deviceId' => $deviceId,
             ]);
@@ -617,7 +664,7 @@ final class DoorJobService
 
         if (!$this->doorJobStateMachine->can($doorJob, $transition)) {
             $this->logging->warning('door_job.confirm_transition_blocked', [
-                'cid' => $cid,
+                'cid' => $jobCorrelationId,
                 'jobId' => $jobId,
                 'transition' => $transition,
                 'status' => $status,
@@ -637,16 +684,16 @@ final class DoorJobService
             $resultMessage = substr($resultMessage.$suffix, 0, 255);
         }
 
-        $this->db->executeStatement(
+        $affected = $this->db->executeStatement(
             "UPDATE tl_co_door_job
-             SET status=:status,
-                 executedAt=:now,
-                 resultCode=:resultCode,
-                 resultMessage=:resultMessage
-             WHERE id=:id
-               AND status='dispatched'
-               AND dispatchToDeviceId=:deviceId
-               AND nonce=:nonce",
+     SET status=:status,
+         executedAt=:now,
+         resultCode=:resultCode,
+         resultMessage=:resultMessage
+     WHERE id=:id
+       AND status='dispatched'
+       AND dispatchToDeviceId=:deviceId
+       AND nonce=:nonce",
             [
                 'status' => $newStatus,
                 'now' => $now,
@@ -657,6 +704,45 @@ final class DoorJobService
                 'nonce' => $nonce,
             ],
         );
+
+        if (1 !== $affected) {
+            $freshJob = $this->db->fetchAssociative(
+                'SELECT status, correlationId
+         FROM tl_co_door_job
+         WHERE id=:id',
+                ['id' => $jobId],
+            );
+
+            $freshStatus = (string) ($freshJob['status'] ?? $status);
+
+            $this->logging->warning('door_job.confirm_update_conflict', [
+                'cid' => $jobCorrelationId,
+                'jobId' => $jobId,
+                'deviceId' => $deviceId,
+                'expectedTransition' => $transition,
+                'freshStatus' => $freshStatus,
+            ]);
+
+            return match ($freshStatus) {
+                'expired' => [
+                    'accepted' => false,
+                    'httpStatus' => 410,
+                    'error' => 'confirm_timeout',
+                    'status' => 'expired',
+                ],
+                'executed', 'failed' => [
+                    'accepted' => true,
+                    'httpStatus' => 200,
+                    'status' => $freshStatus,
+                ],
+                default => [
+                    'accepted' => false,
+                    'httpStatus' => 409,
+                    'error' => 'not_dispatchable',
+                    'status' => $freshStatus,
+                ],
+            };
+        }
 
         $this->audit->audit(
             action: 'door_confirm',
@@ -669,12 +755,12 @@ final class DoorJobService
                 'status' => $newStatus,
                 'meta' => $meta,
             ],
-            correlationId: $cid,
+            correlationId: $jobCorrelationId,
             memberId: $memberId,
         );
 
         $this->logging->info('door_confirm.confirmed', [
-            'cid' => $cid,
+            'cid' => $jobCorrelationId,
             'jobId' => $jobId,
             'deviceId' => $deviceId,
             'status' => $newStatus,

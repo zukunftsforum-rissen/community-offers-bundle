@@ -478,7 +478,7 @@ final class DoorJobService
             memberId: $memberId,
         );
 
-        if (\in_array($status, ['executed', 'failed', 'expired'], true)) {
+        if (\in_array($status, ['executed', 'failed'], true)) {
             if ($jobDevice === $deviceId && '' !== $jobNonce && hash_equals($jobNonce, $nonce)) {
                 $this->logging->info('door_job.confirm_idempotent', [
                     'cid' => $cid,
@@ -500,6 +500,26 @@ final class DoorJobService
             return ['accepted' => false, 'httpStatus' => 403, 'error' => 'forbidden', 'status' => $status];
         }
 
+        if ('expired' === $status) {
+            if ($jobDevice === $deviceId && '' !== $jobNonce && hash_equals($jobNonce, $nonce)) {
+                $this->logging->warning('door_job.confirm_expired', [
+                    'cid' => $cid,
+                    'jobId' => $jobId,
+                    'deviceId' => $deviceId,
+                ]);
+
+                return ['accepted' => false, 'httpStatus' => 410, 'error' => 'confirm_timeout', 'status' => 'expired'];
+            }
+
+            $this->logging->warning('door_job.confirm_forbidden_final_state', [
+                'cid' => $cid,
+                'jobId' => $jobId,
+                'deviceId' => $deviceId,
+                'status' => $status,
+            ]);
+
+            return ['accepted' => false, 'httpStatus' => 403, 'error' => 'forbidden', 'status' => $status];
+        }
         if ('dispatched' !== $status) {
             $this->logging->warning('door_job.confirm_invalid_state', [
                 'cid' => $cid,
@@ -582,7 +602,7 @@ final class DoorJobService
                 'deviceId' => $deviceId,
             ]);
 
-            return ['accepted' => false, 'httpStatus' => 410, 'error' => 'confirm_timeout', 'status' => $doorJob->getStatus()];
+            return ['accepted' => false, 'httpStatus' => 410, 'error' => 'confirm_timeout', 'status' => 'expired'];
         }
 
         $doorJob = new DoorJob(

@@ -12,7 +12,7 @@ use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 
 class LoggingService
 {
-    private ?Logger $logger = null;
+    private Logger|null $logger = null;
 
     private bool $loggingEnabled;
 
@@ -26,7 +26,7 @@ class LoggingService
         $this->debugLoggingEnabled = 'true' === (string) $params->get('enable_debug_logging');
 
         $projectDir = rtrim((string) $params->get('kernel.project_dir'), '/');
-        $this->logDir = $projectDir . '/var/logs/';
+        $this->logDir = $projectDir.'/var/logs/';
     }
 
     public function initiateLogging(string $moduleName, string $fileName = ''): void
@@ -36,14 +36,14 @@ class LoggingService
         }
 
         if (!is_dir($this->logDir) && !mkdir($concurrentDirectory = $this->logDir, 0777, true) && !is_dir($concurrentDirectory)) {
-            throw new \RuntimeException(sprintf('Log directory "%s" could not be created.', $this->logDir));
+            throw new \RuntimeException(\sprintf('Log directory "%s" could not be created.', $this->logDir));
         }
 
         $logFileName = '' !== $fileName ? $fileName : 'app';
-        $logFile = $this->logDir . $logFileName . '.log';
+        $logFile = $this->logDir.$logFileName.'.log';
 
         if (!file_exists($logFile) && false === @touch($logFile)) {
-            throw new \RuntimeException(sprintf('Log file "%s" could not be created.', $logFile));
+            throw new \RuntimeException(\sprintf('Log file "%s" could not be created.', $logFile));
         }
 
         $streamHandler = new StreamHandler($logFile, Level::Debug);
@@ -65,7 +65,7 @@ class LoggingService
      */
     public function start(string $message, array $context = []): void
     {
-        $this->log('info', $message . '.start', $context);
+        $this->log('info', $message.'.start', $context);
     }
 
     /**
@@ -115,9 +115,12 @@ class LoggingService
         $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
         $currentMethod = $backtrace[1]['function'] ?? 'unknown';
 
-        $this->logger?->debug('    current_method', [
-            'method' => $currentMethod,
-        ]);
+        $this->logger?->debug(
+            '    current_method',
+            [
+                'method' => $currentMethod,
+            ],
+        );
     }
 
     /**
@@ -143,7 +146,7 @@ class LoggingService
 
         foreach ($context as $key => $value) {
             $encoded = json_encode($value, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-            $formattedContext[] = sprintf('    %s: %s', $key, false === $encoded ? 'null' : $encoded);
+            $formattedContext[] = \sprintf('    %s: %s', $key, false === $encoded ? 'null' : $encoded);
         }
 
         return implode("\n", $formattedContext);
@@ -162,10 +165,10 @@ class LoggingService
         $context = $this->normalizeContext($context);
 
         $formattedContext = $this->formatContext($context);
-        $logMessage = '    ' . $message;
+        $logMessage = '    '.$message;
 
         if ('' !== $formattedContext) {
-            $logMessage .= "\n" . $formattedContext;
+            $logMessage .= "\n".$formattedContext;
         }
 
         switch ($level) {

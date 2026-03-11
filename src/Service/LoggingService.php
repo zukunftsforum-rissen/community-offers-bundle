@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace ZukunftsforumRissen\CommunityOffersBundle\Service;
 
 use Monolog\Formatter\LineFormatter;
-use Monolog\Handler\StreamHandler;
+use Monolog\Handler\RotatingFileHandler;
 use Monolog\Level;
 use Monolog\Logger;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
@@ -42,11 +42,11 @@ class LoggingService
         $logFileName = '' !== $fileName ? $fileName : 'app';
         $logFile = $this->logDir.$logFileName.'.log';
 
-        if (!file_exists($logFile) && false === @touch($logFile)) {
-            throw new \RuntimeException(\sprintf('Log file "%s" could not be created.', $logFile));
-        }
-
-        $streamHandler = new StreamHandler($logFile, Level::Debug);
+        $streamHandler = new RotatingFileHandler(
+            $logFile,
+            30,
+            Level::Debug,
+        );
 
         $this->logger = new Logger($moduleName);
 

@@ -25,3 +25,34 @@ tatsächliches Verhalten
 
 überein.
 
+
+
+3. Automatisch laufen lassen
+
+Am einfachsten erstmal per Cron auf dem Server, z. B. täglich nachts:
+
+php /pfad/zum/projekt/vendor/bin/contao-console community-offers:cleanup-door-data
+
+Wenn ihr es später lieber direkt im Bundle per Contao/Symfony-Scheduler machen wollt, können wir das im zweiten Schritt ergänzen.
+
+
+Echt ausführen
+php vendor/bin/contao-console community-offers:cleanup-door-data
+Automatisierung
+
+Empfehlung:
+
+täglich 03:00 Uhr
+
+Cronjob:
+
+0 3 * * * php /var/www/project/vendor/bin/contao-console community-offers:cleanup
+
+
+Später lohnt es sich noch eine kleine Erweiterung einzubauen:
+
+community-offers:cleanup-door-data --anonymize
+
+statt löschen.
+
+Dann bleiben Statistiken erhalten, aber personenbezogene Daten verschwinden.

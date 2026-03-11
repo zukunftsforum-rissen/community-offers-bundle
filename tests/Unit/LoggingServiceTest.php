@@ -17,8 +17,8 @@ class LoggingServiceTest extends TestCase
      */
     protected function setUp(): void
     {
-        $this->projectDir = sys_get_temp_dir().'/community_offers_'.uniqid('', true);
-        mkdir($this->projectDir.'/var/logs', 0777, true);
+        $this->projectDir = sys_get_temp_dir() . '/community_offers_' . uniqid('', true);
+        mkdir($this->projectDir . '/var/logs', 0777, true);
     }
 
     /**
@@ -48,9 +48,23 @@ class LoggingServiceTest extends TestCase
         $service = new LoggingService($params);
 
         $service->initiateLogging('community-offers', 'phpunit-info');
-        $service->info('Test info message', ['memberId' => 42]);
+        $service->info('Test info message', [
+            'memberId' => 123,
+        ]);
 
-        $content = file_get_contents($this->projectDir.'/var/logs/phpunit-info.log');
+        $service = null;
+        gc_collect_cycles();
+        clearstatcache();
+
+        $files = glob($this->projectDir . '/var/logs/phpunit-info-*.log');
+        $this->assertIsArray($files);
+        $this->assertNotEmpty($files);
+
+        sort($files);
+        $logFile = end($files);
+        $this->assertIsString($logFile);
+
+        $content = file_get_contents($logFile);
 
         $this->assertIsString($content);
         $this->assertStringContainsString('Test info message', $content);
@@ -68,7 +82,24 @@ class LoggingServiceTest extends TestCase
         $service->initiateLogging('community-offers', 'phpunit-debug-off');
         $service->debug('Debug should not be logged');
 
-        $content = file_get_contents($this->projectDir.'/var/logs/phpunit-debug-off.log');
+        $service = null;
+        gc_collect_cycles();
+        clearstatcache();
+
+        $files = glob($this->projectDir . '/var/logs/phpunit-debug-off-*.log');
+        $this->assertIsArray($files);
+
+        if ([] === $files) {
+            $this->assertSame([], $files);
+
+            return;
+        }
+
+        sort($files);
+        $logFile = end($files);
+        $this->assertIsString($logFile);
+
+        $content = file_get_contents($logFile);
 
         $this->assertIsString($content);
         $this->assertStringNotContainsString('Debug should not be logged', $content);
@@ -79,7 +110,7 @@ class LoggingServiceTest extends TestCase
         $params = $this->createStub(ParameterBagInterface::class);
         $params
             ->method('get')
-            ->willReturnCallback(static fn (string $name): string => match ($name) {
+            ->willReturnCallback(static fn(string $name): string => match ($name) {
                 'enable_logging' => $enableLogging,
                 'enable_debug_logging' => $enableDebugLogging,
                 'kernel.project_dir' => $projectDir,
@@ -105,7 +136,7 @@ class LoggingServiceTest extends TestCase
                 continue;
             }
 
-            $path = $directory.'/'.$entry;
+            $path = $directory . '/' . $entry;
 
             if (is_dir($path)) {
                 $this->deleteDirectory($path);

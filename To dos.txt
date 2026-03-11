@@ -6,25 +6,22 @@ im BE Link vom Antrag zum member einrichten!
 
 
 
-Da ihr:
-
-Raspberry Pull-Modell
-
-API
-
-DoorJobService (confirmWindow 30s)
-
-DeviceController Poll
-
-habt, würde ich zusätzlich später empfehlen:
-
-trivy config scan (Dockerfiles, YAML)
-
-CodeQL (Symfony/PHP Analyse)
-
-Aber das ist Phase 2.
+Lizenzbedingungen beachten für fremde icons etc.
 
 
+Ich würde zusätzlich im Backend einmal festlegen:
 
+Door Logs Retention: 90 days
 
-professionelles Test-Setup (github actions)
+und später automatisiert löschen lassen.
+
+Dann stimmt:
+
+Dokumentation
+
+Datenschutzerklärung
+
+tatsächliches Verhalten
+
+überein.
+

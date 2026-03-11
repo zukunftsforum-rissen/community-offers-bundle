@@ -158,9 +158,21 @@ footer {
     text-decoration: underline;
 }
 
+.app-legal a {
+    color: #0b67c2;
+    opacity: 0.85;
+    text-decoration: underline;
+}
+
 .form-privacy-hint a:hover {
     color: var(--color-link-hover);
 }
+
+.app-legal a:hover,
+.app-legal a:focus {
+    text-decoration-thickness: 2px;
+}
+
 
 .mod_navigation li.active>a {
     font-weight: 600;
@@ -587,7 +599,7 @@ button.has-request+.request-link {
     padding: 10px 14px;
     border: 1.5px solid var(--color-border);
     border-top: 0;
-    
+
     /* wirkt wie "ein Element" */
     border-bottom-left-radius: 10px;
     border-bottom-right-radius: 10px;
@@ -655,3 +667,15 @@ button.cooldown {
     opacity: 0.7;
 }
 
+.app-legal {
+    margin-top: 1.25rem;
+    padding-top: 0.9rem;
+    border-top: 1px solid rgb(0 0 0 / 18%);
+    font-size: 0.92rem;
+    line-height: 1.35;
+    color: #2f2f2f;
+}
+
+.app-legal p {
+    margin: 0;
+}

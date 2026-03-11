@@ -46,7 +46,7 @@
     color: #66707d;
 }
 
-.co-sim-log-wrap {
+.co-sim-log-wrap, .co-sim-play-wrap {
     margin-bottom: 24px;
     background: #fff;
     border: 1px solid #d7dde4;
@@ -55,7 +55,7 @@
     box-shadow: 0 8px 24px rgb(0 0 0 / 4%);
 }
 
-.co-sim-log-header {
+.co-sim-log-header, .co-sim-play-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -63,12 +63,12 @@
     margin-bottom: 12px;
 }
 
-.co-sim-log-header h2 {
+.co-sim-log-header h2, .co-sim-play-header h2 {
     margin: 0;
     font-size: 18px;
 }
 
-.co-sim-clear-log {
+.co-sim-clear-log, .co-sim-play-btn {
     border: 1px solid #ccd5df;
     background: #f7f9fb;
     border-radius: 10px;
@@ -76,7 +76,7 @@
     cursor: pointer;
 }
 
-.co-sim-log {
+.co-sim-log, .co-sim-play-log {
     max-height: 220px;
     overflow: auto;
     font-size: 14px;

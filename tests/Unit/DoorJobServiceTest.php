@@ -236,10 +236,17 @@ class DoorJobServiceTest extends TestCase
             'nonce' => 'nonce-123',
             'dispatchedAt' => time() - 31,
         ]);
-        $db->expects($this->once())->method('executeStatement')->with(
-            $this->stringContains("SET status='expired'"),
-            ['id' => 1],
-        );
+        $db->expects($this->once())
+            ->method('executeStatement')
+            ->with(
+                $this->stringContains("SET status='expired'"),
+                [
+                    'id' => 1,
+                    'deviceId' => 'dev-1',
+                    'nonce' => 'nonce-123',
+                ]
+            )
+            ->willReturn(1);
 
         $service = $this->createService($db);
 
@@ -261,16 +268,19 @@ class DoorJobServiceTest extends TestCase
             'nonce' => 'nonce-777',
             'dispatchedAt' => time(),
         ]);
-        $db->expects($this->once())->method('executeStatement')->with(
-            $this->stringContains('SET status=:status'),
-            $this->callback(static function (array $params): bool {
-                return 'executed' === $params['status']
-                    && 'OK' === $params['resultCode']
-                    && 7 === $params['id']
-                    && 'dev-1' === $params['deviceId']
-                    && 'nonce-777' === $params['nonce'];
-            }),
-        );
+        $db->expects($this->once())
+            ->method('executeStatement')
+            ->with(
+                $this->stringContains('SET status=:status'),
+                $this->callback(static function (array $params): bool {
+                    return 'executed' === $params['status']
+                        && 'OK' === $params['resultCode']
+                        && 7 === $params['id']
+                        && 'dev-1' === $params['deviceId']
+                        && 'nonce-777' === $params['nonce'];
+                }),
+            )
+            ->willReturn(1);
 
         $service = $this->createService($db);
 

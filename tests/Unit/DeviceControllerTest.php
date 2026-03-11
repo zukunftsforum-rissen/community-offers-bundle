@@ -44,6 +44,8 @@ use ZukunftsforumRissen\CommunityOffersBundle\Workflow\DoorJobWorkflowSubscriber
  */
 class DeviceControllerTest extends TestCase
 {
+    private const TEST_NONCE = 'a3f97c2e7b4d8f1a6c9e2b5d7f3a8c6e1d4b7f2a9c5e8d1f6a3b4c7d9e2f1a8c';
+
     private function createDoorJobStateMachine(): StateMachine
     {
         $definition = new Definition(
@@ -99,6 +101,13 @@ class DeviceControllerTest extends TestCase
 
         $this->assertIsArray($pollData);
         $this->assertSame(200, $pollResponse->getStatusCode());
+
+        $this->assertSame(200, $pollResponse->getStatusCode());
+
+        $pollData = json_decode((string) $pollResponse->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        $this->assertIsArray($pollData);
+        $this->assertArrayHasKey('jobs', $pollData);
+        $this->assertIsArray($pollData['jobs']);
         $this->assertCount(1, $pollData['jobs']);
         $this->assertSame($openData['jobId'], $pollData['jobs'][0]['jobId']);
         $this->assertSame('depot', $pollData['jobs'][0]['area']);
@@ -117,7 +126,16 @@ class DeviceControllerTest extends TestCase
         $this->assertSame(200, $confirmResponse->getStatusCode());
         $this->assertSame(['accepted' => true, 'status' => 'executed', 'error' => null], $confirmData);
 
-        $pollAgainResponse = $deviceController->poll(Request::create('/api/device/poll', 'POST'));
+        $pollAgainResponse = $deviceController->poll(Request::create(
+            '/api/device/poll',
+            'POST',
+            [],
+            [],
+            [],
+            ['CONTENT_TYPE' => 'application/json'],
+            json_encode(['limit' => 1], JSON_THROW_ON_ERROR),
+        ));
+
         $pollAgainData = json_decode((string) $pollAgainResponse->getContent(), true);
 
         $this->assertIsArray($pollAgainData);
@@ -146,18 +164,36 @@ class DeviceControllerTest extends TestCase
         $this->assertIsArray($openData);
         $this->assertSame(202, $openResponse->getStatusCode());
 
-        $pollResponse = $deviceController->poll(Request::create('/api/device/poll', 'POST'));
-        $pollData = json_decode((string) $pollResponse->getContent(), true);
+        $pollRequest = Request::create(
+            '/api/device/poll',
+            'POST',
+            [],
+            [],
+            [],
+            ['CONTENT_TYPE' => 'application/json'],
+            json_encode(['limit' => 1], JSON_THROW_ON_ERROR),
+        );
+
+        $pollResponse = $deviceController->poll($pollRequest);
+
+        $this->assertSame(200, $pollResponse->getStatusCode());
+
+        $pollData = json_decode((string) $pollResponse->getContent(), true, 512, JSON_THROW_ON_ERROR);
 
         $this->assertIsArray($pollData);
+        $this->assertArrayHasKey('jobs', $pollData);
+        $this->assertIsArray($pollData['jobs']);
         $this->assertCount(1, $pollData['jobs']);
 
         $jobId = (int) $pollData['jobs'][0]['jobId'];
+        
         $correctNonce = (string) $pollData['jobs'][0]['nonce'];
+        $wrongNonce = ('0' === $correctNonce[0] ? '1' : '0') . substr($correctNonce, 1);
+        self::assertNotSame($correctNonce, $wrongNonce);
 
         $wrongConfirmResponse = $deviceController->confirm(Request::create('/api/device/confirm', 'POST', [], [], [], [], json_encode([
             'jobId' => $jobId,
-            'nonce' => 'wrong-' . $correctNonce,
+            'nonce' => $wrongNonce,
             'ok' => true,
         ])));
         $wrongConfirmData = json_decode((string) $wrongConfirmResponse->getContent(), true);
@@ -200,10 +236,26 @@ class DeviceControllerTest extends TestCase
         $this->assertIsArray($openData);
         $this->assertSame(202, $openResponse->getStatusCode());
 
-        $pollResponse = $deviceController->poll(Request::create('/api/device/poll', 'POST'));
+        $pollResponse = $deviceController->poll(Request::create(
+            '/api/device/poll',
+            'POST',
+            [],
+            [],
+            [],
+            ['CONTENT_TYPE' => 'application/json'],
+            json_encode(['limit' => 1], JSON_THROW_ON_ERROR),
+        ));
+
         $pollData = json_decode((string) $pollResponse->getContent(), true);
 
         $this->assertIsArray($pollData);
+
+        $this->assertSame(200, $pollResponse->getStatusCode());
+
+        $pollData = json_decode((string) $pollResponse->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        $this->assertIsArray($pollData);
+        $this->assertArrayHasKey('jobs', $pollData);
+        $this->assertIsArray($pollData['jobs']);
         $this->assertCount(1, $pollData['jobs']);
 
         $jobId = (int) $pollData['jobs'][0]['jobId'];
@@ -248,12 +300,26 @@ class DeviceControllerTest extends TestCase
         $this->assertIsArray($openData);
         $this->assertSame(202, $openResponse->getStatusCode());
 
-        $pollResponse = $deviceController->poll(Request::create('/api/device/poll', 'POST'));
+        $pollResponse = $deviceController->poll(Request::create(
+            '/api/device/poll',
+            'POST',
+            [],
+            [],
+            [],
+            ['CONTENT_TYPE' => 'application/json'],
+            json_encode(['limit' => 1], JSON_THROW_ON_ERROR),
+        ));
         $pollData = json_decode((string) $pollResponse->getContent(), true);
 
         $this->assertIsArray($pollData);
         $this->assertCount(1, $pollData['jobs']);
 
+        $this->assertSame(200, $pollResponse->getStatusCode());
+
+        $pollData = json_decode((string) $pollResponse->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        $this->assertIsArray($pollData);
+        $this->assertArrayHasKey('jobs', $pollData);
+        $this->assertIsArray($pollData['jobs']);
         $jobId = (int) $pollData['jobs'][0]['jobId'];
         $nonce = (string) $pollData['jobs'][0]['nonce'];
 
@@ -297,7 +363,16 @@ class DeviceControllerTest extends TestCase
         $this->assertIsArray($openData);
         $this->assertSame(202, $openResponse->getStatusCode());
 
-        $pollResponse = $dispatchingDeviceController->poll(Request::create('/api/device/poll', 'POST'));
+        $pollResponse = $dispatchingDeviceController->poll(Request::create(
+            '/api/device/poll',
+            'POST',
+            [],
+            [],
+            [],
+            ['CONTENT_TYPE' => 'application/json'],
+            json_encode(['limit' => 1], JSON_THROW_ON_ERROR),
+        ));
+
         $pollData = json_decode((string) $pollResponse->getContent(), true);
 
         $this->assertIsArray($pollData);
@@ -346,7 +421,15 @@ class DeviceControllerTest extends TestCase
         $jobId = (int) $openData['jobId'];
         $this->assertSame('pending', $state->rows[$jobId]['status']);
 
-        $pollResponse = $wrongAreaDeviceController->poll(Request::create('/api/device/poll', 'POST'));
+        $pollResponse = $wrongAreaDeviceController->poll(Request::create(
+            '/api/device/poll',
+            'POST',
+            [],
+            [],
+            [],
+            ['CONTENT_TYPE' => 'application/json'],
+            json_encode(['limit' => 1], JSON_THROW_ON_ERROR),
+        ));
         $pollData = json_decode((string) $pollResponse->getContent(), true);
 
         $this->assertIsArray($pollData);
@@ -364,7 +447,15 @@ class DeviceControllerTest extends TestCase
     {
         $controller = $this->createControllerWithUser($this->createJobsServiceWithoutExpectations(), null);
 
-        $response = $controller->poll(Request::create('/api/device/poll', 'POST'));
+        $response = $controller->poll(Request::create(
+            '/api/device/poll',
+            'POST',
+            [],
+            [],
+            [],
+            ['CONTENT_TYPE' => 'application/json'],
+            json_encode(['limit' => 1], JSON_THROW_ON_ERROR),
+        ));
         $data = json_decode((string) $response->getContent(), true);
 
         $this->assertIsArray($data);
@@ -402,7 +493,7 @@ class DeviceControllerTest extends TestCase
                 'id' => 11,
                 'jobId' => 11,
                 'area' => 'depot',
-                'nonce' => 'nonce-11',
+                'nonce' => self::TEST_NONCE,
                 'expiresAt' => time() + 10,
                 'expiresInMs' => 9000,
                 'correlationId' => 'cid-11',
@@ -422,7 +513,7 @@ class DeviceControllerTest extends TestCase
         $this->assertSame(11, $data['jobs'][0]['jobId']);
         $this->assertSame('depot', $data['jobs'][0]['area']);
         $this->assertSame('open', $data['jobs'][0]['action']);
-        $this->assertSame('nonce-11', $data['jobs'][0]['nonce']);
+        $this->assertSame(self::TEST_NONCE, $data['jobs'][0]['nonce']);
         $this->assertSame('cid-11', $data['jobs'][0]['correlationId']);
         $this->assertGreaterThan(0, $data['jobs'][0]['expiresInMs']);
         $this->assertLessThanOrEqual(10000, $data['jobs'][0]['expiresInMs']);
@@ -463,7 +554,7 @@ class DeviceControllerTest extends TestCase
 
         $request = Request::create('/api/device/confirm', 'POST', [], [], [], [], json_encode([
             'jobId' => 7,
-            'nonce' => 'nonce-7',
+            'nonce' => self::TEST_NONCE,
             'ok' => true,
         ]));
         $response = $controller->confirm($request);
@@ -498,6 +589,10 @@ class DeviceControllerTest extends TestCase
      */
     public function testConfirmReturnsAcceptedFromServiceResult(): void
     {
+        $this->assertSame(64, strlen(self::TEST_NONCE), 'nonce length');
+        $this->assertSame(self::TEST_NONCE, trim(self::TEST_NONCE), 'nonce has surrounding whitespace');
+        $this->assertSame(1, preg_match('/^[a-f0-9]{64}$/', self::TEST_NONCE), 'nonce format');
+
         $db = $this->createMock(Connection::class);
         $db->expects($this->once())
             ->method('fetchAssociative')
@@ -506,7 +601,7 @@ class DeviceControllerTest extends TestCase
                 'id' => 7,
                 'status' => 'executed',
                 'dispatchToDeviceId' => 'device-1',
-                'nonce' => 'nonce-7',
+                'nonce' => self::TEST_NONCE,
                 'dispatchedAt' => time(),
             ])
         ;
@@ -514,18 +609,44 @@ class DeviceControllerTest extends TestCase
         $jobs = $this->createDoorJobService($db, $this->createStub(CacheItemPoolInterface::class));
         $controller = $this->createControllerWithUser($jobs, new DeviceApiUser('device-1', ['depot']));
 
-        $request = Request::create('/api/device/confirm', 'POST', [], [], [], [], json_encode([
+        $request = Request::create(
+            '/api/device/confirm',
+            'POST',
+            [],
+            [],
+            [],
+            ['CONTENT_TYPE' => 'application/json'],
+            json_encode([
+                'jobId' => 7,
+                'nonce' => self::TEST_NONCE,
+                'ok' => true,
+                'meta' => ['source' => 'test'],
+            ], JSON_THROW_ON_ERROR)
+        );
+
+        // $response = $controller->confirm($request);
+        // $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+
+        // $this->assertIsArray($data);
+        // $this->assertSame(200, $response->getStatusCode());
+        // $this->assertSame(['accepted' => true, 'status' => 'executed', 'error' => null], $data);
+        $response = $controller->confirm($request);
+        $content = (string) $response->getContent();
+        $data = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
+
+        $this->assertSame(json_encode([
             'jobId' => 7,
-            'nonce' => 'nonce-7',
+            'nonce' => self::TEST_NONCE,
             'ok' => true,
             'meta' => ['source' => 'test'],
-        ]));
-        $response = $controller->confirm($request);
-        $data = json_decode((string) $response->getContent(), true);
+        ], JSON_THROW_ON_ERROR), $request->getContent());
 
+        $this->assertSame(1, preg_match('/^[a-f0-9]{64}$/', self::TEST_NONCE), 'TEST_NONCE is not valid');
         $this->assertIsArray($data);
-        $this->assertSame(200, $response->getStatusCode());
-        $this->assertSame(['accepted' => true, 'status' => 'executed', 'error' => null], $data);
+
+        // zum Eingrenzen:
+        $this->assertSame(['accepted' => true, 'status' => 'executed', 'error' => null], $data, 'Actual response: ' . $content);
+        $this->assertSame(200, $response->getStatusCode(), 'Actual response: ' . $content);
     }
 
     private function createControllerWithUser(DoorJobService $jobs, UserInterface|null $user): DeviceController
@@ -852,22 +973,37 @@ class DeviceControllerTest extends TestCase
                 return 1;
             }
 
-            if (str_contains($query, 'SET status=\'expired\'') && str_contains($query, 'WHERE id=:id AND status=\'dispatched\'')) {
+            if (
+                str_contains($query, "SET status='expired'")
+                && str_contains($query, "WHERE id=:id")
+                && str_contains($query, "status='dispatched'")
+                && str_contains($query, 'dispatchToDeviceId=:deviceId')
+                && str_contains($query, 'nonce=:nonce')
+            ) {
                 $id = (int) ($params['id'] ?? 0);
                 if (!isset($state->rows[$id])) {
                     return 0;
                 }
-                if ('dispatched' !== (string) ($state->rows[$id]['status'] ?? '')) {
+
+                $row = $state->rows[$id];
+
+                if ('dispatched' !== (string) ($row['status'] ?? '')) {
+                    return 0;
+                }
+                if ((string) ($row['dispatchToDeviceId'] ?? '') !== (string) ($params['deviceId'] ?? '')) {
+                    return 0;
+                }
+                if ((string) ($row['nonce'] ?? '') !== (string) ($params['nonce'] ?? '')) {
                     return 0;
                 }
 
                 $state->rows[$id]['status'] = 'expired';
                 $state->rows[$id]['resultCode'] = 'TIMEOUT';
                 $state->rows[$id]['resultMessage'] = 'Confirm timeout';
+                $state->rows[$id]['tstamp'] = time();
 
                 return 1;
             }
-
             if (str_contains($query, 'SET status=:status') && str_contains($query, 'AND nonce=:nonce')) {
                 $id = (int) ($params['id'] ?? 0);
                 if (!isset($state->rows[$id])) {

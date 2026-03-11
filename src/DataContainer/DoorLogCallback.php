@@ -146,10 +146,10 @@ final class DoorLogCallback
         $result = (string) ($row['result'] ?? '');
 
         $icon = match ($result) {
-            'confirmed' => '/bundles/communityoffers/icons/workflow-green.svg',
-            'failed', 'timeout', 'error', 'forbidden' => '/bundles/communityoffers/icons/workflow-red.svg',
-            'granted', 'dispatched', 'attempt' => '/bundles/communityoffers/icons/workflow-orange.svg',
-            default => '/bundles/communityoffers/icons/workflow-grey.svg',
+            'confirmed' => 'bundles/communityoffers/icons/workflow-green.svg',
+            'failed', 'timeout', 'error', 'forbidden' => 'bundles/communityoffers/icons/workflow-red.svg',
+            'granted', 'dispatched', 'attempt' => 'bundles/communityoffers/icons/workflow-yellow.svg',
+            default => 'bundles/communityoffers/icons/workflow-grey.svg',
         };
 
         $backendPrefix = rtrim((string) $this->params->get('contao.backend.route_prefix'), '/');

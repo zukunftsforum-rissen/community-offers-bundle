@@ -1,0 +1,657 @@
+/* ===== CSS Variablen ===== */
+:root {
+    --color-bg: #acffff;
+    --color-box-bg: #eeeecd;
+    --color-input-bg: #f8f8f5;
+    --color-text: #0a0a0a;
+    --color-highlighted: #07c;
+    --color-accent: #ff9800;
+    --color-link-hover: #005fa3;
+    --color-border: #55b5f1;
+    --space-xs: 0.25em;
+    --space-sm: 0.5em;
+    --space-md: 1em;
+    --space-lg: 2em;
+}
+
+
+
+/* ===== Base Reset ===== */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    line-height: 1.5;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+body {
+    margin: 0;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", Roboto, Ubuntu, "Helvetica Neue", Arial, sans-serif;
+    color: var(--color-text);
+    background: var(--color-bg);
+}
+
+img,
+picture,
+video {
+    max-width: 100%;
+    height: auto;
+    display: block;
+}
+
+/* ===== Typography ===== */
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    line-height: 1.2;
+    text-align: center;
+    margin-block: var(--space-lg) var(--space-sm);
+}
+
+p,
+ul,
+ol {
+    margin-block: 0 var(--space-md);
+    font-size: 1.3em;
+}
+
+a {
+    color: var(--color-highlighted);
+    text-decoration-thickness: 0.08em;
+    text-underline-offset: 0.15em;
+    transition: color 0.2s;
+}
+
+a:hover,
+a:focus {
+    color: var(--color-link-hover);
+    outline: none;
+}
+
+
+
+
+/* ===== Page Structure ===== */
+
+#wrapper {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+#main {
+    flex: 1 0 auto;
+}
+
+footer {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    margin-top: auto;
+
+    /* Footer immer am Ende der Seite, auch bei wenig Content */
+}
+
+/* zentrales Content-Maß */
+.inside {
+    max-width: 72rem;
+    margin-inline: auto;
+    padding-inline: 1rem;
+}
+
+
+
+/* ===== Articles ===== */
+
+.mod_article {
+    margin-block: 3rem;
+}
+
+.mod_article>.inside {
+    display: flow-root;
+}
+
+
+
+/* ===== Content Elements ===== */
+
+.ce_text {
+    max-width: 65ch;
+}
+
+.ce_image {
+    margin-block: 1.5rem;
+}
+
+.ce_gallery ul {
+    list-style: none;
+    padding: 0;
+    display: grid;
+    gap: 1rem;
+}
+
+
+/* ===== Navigation Hauptmenü ===== */
+.mod_navigation ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.mod_navigation a {
+    text-decoration: none;
+}
+
+.form-privacy-hint a {
+    color: var(--color-highlighted);
+    text-decoration: underline;
+}
+
+.form-privacy-hint a:hover {
+    color: var(--color-link-hover);
+}
+
+.mod_navigation li.active>a {
+    font-weight: 600;
+}
+
+/* ===== Navigation Indiv. Menü ===== */
+.mod_customnav ul {
+    display: flex;
+    flex-flow: row wrap;
+    gap: 1rem;
+    justify-content: center;
+    color: var(--color-text);
+    font-style: italic;
+}
+
+/* ===== Forms ===== */
+button,
+input,
+select,
+textarea {
+    width: 100%;
+    padding: 0.9em 1em;
+    border: 1.5px solid var(--color-border);
+    border-radius: 6px;
+    margin-bottom: 1.2em;
+    font-size: 1.1em;
+    background: var(--color-input-bg);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+button {
+    background: var(--color-highlighted);
+    color: white;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+
+button:hover,
+button:focus {
+    background: var(--color-link-hover);
+    color: var(--color-input-bg);
+    transition: background 0.2s, color 0.2s;
+
+    /* font-weight: 600; */
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    border-color: var(--color-highlighted);
+    box-shadow: 0 0 0 2px var(--color-highlighted);
+    outline: none;
+}
+
+input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 1.2em;
+    height: 1.2em;
+    border: 2px solid var(--color-border);
+    border-radius: 4px;
+    background: var(--color-input-bg);
+    cursor: pointer;
+    position: relative;
+    vertical-align: middle;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+input[type="checkbox"]:checked {
+    /* background: var(--color-bg); */
+    border-color: var(--color-primary);
+}
+
+input[type="checkbox"]:checked::after {
+    content: "";
+    display: block;
+    position: absolute;
+    left: 0.45em;
+    top: 0.1em;
+    width: 0.8em;
+    height: 1.2em;
+    border: solid var(--color-border);
+    border-width: 0 0.2em 0.2em 0;
+    transform: rotate(45deg);
+}
+
+.checkbox_container span {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    margin-bottom: 0.8em;
+}
+
+.checkbox_container input[type="checkbox"] {
+    width: auto;
+    margin-bottom: 0;
+    flex-shrink: 0;
+}
+
+label {
+    font-weight: 600;
+    margin-bottom: 0.5em;
+    display: block;
+    color: var(--color-text);
+}
+
+.checkbox_container label {
+    margin-bottom: 0;
+    font-weight: normal;
+    cursor: pointer;
+}
+
+form {
+    padding: 2em 1em;
+    border-radius: 12px;
+    max-width: 32em;
+    margin: 2em auto;
+    border: 1.5px solid var(--color-border);
+    background: var(--color-box-bg);
+}
+
+
+
+.widget {
+    margin-bottom: 1.5em;
+}
+
+altcha-widget,
+.altcha {
+    width: 100%;
+    max-width: 100%;
+    display: inline-block;
+    border: none;
+}
+
+.form-privacy-hint {
+    font-size: 0.75em;
+    color: #555;
+    margin-bottom: 1em;
+    margin-top: 0.5em;
+}
+
+
+
+
+/* ==== BOXEN ==== */
+.content-element-group {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+    margin: 2rem 0;
+    align-items: center;
+}
+
+@media (width >=700px) {
+    .content-element-group {
+        flex-flow: row wrap;
+        gap: 2rem;
+        justify-content: center;
+        align-items: stretch;
+    }
+
+    .contentbox {
+        flex: 1 1 320px;
+        max-width: 350px;
+        min-width: 280px;
+        min-height: 280px;
+    }
+}
+
+.contentbox {
+    background: var(--color-box-bg);
+    border-radius: 16px;
+    box-shadow: 0 4px 16px rgb(0 0 0 / 10%);
+    transition: transform 0.2s, box-shadow 0.2s;
+    flex: 1 1 320px;
+    max-width: 350px;
+    min-width: 280px;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.contentbox h2 {
+    margin-top: 1rem;
+}
+
+.contentbox img {
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+    display: block;
+    margin-bottom: 1rem;
+}
+
+.contentbox:hover {
+    transform: translateY(-6px) scale(1.03);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 16%);
+}
+
+/* Optional: Text oder weitere Inhalte in der Box */
+.contentbox .caption {
+    padding: 16px 20px;
+    font-size: 1rem;
+    color: #333;
+    text-align: center;
+}
+
+.contentbox>*:not(img) {
+    padding-left: 20px;
+    padding-right: 20px;
+}
+
+
+
+
+/* ===== Utilities ===== */
+
+/* stylelint-disable-next-line no-descending-specificity */
+.flow>*+* {
+    margin-top: 1em;
+}
+
+
+.visually-hidden {
+    position: absolute;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    height: 1px;
+    width: 1px;
+    overflow: hidden;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* ===== Utility-Klassen ===== */
+.text-center {
+    text-align: center;
+}
+
+.mb-1 {
+    margin-bottom: 0.25em;
+}
+
+.mb-2 {
+    margin-bottom: 0.5em;
+}
+
+.mb-3 {
+    margin-bottom: 1em;
+}
+
+.mb-4 {
+    margin-bottom: 2em;
+}
+
+.mt-1 {
+    margin-top: 0.25em;
+}
+
+.mt-2 {
+    margin-top: 0.5em;
+}
+
+.mt-3 {
+    margin-top: 1em;
+}
+
+.mt-4 {
+    margin-top: 2em;
+}
+
+.fw-bold {
+    font-weight: bold;
+}
+
+.fw-normal {
+    font-weight: normal;
+}
+
+
+
+/* ==== APP SPECIFIC STYLES ==== */
+body> :first-child:not(h1) {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+    margin: 0;
+}
+
+
+/* ==== APP VIEW FÜR DESKTOP ==== */
+@media (width >=769px) {
+    body {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding: 2rem;
+        min-height: 100vh;
+    }
+
+    #wrapper {
+        width: 100%;
+        max-width: 480px;
+        min-height: auto;
+        border: 1px solid var(--color-border);
+        border-radius: 12px;
+        box-shadow: 0 4px 24px rgb(0 0 0 / 15%);
+        overflow: hidden;
+    }
+
+    .inside,
+    main,
+    form {
+        max-width: 100%;
+        margin-left: 0;
+        margin-right: 0;
+        padding: 1rem;
+    }
+
+    p,
+    ul,
+    ol {
+        font-size: 1rem;
+    }
+}
+
+
+/* =========================================
+   APP – Türsteuerung (Zukunftwohnen)
+========================================= */
+
+.wrap {
+    max-width: 32em;
+    margin: 2rem auto;
+    padding: 1.5rem;
+    border-radius: 16px;
+    background: var(--color-box-bg);
+    border: 1.5px solid var(--color-border);
+    box-shadow: 0 6px 20px rgb(0 0 0 / 10%);
+}
+
+#status {
+    font-size: 0.95rem;
+    padding: 0.6rem 0.8rem;
+    border-radius: 8px;
+    background: var(--color-input-bg);
+    border: 1px solid var(--color-border);
+    margin-bottom: 1.2rem;
+}
+
+/* Tür-Buttons */
+
+.btn {
+    font-weight: 600;
+    border-radius: 10px;
+    transition: transform 0.15s ease,
+        box-shadow 0.15s ease,
+        background 0.2s ease;
+}
+
+.btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgb(0 0 0 / 15%);
+}
+
+/* Freigeschaltete Tür */
+button[data-door]:not(:disabled) {
+    background: var(--color-highlighted);
+}
+
+/* Gesperrte Tür */
+button[data-door]:disabled {
+    background: #ccc;
+    border-color: #bbb;
+    color: #666;
+    cursor: not-allowed;
+}
+
+/* Antrag-Link unter gesperrter Tür */
+.request-link {
+    display: block;
+    margin-top: -0.6rem;
+    margin-bottom: 1rem;
+    font-size: 0.85rem;
+    text-align: center;
+    color: var(--color-highlighted);
+    text-decoration: underline;
+    opacity: 0.9;
+}
+
+.request-link:hover {
+    color: var(--color-link-hover);
+}
+
+/* Logout optisch absetzen */
+#logout {
+    margin-top: 1rem;
+    background: var(--color-accent);
+}
+
+#logout:hover {
+    background: #e68a00;
+}
+
+/* ===== Antrag-Link klar dem Bereich zuordnen ===== */
+
+/* Wenn ein Tür-Button einen Antrag-Link hat, soll er oben "abgeschnitten" wirken */
+button.has-request {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    margin-bottom: 0;
+}
+
+/* Der Antrag-Link wird wie ein angedockter Secondary-Button */
+button.has-request+.request-link {
+    display: block;
+    width: 100%;
+    margin: 0 0 12px;
+
+    /* Abstand zur nächsten Tür */
+    padding: 10px 14px;
+    border: 1.5px solid var(--color-border);
+    border-top: 0;
+    
+    /* wirkt wie "ein Element" */
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+    background: var(--color-box-bg);
+    color: var(--color-highlighted);
+    text-decoration: none;
+    font-weight: 600;
+    text-align: center;
+    opacity: 1;
+}
+
+button.has-request+.request-link:hover,
+button.has-request+.request-link:focus {
+    background: var(--color-input-bg);
+    color: var(--color-link-hover);
+    outline: none;
+}
+
+/* Optional: kleine Erklärung in grauerem Ton (falls du später Text ergänzt) */
+.request-link small {
+    display: block;
+    font-weight: 400;
+    opacity: 0.85;
+}
+
+/* ===== App Header / Status ===== */
+
+.status {
+    text-align: center;
+    font-weight: 600;
+}
+
+.status strong {
+    display: inline-block;
+    font-size: 1rem;
+}
+
+/* Zusatzbutton Zustände */
+.request-link.sent {
+    background: #e6fff0;
+    border-color: #6bd89a;
+    color: #0a6b3c;
+}
+
+.request-link.cooldown {
+    background: #fff7e6;
+    border-color: #ffcc80;
+    color: #8a5a00;
+}
+
+.request-link.ready {
+    background: #e6fff0;
+    border-color: #6bd89a;
+    color: #0a6b3c;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.request-link.ready:hover {
+    background: #c8f7dc;
+    transform: translateY(-1px);
+}
+
+button.cooldown {
+    opacity: 0.7;
+}
+

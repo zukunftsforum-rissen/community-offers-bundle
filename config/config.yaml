@@ -1,0 +1,5 @@
+community_offers:
+  app:
+    login_path: /login
+    logout_path: /_contao/logout
+    logout_redirect_path: /app

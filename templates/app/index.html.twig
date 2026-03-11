@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="de">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>{{ title }}</title>
+		<link rel="stylesheet" href="{{ asset('bundles/communityoffers/app/base.css') }}">
+	</head>
+	<body>
+		<main class="wrap">
+			<h1>Zugänge</h1>
+
+			<p id="status" class="status">Lade …</p>
+
+			<section id="actions" class="hidden"></section>
+
+			<section id="loginHint" class="hidden">
+				<p>Du bist nicht eingeloggt.</p>
+				<a class="btn" id="loginLink" href="{{ appConfig.loginPath }}">Login öffnen</a>
+				<br>
+				<a href="/zugang-anfragen">Noch kein Zugang? -&gt; Zugang anfragen</a>
+			</section>
+		</main>
+
+		<script>
+			window.CO_APP_CONFIG = {{ appConfig|json_encode(constant('JSON_UNESCAPED_SLASHES'))|raw }};
+		</script>
+		<script type="module" src="{{ asset('bundles/communityoffers/app/app.js') }}"></script>
+	</body>
+</html>

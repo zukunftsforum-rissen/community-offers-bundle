@@ -5,6 +5,16 @@ parameters:
     community_offers.mail_reply_to: "%env(COMMUNITY_OFFERS_MAIL_REPLY_TO)%"
     community_offers.app_url: "%env(COMMUNITY_OFFERS_APP_URL)%"
     community_offers.reset_password_url: "%env(COMMUNITY_OFFERS_RESET_PASSWORD_URL)%"
+
+    community_offers.app.login_path: "/login"
+    community_offers.app.logout_path: "/_contao/logout"
+    community_offers.app.logout_redirect_path: "/app"
+    community_offers.app.areas:
+        - { slug: workshop, title: Werkstatt }
+        - { slug: sharing, title: Ausleihen }
+        - { slug: depot, title: Depot }
+        - { slug: swap-house, title: Tauschhaus }
+
     community_offers.area_groups:
         workshop: 1
         sharing: 2
@@ -87,4 +97,3 @@ services:
             $confirmWindowSeconds: 30
         tags:
             - { name: kernel.event_subscriber }
-

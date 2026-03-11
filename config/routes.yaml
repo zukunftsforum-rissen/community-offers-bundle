@@ -1,7 +1,18 @@
-# config/routes.yaml
 community_offers_controllers:
     resource: "../src/Controller/"
     type: attribute
+
+co_app:
+    path: /app
+    controller: ZukunftsforumRissen\CommunityOffersBundle\Controller\AppController
+    methods: [GET]
+
+co_app_slash:
+    path: /app/
+    controller: Symfony\Bundle\FrameworkBundle\Controller\RedirectController
+    defaults:
+        route: co_app
+        permanent: true
 
 co_door_simulator:
     path: /door-simulator

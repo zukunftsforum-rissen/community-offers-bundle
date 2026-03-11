@@ -45,7 +45,7 @@ final class DeviceController extends AbstractController
         try {
             $payload = json_decode((string) $request->getContent(), true, 512, JSON_THROW_ON_ERROR);
         } catch (\JsonException) {
-            $this->logging->warning('door_confirm.bad_json', [
+            $this->logging->warning('door_dispatch.bad_json', [
                 'deviceId' => $deviceId,
                 'ip' => $request->getClientIp(),
             ]);
@@ -54,7 +54,7 @@ final class DeviceController extends AbstractController
         }
 
         if (!\is_array($payload)) {
-            $this->logging->warning('door_confirm.bad_json_shape', [
+            $this->logging->warning('door_dispatch.bad_json_shape', [
                 'deviceId' => $deviceId,
                 'ip' => $request->getClientIp(),
             ]);
@@ -152,6 +152,7 @@ final class DeviceController extends AbstractController
         if (
             $jobId <= 0
             || '' === $nonce
+            || 64 !== \strlen($nonce)
             || !preg_match('/^[a-f0-9]{64}$/', $nonce)
         ) {
             $this->logging->warning('door_confirm.bad_request', [

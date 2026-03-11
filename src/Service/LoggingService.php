@@ -12,9 +12,7 @@ use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 
 class LoggingService
 {
-    private Logger|null $logger = null;
-
-    private Logger|null $loggerStart = null;
+    private ?Logger $logger = null;
 
     private bool $loggingEnabled;
 
@@ -24,42 +22,42 @@ class LoggingService
 
     public function __construct(ParameterBagInterface $params)
     {
-        $this->loggingEnabled = 'true' === $params->get('enable_logging');
-        $this->debugLoggingEnabled = 'true' === $params->get('enable_debug_logging');
+        $this->loggingEnabled = 'true' === (string) $params->get('enable_logging');
+        $this->debugLoggingEnabled = 'true' === (string) $params->get('enable_debug_logging');
 
         $projectDir = rtrim((string) $params->get('kernel.project_dir'), '/');
-        $this->logDir = $projectDir.'/var/logs/';
+        $this->logDir = $projectDir . '/var/logs/';
     }
 
     public function initiateLogging(string $moduleName, string $fileName = ''): void
     {
-        if (null !== $this->logger && null !== $this->loggerStart) {
+        if (null !== $this->logger) {
             return;
         }
 
-        $logFileName = $fileName ?: 'app';
-        $logFile = $this->logDir.$logFileName.'.log';
+        if (!is_dir($this->logDir) && !mkdir($concurrentDirectory = $this->logDir, 0777, true) && !is_dir($concurrentDirectory)) {
+            throw new \RuntimeException(sprintf('Log directory "%s" could not be created.', $this->logDir));
+        }
+
+        $logFileName = '' !== $fileName ? $fileName : 'app';
+        $logFile = $this->logDir . $logFileName . '.log';
+
+        if (!file_exists($logFile) && false === @touch($logFile)) {
+            throw new \RuntimeException(sprintf('Log file "%s" could not be created.', $logFile));
+        }
+
         $streamHandler = new StreamHandler($logFile, Level::Debug);
 
         $this->logger = new Logger($moduleName);
+
         $output = "[%datetime%] %channel%.%level_name%: %message%\n%context%\n%extra%";
         $formatter = new LineFormatter($output, null, true, true);
         $formatter->includeStacktraces(true);
         $formatter->ignoreEmptyContextAndExtra(true);
         $formatter->allowInlineLineBreaks(true);
+
         $streamHandler->setFormatter($formatter);
         $this->logger->pushHandler($streamHandler);
-
-        $this->loggerStart = new Logger($moduleName);
-        $streamHandlerStart = new StreamHandler($logFile, Level::Debug);
-        $outputStart = "START START START [%datetime%] %channel%.%level_name%: %message%\n%context%\n%extra%";
-        $formatterStart = new LineFormatter($outputStart, null, true, true);
-        $formatterStart->includeStacktraces(true);
-        $formatterStart->ignoreEmptyContextAndExtra(true);
-        $formatterStart->allowInlineLineBreaks(true);
-        $streamHandlerStart->setFormatter($formatterStart);
-        $this->loggerStart->pushHandler($streamHandlerStart);
-        $this->loggerStart->debug('START START START');
     }
 
     /**
@@ -67,8 +65,7 @@ class LoggingService
      */
     public function start(string $message, array $context = []): void
     {
-        $this->ensureInitialized();
-        $this->loggerStart?->debug($message, $this->normalizeContext($context));
+        $this->log('info', $message . '.start', $context);
     }
 
     /**
@@ -90,9 +87,9 @@ class LoggingService
     /**
      * @param array<string, mixed> $context
      */
-    public function warning(string $message, $context = []): void
+    public function warning(string $message, array $context = []): void
     {
-        $this->log('warning', $message, (array) $context);
+        $this->log('warning', $message, $context);
     }
 
     /**
@@ -114,10 +111,13 @@ class LoggingService
     public function logCurrentMethod(): void
     {
         $this->ensureInitialized();
+
         $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
         $currentMethod = $backtrace[1]['function'] ?? 'unknown';
 
-        $this->logger?->debug("  Current method: $currentMethod");
+        $this->logger?->debug('    current_method', [
+            'method' => $currentMethod,
+        ]);
     }
 
     /**
@@ -139,13 +139,14 @@ class LoggingService
      */
     private function formatContext(array $context): string
     {
-        $formattedContext = '';
+        $formattedContext = [];
 
         foreach ($context as $key => $value) {
-            $formattedContext .= \sprintf('    %s: %s', $key, json_encode($value, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+            $encoded = json_encode($value, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            $formattedContext[] = sprintf('    %s: %s', $key, false === $encoded ? 'null' : $encoded);
         }
 
-        return $formattedContext;
+        return implode("\n", $formattedContext);
     }
 
     /**
@@ -161,9 +162,10 @@ class LoggingService
         $context = $this->normalizeContext($context);
 
         $formattedContext = $this->formatContext($context);
-        $logMessage = '    '.$message;
+        $logMessage = '    ' . $message;
+
         if ('' !== $formattedContext) {
-            $logMessage .= "\n".$formattedContext;
+            $logMessage .= "\n" . $formattedContext;
         }
 
         switch ($level) {
@@ -172,26 +174,32 @@ class LoggingService
                     $this->logger?->debug($logMessage);
                 }
                 break;
+
             case 'info':
                 $this->logger?->info($logMessage);
                 break;
+
             case 'warning':
                 $this->logger?->warning($logMessage);
                 break;
+
             case 'error':
                 $this->logger?->error($logMessage);
                 break;
+
             case 'critical':
                 $this->logger?->critical($logMessage);
                 break;
+
             default:
                 $this->logger?->notice($logMessage);
+                break;
         }
     }
 
     private function ensureInitialized(): void
     {
-        if (null === $this->logger || null === $this->loggerStart) {
+        if (null === $this->logger) {
             $this->initiateLogging('door', 'community-offers');
         }
     }

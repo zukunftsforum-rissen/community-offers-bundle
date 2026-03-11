@@ -9,6 +9,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 use ZukunftsforumRissen\CommunityOffersBundle\Security\DeviceApiUser;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\DeviceHeartbeatInterface;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorJobService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService;
 
@@ -18,6 +19,7 @@ final class DeviceController extends AbstractController
     public function __construct(
         private readonly DoorJobService $jobs,
         private readonly LoggingService $logging,
+        private readonly DeviceHeartbeatInterface $deviceHeartbeatService,
     ) {
     }
 
@@ -59,6 +61,8 @@ final class DeviceController extends AbstractController
 
             return new JsonResponse(['error' => 'bad_request'], 400);
         }
+
+        $this->deviceHeartbeatService->registerPoll($deviceId, $areas);
 
         $limit = (int) ($payload['limit'] ?? 3);
         $limit = max(1, min(10, $limit));

@@ -18,6 +18,7 @@ use Symfony\Component\Security\Core\User\UserInterface;
 use ZukunftsforumRissen\CommunityOffersBundle\Controller\Api\AccessController;
 use ZukunftsforumRissen\CommunityOffersBundle\Controller\Api\DeviceController;
 use ZukunftsforumRissen\CommunityOffersBundle\Security\DeviceApiUser;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\DeviceHeartbeatInterface;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\AccessRequestService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\AccessService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\CorrelationIdService;
@@ -186,7 +187,7 @@ class DeviceControllerTest extends TestCase
         $this->assertCount(1, $pollData['jobs']);
 
         $jobId = (int) $pollData['jobs'][0]['jobId'];
-        
+
         $correctNonce = (string) $pollData['jobs'][0]['nonce'];
         $wrongNonce = ('0' === $correctNonce[0] ? '1' : '0') . substr($correctNonce, 1);
         self::assertNotSame($correctNonce, $wrongNonce);
@@ -651,7 +652,11 @@ class DeviceControllerTest extends TestCase
 
     private function createControllerWithUser(DoorJobService $jobs, UserInterface|null $user): DeviceController
     {
-        $controller = new DeviceController($jobs, $this->createStub(LoggingService::class));
+        $heartbeat = new class() implements DeviceHeartbeatInterface {
+            public function registerPoll(int|string $deviceId, array $areas = []): void {}
+        };
+
+        $controller = new DeviceController($jobs, $this->createStub(LoggingService::class), $heartbeat);
 
         $tokenStorage = $this->createMock(TokenStorageInterface::class);
 

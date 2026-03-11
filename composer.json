@@ -3,7 +3,7 @@
     "type": "contao-bundle",
     "require": {
         "contao/core-bundle": "^5.0",
-        "symfony/workflow": "^7.4"
+        "symfony/workflow": "^7.4 || ^8.0"
     },
     "license": "MIT",
     "autoload": {

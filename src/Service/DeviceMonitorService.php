@@ -19,32 +19,36 @@ final class DeviceMonitorService
     public function getOverview(): array
     {
         $devices = $this->connection->fetchAllAssociative(
-            'SELECT id, name, enabled, areas, lastSeen, tstamp FROM tl_co_device ORDER BY name ASC',
+            'SELECT id, deviceId, name, enabled, areas, lastSeen, tstamp
+                    FROM tl_co_device
+                    WHERE isSimulator != :isSimulator
+                    ORDER BY name ASC',
+            ['isSimulator' => '1'],
         );
 
         $result = [];
 
         foreach ($devices as $device) {
-            $deviceId = (int) ($device['id'] ?? 0);
+            $deviceIdentifier = (string) ($device['deviceId'] ?? '');
 
             $lastPoll = $this->connection->fetchAssociative(
                 'SELECT tstamp, area, correlationId
-                 FROM tl_co_door_log
-                 WHERE deviceId = :deviceId
-                   AND action IN (\'device_poll\', \'door_dispatch\')
-                 ORDER BY id DESC
-                 LIMIT 1',
-                ['deviceId' => $deviceId],
+                        FROM tl_co_door_log
+                        WHERE deviceId = :deviceId
+                        AND action IN (\'device_poll\', \'door_dispatch\')
+                        ORDER BY id DESC
+                        LIMIT 1',
+                ['deviceId' => $deviceIdentifier],
             );
 
             $lastConfirm = $this->connection->fetchAssociative(
                 'SELECT tstamp, area, correlationId
-                 FROM tl_co_door_log
-                 WHERE deviceId = :deviceId
-                   AND action = \'door_confirm\'
-                 ORDER BY id DESC
-                 LIMIT 1',
-                ['deviceId' => $deviceId],
+                        FROM tl_co_door_log
+                        WHERE deviceId = :deviceId
+                        AND action = \'door_confirm\'
+                        ORDER BY id DESC
+                        LIMIT 1',
+                ['deviceId' => $deviceIdentifier],
             );
 
             $lastPollAt = $this->formatTimestamp($lastPoll['tstamp'] ?? null);
@@ -52,8 +56,8 @@ final class DeviceMonitorService
             $lastArea = $lastPoll['area'] ?? ($lastConfirm['area'] ?? null);
 
             $result[] = [
-                'id' => $deviceId,
-                'name' => (string) ($device['name'] ?? 'Device #'.$deviceId),
+                'id' => $deviceIdentifier,
+                'name' => (string) ($device['name'] ?? 'Device #'.$deviceIdentifier),
                 'enabled' => '1' === (string) ($device['enabled'] ?? ''),
                 'areas' => $this->normalizeAreas($device['areas'] ?? ''),
                 'lastPollAt' => $lastPollAt,

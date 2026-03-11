@@ -21,12 +21,11 @@ final class DeviceHeartbeatService implements DeviceHeartbeatInterface
     {
         $device = $this->connection->fetchAssociative(
             'SELECT id, lastSeen
-             FROM tl_co_device
-             WHERE id = :id
-             LIMIT 1',
-            ['id' => $deviceId],
+                    FROM tl_co_device
+                    WHERE deviceId = :deviceId
+                    LIMIT 1',
+            ['deviceId' => (string) $deviceId],
         );
-
         if (!\is_array($device)) {
             return;
         }

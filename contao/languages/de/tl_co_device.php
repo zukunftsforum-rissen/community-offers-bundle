@@ -10,6 +10,11 @@ $GLOBALS['TL_LANG']['tl_co_device']['deviceId'] = [
     'Eindeutige technische Kennung des Geräts (z.B. test-pi).',
 ];
 
+$GLOBALS['TL_LANG']['tl_co_device']['isSimulator'] = [
+    'Simulator',
+    'Dieses Gerät ist ein Simulator.',
+];
+
 $GLOBALS['TL_LANG']['tl_co_device']['areas'] = [
     'Bereiche',
     'Welche Bereiche dieses Gerät bedienen darf.',

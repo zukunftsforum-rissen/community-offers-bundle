@@ -186,8 +186,11 @@ class DeviceControllerTest extends TestCase
         $this->assertCount(1, $pollData['jobs']);
 
         $jobId = (int) $pollData['jobs'][0]['jobId'];
+        
         $correctNonce = (string) $pollData['jobs'][0]['nonce'];
         $wrongNonce = ('0' === $correctNonce[0] ? '1' : '0') . substr($correctNonce, 1);
+        self::assertNotSame($correctNonce, $wrongNonce);
+
         $wrongConfirmResponse = $deviceController->confirm(Request::create('/api/device/confirm', 'POST', [], [], [], [], json_encode([
             'jobId' => $jobId,
             'nonce' => $wrongNonce,

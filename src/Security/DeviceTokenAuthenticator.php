@@ -37,7 +37,8 @@ final class DeviceTokenAuthenticator extends AbstractAuthenticator
             'hasAuthorizationHeader' => null !== $request->headers->get('Authorization'),
             'hasXDeviceTokenHeader' => null !== $request->headers->get('X-Device-Token'),
             'tokenPresent' => null !== $token && '' !== $token,
-            'tokenPrefix' => $token ? substr($token, 0, 8) : null,
+        ]);
+        $this->logging->debug('device_auth.authenticate_start', [
             'tokenHashPrefix' => $token ? substr(hash('sha256', $token), 0, 12) : null,
         ]);
 
@@ -47,8 +48,6 @@ final class DeviceTokenAuthenticator extends AbstractAuthenticator
             $this->logging->warning('device_auth.authenticate_failed', [
                 'path' => $request->getPathInfo(),
                 'tokenPresent' => null !== $token && '' !== $token,
-                'tokenPrefix' => $token ? substr($token, 0, 8) : null,
-                'tokenHashPrefix' => $token ? substr(hash('sha256', $token), 0, 12) : null,
             ]);
 
             throw new CustomUserMessageAuthenticationException('Invalid device token');
@@ -60,7 +59,6 @@ final class DeviceTokenAuthenticator extends AbstractAuthenticator
         $this->logging->info('device_auth.authenticate_success', [
             'deviceId' => $deviceId,
             'areas' => $areas,
-            'tokenHashPrefix' => $token ? substr(hash('sha256', $token), 0, 12) : null,
         ]);
 
         return new SelfValidatingPassport(

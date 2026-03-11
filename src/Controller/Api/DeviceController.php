@@ -40,8 +40,29 @@ final class DeviceController extends AbstractController
 
         $this->jobs->expireOldJobs();
 
-        $payload = json_decode((string) $request->getContent(), true);
+        try {
+            $payload = json_decode((string) $request->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            $this->logging->warning('door_confirm.bad_json', [
+                'deviceId' => $deviceId,
+                'ip' => $request->getClientIp(),
+            ]);
+
+            return new JsonResponse(['error' => 'bad_request'], 400);
+        }
+
+        if (!\is_array($payload)) {
+            $this->logging->warning('door_confirm.bad_json_shape', [
+                'deviceId' => $deviceId,
+                'ip' => $request->getClientIp(),
+            ]);
+
+            return new JsonResponse(['error' => 'bad_request'], 400);
+        }
+
         $limit = (int) ($payload['limit'] ?? 3);
+        $limit = max(1, min(10, $limit));
+
         $claimed = $this->jobs->dispatchJobs($deviceId, $areas, $limit);
 
         $jobs = [];
@@ -94,22 +115,45 @@ final class DeviceController extends AbstractController
 
         $deviceId = $user->getDeviceId();
 
-        $payload = json_decode((string) $request->getContent(), true) ?: [];
+        try {
+            $payload = json_decode((string) $request->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            $this->logging->warning('door_confirm.bad_json', [
+                'deviceId' => $deviceId,
+                'ip' => $request->getClientIp(),
+            ]);
+
+            return new JsonResponse(['error' => 'bad_request'], 400);
+        }
+
+        if (!\is_array($payload)) {
+            $this->logging->warning('door_confirm.bad_json_shape', [
+                'deviceId' => $deviceId,
+                'ip' => $request->getClientIp(),
+            ]);
+
+            return new JsonResponse(['error' => 'bad_request'], 400);
+        }
+
         $jobId = (int) ($payload['jobId'] ?? 0);
         $nonce = (string) ($payload['nonce'] ?? '');
         $ok = (bool) ($payload['ok'] ?? false);
         $meta = \is_array($payload['meta'] ?? null) ? $payload['meta'] : [];
-        $cid = (string) ($payload['correlationId'] ?? ($meta['correlationId'] ?? ''));
+        $requestCid = (string) ($payload['correlationId'] ?? ($meta['correlationId'] ?? ''));
 
-        if ('' !== $cid && !isset($meta['correlationId'])) {
-            $meta['correlationId'] = $cid;
+        if ('' !== $requestCid && !isset($meta['correlationId'])) {
+            $meta['correlationId'] = $requestCid;
         }
 
-        if ($jobId <= 0 || '' === $nonce) {
+        if (
+            $jobId <= 0
+            || '' === $nonce
+            || !preg_match('/^[a-f0-9]{64}$/', $nonce)
+        ) {
             $this->logging->warning('door_confirm.bad_request', [
                 'deviceId' => $deviceId,
                 'jobId' => $jobId,
-                'cid' => $cid,
+                'requestCid' => $requestCid,
             ]);
 
             return new JsonResponse(['error' => 'bad_request'], 400);
@@ -118,7 +162,7 @@ final class DeviceController extends AbstractController
         $this->logging->info('door_confirm.request_received', [
             'deviceId' => $deviceId,
             'jobId' => $jobId,
-            'cid' => $cid,
+            'requestCid' => $requestCid,
             'ok' => $ok,
         ]);
 
@@ -128,7 +172,7 @@ final class DeviceController extends AbstractController
         $this->logging->{$level}('door_confirm.result', [
             'deviceId' => $deviceId,
             'jobId' => $jobId,
-            'cid' => $cid,
+            'requestCid' => $requestCid,
             'accepted' => (bool) $result['accepted'],
             'httpStatus' => (int) $result['httpStatus'],
             'status' => $result['status'] ?? null,

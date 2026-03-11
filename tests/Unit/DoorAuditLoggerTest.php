@@ -41,8 +41,7 @@ class DoorAuditLoggerTest extends TestCase
         $user = $this->getMockBuilder(FrontendUser::class)
             ->disableOriginalConstructor()
             ->onlyMethods([])
-            ->getMock()
-        ;
+            ->getMock();
         $user->id = 42;
 
         $security = $this->createMock(Security::class);
@@ -53,8 +52,7 @@ class DoorAuditLoggerTest extends TestCase
         $db = $this->getMockBuilder(Database::class)
             ->disableOriginalConstructor()
             ->onlyMethods(['prepare'])
-            ->getMock()
-        ;
+            ->getMock();
         $db->expects($this->once())
             ->method('prepare')
             ->with($this->stringContains('INSERT INTO tl_co_door_log'))
@@ -89,14 +87,13 @@ class DoorAuditLoggerTest extends TestCase
         $this->assertIsInt($args[0]);
         $this->assertSame('', $args[1]);
         $this->assertSame(42, $args[2]);
-        $this->assertSame('depot', $args[3]);
-        $this->assertSame('open', $args[4]);
-        $this->assertSame('ok', $args[5]);
-        $this->assertSame('127.0.0.1', $args[6]);
-        $this->assertSame('PHPUnit-Agent', $args[7]);
-        $this->assertSame('Opened', $args[8]);
-        $this->assertIsString($args[9]);
-        $this->assertStringContainsString('"jobId":99', (string) $args[9]);
+        $this->assertSame('depot', $args[4]);
+        $this->assertSame('open', $args[5]);
+        $this->assertSame('ok', $args[6]);
+        $this->assertSame('127.0.0.1', $args[7]);
+        $this->assertSame('PHPUnit-Agent', $args[8]);
+        $this->assertSame('Opened', $args[9]);
+        $this->assertStringContainsString('"jobId":99', (string) $args[10]);
     }
 
     /**
@@ -117,8 +114,7 @@ class DoorAuditLoggerTest extends TestCase
         $db = $this->getMockBuilder(Database::class)
             ->disableOriginalConstructor()
             ->onlyMethods(['prepare'])
-            ->getMock()
-        ;
+            ->getMock();
         $db->method('prepare')->willReturn(new class(static function (array $args) use (&$executeCalls): void {
             $executeCalls[] = $args;
         }) {
@@ -148,10 +144,11 @@ class DoorAuditLoggerTest extends TestCase
 
         $this->assertSame('', $args[1]);
         $this->assertSame(0, $args[2]);
-        $this->assertSame('', $args[6]);
+        $this->assertSame('failed', $args[6]);
         $this->assertSame('', $args[7]);
         $this->assertSame('', $args[8]);
-        $this->assertNull($args[9]);
+        $this->assertSame('', $args[9]);
+        $this->assertNull($args[10]);
     }
 
     private function setDatabaseSingleton(Database|null $database): void

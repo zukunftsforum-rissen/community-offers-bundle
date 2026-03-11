@@ -34,3 +34,4 @@ site/
 # AI generated documentation
 docs/ai/generated/*
 !docs/ai/generated/.gitkeep
+bundle.zip

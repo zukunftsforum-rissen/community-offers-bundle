@@ -85,7 +85,7 @@ final class DoorWorkflowCorrelationTest extends KernelTestCase
         $cid = (string) ($jobRow['correlationId'] ?? '');
 
         self::assertNotSame('', $cid);
-        self::assertMatchesRegularExpression('/^[a-f0-9-]{36}$/i', $cid);
+        self::assertMatchesRegularExpression('/^[a-f0-9-]{64}$/i', $cid);
 
         $claimed = $this->service->dispatchJobs(
             deviceId: 'phpunit-device',

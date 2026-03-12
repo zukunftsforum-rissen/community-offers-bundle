@@ -68,7 +68,7 @@ final class DoorLogCallback
 
         $correlationId = (string) ($row['correlationId'] ?? '');
         if ('' !== $correlationId) {
-            $correlationId = substr($correlationId, 0, 8);
+            $correlationId = substr($correlationId, 0, 64);
         }
 
         $areaKey = (string) ($row['area'] ?? '');

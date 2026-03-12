@@ -192,7 +192,7 @@ final class DoorJobService
         $userAgent = substr($userAgent, 0, 255);
 
         if ('' === $correlationId) {
-            $correlationId = uuid_create(UUID_TYPE_RANDOM);
+            $correlationId = $this->generateCorrelationId();
         }
 
         $this->db->insert('tl_co_door_job', [
@@ -201,7 +201,7 @@ final class DoorJobService
             'expiresAt' => $expiresAt,
             'area' => $area,
             'status' => 'pending',
-            'correlationId' => substr($correlationId, 0, 36),
+            'correlationId' => substr($correlationId, 0, 64),
 
             'requestedByMemberId' => $memberId,
             'requestIp' => $ip,
@@ -306,7 +306,7 @@ final class DoorJobService
                  FROM tl_co_door_job
                  WHERE status='pending'
                    AND area IN (:areas)
-                   AND (expiresAt = 0 OR expiresAt >= :now)
+                   AND (expiresAt >= :now)
                  ORDER BY createdAt ASC
                  LIMIT $limit",
                 ['areas' => $areas, 'now' => $now],
@@ -768,5 +768,11 @@ final class DoorJobService
         ]);
 
         return ['accepted' => true, 'httpStatus' => 200, 'status' => $newStatus];
+    }
+
+    private function generateCorrelationId(): string
+    {
+        return str_pad(dechex(time()), 8, '0', STR_PAD_LEFT)
+            .bin2hex(random_bytes(28));
     }
 }

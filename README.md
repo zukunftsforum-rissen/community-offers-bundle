@@ -31,6 +31,16 @@ Install via Composer:
 composer require zukunftsforum-rissen/community-offers-bundle
 ```
 
+## Production setup
+
+In production you must configure a real DoorGateway implementation.
+
+Example:
+
+services:
+  ZukunftsforumRissen\CommunityOffersBundle\Door\DoorGatewayInterface:
+    alias: App\Door\ShellyDoorGateway
+
 ## License
 
 MIT

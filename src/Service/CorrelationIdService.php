@@ -4,23 +4,15 @@ declare(strict_types=1);
 
 namespace ZukunftsforumRissen\CommunityOffersBundle\Service;
 
+use Symfony\Component\Uid\Ulid;
+
 final class CorrelationIdService
 {
     public function create(): string
     {
-        $bytes = random_bytes(16);
-        $bytes[6] = \chr((\ord($bytes[6]) & 0x0F) | 0x40); // version 4
-        $bytes[8] = \chr((\ord($bytes[8]) & 0x3F) | 0x80); // variant
+        $ulid = (string) new Ulid(); // 26 chars
+        $random = bin2hex(random_bytes(19)); // 38 chars
 
-        $hex = bin2hex($bytes);
-
-        return \sprintf(
-            '%s-%s-%s-%s-%s',
-            substr($hex, 0, 8),
-            substr($hex, 8, 4),
-            substr($hex, 12, 4),
-            substr($hex, 16, 4),
-            substr($hex, 20, 12),
-        );
+        return $ulid.$random; // 64 total
     }
 }

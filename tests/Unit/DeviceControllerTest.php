@@ -30,6 +30,9 @@ use Symfony\Component\Workflow\MarkingStore\MethodMarkingStore;
 use Symfony\Component\Workflow\StateMachine;
 use Symfony\Component\Workflow\Transition;
 use Symfony\Component\EventDispatcher\EventDispatcher;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\DeviceConfirmRateLimitService;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\DeviceRateLimitService;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorWorkflowTimelineService;
 use ZukunftsforumRissen\CommunityOffersBundle\Workflow\DoorJobWorkflowSubscriber;
 
 
@@ -656,7 +659,13 @@ class DeviceControllerTest extends TestCase
             public function registerPoll(int|string $deviceId, array $areas = []): void {}
         };
 
-        $controller = new DeviceController($jobs, $this->createStub(LoggingService::class), $heartbeat);
+        $controller = new DeviceController(
+            $jobs,
+            $this->createStub(LoggingService::class),
+            $heartbeat,
+            $this->createAlwaysAllowingDeviceRateLimitService(),
+            $this->createAlwaysAllowingDeviceConfirmRateLimitService(),
+        );
 
         $tokenStorage = $this->createMock(TokenStorageInterface::class);
 
@@ -1038,6 +1047,56 @@ class DeviceControllerTest extends TestCase
         });
 
         return $db;
+    }
+
+    private function createAlwaysAllowingDeviceRateLimitService(): \ZukunftsforumRissen\CommunityOffersBundle\Service\DeviceRateLimitService
+    {
+        $db = $this->createStub(Connection::class);
+        $db->method('fetchOne')->willReturn(false);
+
+        return new \ZukunftsforumRissen\CommunityOffersBundle\Service\DeviceRateLimitService($db);
+    }
+
+    private function createAlwaysAllowingDeviceConfirmRateLimitService(): \ZukunftsforumRissen\CommunityOffersBundle\Service\DeviceConfirmRateLimitService
+    {
+        $cache = $this->createStub(\Psr\Cache\CacheItemPoolInterface::class);
+
+        $cache->method('getItem')->willReturn(new class() implements \Psr\Cache\CacheItemInterface {
+            public function getKey(): string
+            {
+                return 'test';
+            }
+
+            public function get(): mixed
+            {
+                return null;
+            }
+
+            public function isHit(): bool
+            {
+                return false;
+            }
+
+            public function set(mixed $value): static
+            {
+                return $this;
+            }
+
+            public function expiresAt(?\DateTimeInterface $expiration): static
+            {
+                return $this;
+            }
+
+            public function expiresAfter(int|\DateInterval|null $time): static
+            {
+                return $this;
+            }
+        });
+
+        $cache->method('save')->willReturn(true);
+        $cache->method('deleteItem')->willReturn(true);
+
+        return new \ZukunftsforumRissen\CommunityOffersBundle\Service\DeviceConfirmRateLimitService($cache);
     }
 }
 

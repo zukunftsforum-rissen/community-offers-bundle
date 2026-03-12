@@ -9,7 +9,9 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 use ZukunftsforumRissen\CommunityOffersBundle\Security\DeviceApiUser;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\DeviceConfirmRateLimitService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\DeviceHeartbeatInterface;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\DeviceRateLimitService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorJobService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService;
 
@@ -20,6 +22,8 @@ final class DeviceController extends AbstractController
         private readonly DoorJobService $jobs,
         private readonly LoggingService $logging,
         private readonly DeviceHeartbeatInterface $deviceHeartbeatService,
+        private readonly DeviceRateLimitService $deviceRateLimitService,
+        private readonly DeviceConfirmRateLimitService $deviceConfirmRateLimitService,
     ) {
     }
 
@@ -39,6 +43,20 @@ final class DeviceController extends AbstractController
 
         $deviceId = $user->getDeviceId();
         $areas = $user->getAreas();
+
+        if (!$this->deviceRateLimitService->isPollAllowed($deviceId, 2)) {
+            $this->logging->warning('device_poll.rate_limited', [
+                'deviceId' => $deviceId,
+                'ip' => $request->getClientIp(),
+            ]);
+
+            return new JsonResponse(
+                [
+                    'error' => 'rate_limit_exceeded',
+                ],
+                429,
+            );
+        }
 
         $this->jobs->expireOldJobs();
 
@@ -171,7 +189,22 @@ final class DeviceController extends AbstractController
             'ok' => $ok,
         ]);
 
+        if (!$this->deviceConfirmRateLimitService->isAllowed($deviceId)) {
+            $this->logging->warning('door_confirm.rate_limited', [
+                'deviceId' => $deviceId,
+                'ip' => $request->getClientIp(),
+            ]);
+
+            return new JsonResponse(['error' => 'rate_limit_exceeded'], 429);
+        }
+
         $result = $this->jobs->confirmJobDetailed($deviceId, $jobId, $nonce, $ok, $meta);
+
+        if ((bool) $result['accepted']) {
+            $this->deviceConfirmRateLimitService->reset($deviceId);
+        } else {
+            $this->deviceConfirmRateLimitService->registerFailure($deviceId);
+        }
 
         $level = (bool) $result['accepted'] ? 'info' : 'warning';
         $this->logging->{$level}('door_confirm.result', [

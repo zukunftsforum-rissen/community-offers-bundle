@@ -50,7 +50,7 @@ $GLOBALS['TL_DCA']['tl_co_door_job'] = [
             'label' => &$GLOBALS['TL_LANG']['tl_co_door_job']['correlationId'],
             'inputType' => 'text',
             'eval' => ['readonly' => true, 'tl_class' => 'w50'],
-            'sql' => "varchar(36) NOT NULL default ''",
+            'sql' => "varchar(64) NOT NULL default ''",
         ],
 
         'createdAt' => [

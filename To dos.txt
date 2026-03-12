@@ -33,3 +33,5 @@ Cronjob:
 0 3 * * * php /var/www/project/vendor/bin/contao-console community-offers:cleanup
 
 
+
+In services.yaml ist DoorGatewayInterface standardmäßig auf MockDoorGateway verdrahtet. Das ist für Entwicklung gut, aber im Produktivbetrieb muss diese Alias-Konfiguration sicher und nachvollziehbar überschrieben werden, sonst bekommt man leicht ein System, das logisch “funktioniert”, aber nicht die echte Hardware ansteuert.

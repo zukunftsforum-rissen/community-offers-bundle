@@ -78,7 +78,7 @@ $GLOBALS['TL_DCA']['tl_co_door_log'] = [
             'filter' => true,
             'inputType' => 'text',
             'eval' => ['readonly' => true, 'tl_class' => 'w50'],
-            'sql' => "varchar(36) NOT NULL default ''",
+            'sql' => "varchar(64) NOT NULL default ''",
         ],
         'deviceId' => [
             'label' => &$GLOBALS['TL_LANG']['tl_co_door_log']['deviceId'],

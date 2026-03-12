@@ -43,7 +43,7 @@ class DoorAuditLogger
             ')
             ->execute(
                 time(),
-                mb_substr($correlationId, 0, 36),
+                mb_substr($correlationId, 0, 64),
                 $memberId,
                 $context['deviceId'] ?? '',
                 $area,

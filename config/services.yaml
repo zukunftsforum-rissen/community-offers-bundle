@@ -21,6 +21,10 @@ parameters:
         depot: 3
         swap-house: 4
 
+when@dev:
+  imports:
+    - { resource: services_dev.yaml }
+    
 when@test:
     imports:
         - { resource: services_test.yaml }
@@ -83,10 +87,6 @@ services:
     ZukunftsforumRissen\CommunityOffersBundle\Service\AccessService:
         arguments:
             $areaGroups: "%community_offers.area_groups%"
-
-        # Default-Gateway (Dev/Prod erstmal Mock, später austauschen)
-    ZukunftsforumRissen\CommunityOffersBundle\Door\DoorGatewayInterface:
-        alias: ZukunftsforumRissen\CommunityOffersBundle\Door\MockDoorGateway
 
     ZukunftsforumRissen\CommunityOffersBundle\Service\DoorJobService:
         arguments:

@@ -1,0 +1,16 @@
+@startuml
+
+actor Member
+participant "Contao Backend" as Backend
+participant "DoorJobService"
+participant "Device API"
+participant "Raspberry Pi Device"
+
+Member -> Backend : open door request
+Backend -> DoorJobService : create job
+DoorJobService -> Device API : job available
+Raspberry Pi Device -> Device API : poll
+Device API -> Raspberry Pi Device : dispatch job
+Raspberry Pi Device -> Device API : confirm execution
+
+@enduml

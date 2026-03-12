@@ -35,3 +35,5 @@ site/
 docs/ai/generated/*
 !docs/ai/generated/.gitkeep
 bundle.zip
+
+Archiv/

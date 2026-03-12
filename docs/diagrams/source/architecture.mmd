@@ -1,0 +1,29 @@
+flowchart LR
+
+PWA[PWA / Browser\nMember UI]
+
+API[Symfony API\n\nAccessController\nDeviceController\nAccessConfirmController\n\nServices:\nDoorJobService\nAccessRequestService\nAccessService]
+
+DB[(Database\n\nContao Core:\ntl_member\ntl_member_group\n\nCommunity Offers:\ntl_co_access_request\ntl_co_device\ntl_co_door_job\ntl_co_door_log)]
+
+DEVICE[Raspberry Pi\n\nPull-Client\nToken Auth\n\nPoll + Confirm]
+GATEWAY[Shelly / Relais\nDoor Actuator]
+
+PWA -->|POST /api/door/open/AREA| API
+API -->|create job\nstatus=pending| DB
+
+DEVICE -->|GET /api/device/poll| API
+API -->|dispatch job\nstatus=dispatched| DEVICE
+
+DEVICE -->|execute| GATEWAY
+DEVICE -->|POST /api/device/confirm| API
+API -.->|status=executed/expired| DB
+
+PWA -->|Access Request Form| API
+API -->|create request\nemail token| DB
+API -->|DOI Mail| PWA
+PWA -->|Confirm Token| API
+API -->|assign groups| DB
+
+DEVICE -.->|No inbound connections\nPull only| API
+API -.->|confirmWindow = 30s| DEVICE

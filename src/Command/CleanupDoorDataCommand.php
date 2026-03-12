@@ -10,15 +10,17 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService;
 
 #[AsCommand(
     name: 'community-offers:cleanup-door-data',
-    description: 'Cleanup old door logs and finished door jobs.',
+    description: 'Expires stale active jobs and deletes old door logs and old finished jobs.',
 )]
 final class CleanupDoorDataCommand extends Command
 {
     public function __construct(
         private readonly Connection $connection,
+        private readonly LoggingService $logging,
     ) {
         parent::__construct();
     }
@@ -26,56 +28,130 @@ final class CleanupDoorDataCommand extends Command
     protected function configure(): void
     {
         $this
-            ->addOption('log-days', null, InputOption::VALUE_REQUIRED, 'Keep door logs for this many days', 90)
-            ->addOption('job-days', null, InputOption::VALUE_REQUIRED, 'Keep finished jobs for this many days', 30)
-            ->addOption('dry-run', null, InputOption::VALUE_NONE, 'Show counts without deleting')
+            ->addOption('log-days', null, InputOption::VALUE_REQUIRED, 'Keep door logs for this many days', '90')
+            ->addOption('job-days', null, InputOption::VALUE_REQUIRED, 'Keep executed and expired jobs for this many days', '30')
+            ->addOption('failed-job-days', null, InputOption::VALUE_REQUIRED, 'Keep failed jobs for this many days', '180')
+            ->addOption('dry-run', null, InputOption::VALUE_NONE, 'Show what would be changed without deleting anything')
         ;
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $logDays = (int) $input->getOption('log-days');
-        $jobDays = (int) $input->getOption('job-days');
+        $logDays = max(1, (int) $input->getOption('log-days'));
+        $jobDays = max(1, (int) $input->getOption('job-days'));
+        $failedJobDays = max(1, (int) $input->getOption('failed-job-days'));
         $dryRun = (bool) $input->getOption('dry-run');
+        $now = time();
 
-        $logCutoff = time() - ($logDays * 86400);
-        $jobCutoff = time() - ($jobDays * 86400);
+        $logCutoff = $now - ($logDays * 86400);
+        $jobCutoff = $now - ($jobDays * 86400);
+        $failedJobCutoff = $now - ($failedJobDays * 86400);
 
-        $doorLogCount = $this->connection->fetchOne(
+        $stalePendingCount = (int) $this->connection->fetchOne(
+            "SELECT COUNT(*) FROM tl_co_door_job
+             WHERE expiresAt > 0
+               AND expiresAt < ?
+               AND status = 'pending'",
+            [$now],
+        );
+
+        $staleDispatchedCount = (int) $this->connection->fetchOne(
+            "SELECT COUNT(*) FROM tl_co_door_job
+             WHERE expiresAt > 0
+               AND expiresAt < ?
+               AND status = 'dispatched'",
+            [$now],
+        );
+
+        $doorLogCount = (int) $this->connection->fetchOne(
             'SELECT COUNT(*) FROM tl_co_door_log WHERE tstamp < ?',
             [$logCutoff],
         );
 
-        $jobCount = $this->connection->fetchOne(
+        $oldExecutedExpiredCount = (int) $this->connection->fetchOne(
             "SELECT COUNT(*) FROM tl_co_door_job
-             WHERE createdAt < ?
-             AND status IN ('executed','failed','expired')",
+             WHERE createdAt > 0
+               AND createdAt < ?
+               AND status IN ('executed', 'expired')",
             [$jobCutoff],
         );
 
-        $output->writeln("Old door logs: $doorLogCount");
-        $output->writeln("Old finished jobs: $jobCount");
+        $oldFailedCount = (int) $this->connection->fetchOne(
+            "SELECT COUNT(*) FROM tl_co_door_job
+             WHERE createdAt > 0
+               AND createdAt < ?
+               AND status = 'failed'",
+            [$failedJobCutoff],
+        );
+
+        $output->writeln(\sprintf('Stale pending jobs to expire: %d', $stalePendingCount));
+        $output->writeln(\sprintf('Stale dispatched jobs to expire: %d', $staleDispatchedCount));
+        $output->writeln(\sprintf('Door logs older than %d days: %d', $logDays, $doorLogCount));
+        $output->writeln(\sprintf('Executed/expired jobs older than %d days: %d', $jobDays, $oldExecutedExpiredCount));
+        $output->writeln(\sprintf('Failed jobs older than %d days: %d', $failedJobDays, $oldFailedCount));
 
         if ($dryRun) {
-            $output->writeln('Dry run only.');
+            $output->writeln('Dry run only, nothing changed.');
 
             return Command::SUCCESS;
         }
 
-        $deletedLogs = $this->connection->executeStatement(
+        $expiredPending = $this->connection->executeStatement(
+            "UPDATE tl_co_door_job
+             SET status = 'expired'
+             WHERE expiresAt > 0
+               AND expiresAt < ?
+               AND status = 'pending'",
+            [$now],
+        );
+
+        $expiredDispatched = $this->connection->executeStatement(
+            "UPDATE tl_co_door_job
+             SET status = 'expired'
+             WHERE expiresAt > 0
+               AND expiresAt < ?
+               AND status = 'dispatched'",
+            [$now],
+        );
+
+        $deletedDoorLogs = $this->connection->executeStatement(
             'DELETE FROM tl_co_door_log WHERE tstamp < ?',
             [$logCutoff],
         );
 
-        $deletedJobs = $this->connection->executeStatement(
+        $deletedExecutedExpiredJobs = $this->connection->executeStatement(
             "DELETE FROM tl_co_door_job
-             WHERE createdAt < ?
-             AND status IN ('executed','failed','expired')",
+             WHERE createdAt > 0
+               AND createdAt < ?
+               AND status IN ('executed', 'expired')",
             [$jobCutoff],
         );
 
-        $output->writeln("Deleted door logs: $deletedLogs");
-        $output->writeln("Deleted jobs: $deletedJobs");
+        $deletedFailedJobs = $this->connection->executeStatement(
+            "DELETE FROM tl_co_door_job
+             WHERE createdAt > 0
+               AND createdAt < ?
+               AND status = 'failed'",
+            [$failedJobCutoff],
+        );
+
+        $this->logging->initiateLogging('door', 'community-offers');
+        $this->logging->info('door_cleanup.completed', [
+            'expiredPending' => $expiredPending,
+            'expiredDispatched' => $expiredDispatched,
+            'deletedDoorLogs' => $deletedDoorLogs,
+            'deletedExecutedExpiredJobs' => $deletedExecutedExpiredJobs,
+            'deletedFailedJobs' => $deletedFailedJobs,
+            'logDays' => $logDays,
+            'jobDays' => $jobDays,
+            'failedJobDays' => $failedJobDays,
+        ]);
+
+        $output->writeln(\sprintf('Expired pending jobs: %d', $expiredPending));
+        $output->writeln(\sprintf('Expired dispatched jobs: %d', $expiredDispatched));
+        $output->writeln(\sprintf('Deleted door logs: %d', $deletedDoorLogs));
+        $output->writeln(\sprintf('Deleted executed/expired jobs: %d', $deletedExecutedExpiredJobs));
+        $output->writeln(\sprintf('Deleted failed jobs: %d', $deletedFailedJobs));
 
         return Command::SUCCESS;
     }

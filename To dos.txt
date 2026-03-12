@@ -9,25 +9,9 @@ im BE Link vom Antrag zum member einrichten!
 Lizenzbedingungen beachten für fremde icons etc.
 
 
-Ich würde zusätzlich im Backend einmal festlegen:
-
-Door Logs Retention: 90 days
-
-und später automatisiert löschen lassen.
-
-Dann stimmt:
-
-Dokumentation
-
-Datenschutzerklärung
-
-tatsächliches Verhalten
-
-überein.
 
 
-
-3. Automatisch laufen lassen
+3. Cleanups automatisch laufen lassen
 
 Am einfachsten erstmal per Cron auf dem Server, z. B. täglich nachts:
 
@@ -49,10 +33,3 @@ Cronjob:
 0 3 * * * php /var/www/project/vendor/bin/contao-console community-offers:cleanup
 
 
-Später lohnt es sich noch eine kleine Erweiterung einzubauen:
-
-community-offers:cleanup-door-data --anonymize
-
-statt löschen.
-
-Dann bleiben Statistiken erhalten, aber personenbezogene Daten verschwinden.

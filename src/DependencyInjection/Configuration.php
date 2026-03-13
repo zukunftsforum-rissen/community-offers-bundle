@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ZukunftsforumRissen\CommunityOffersBundle\DependencyInjection;
 
+use Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
 
@@ -13,7 +14,9 @@ final class Configuration implements ConfigurationInterface
     {
         $treeBuilder = new TreeBuilder('community_offers');
 
+        /** @var ArrayNodeDefinition $rootNode */
         $rootNode = $treeBuilder->getRootNode();
+
         $children = $rootNode->children();
 
         $loggingEnabled = $children->booleanNode('logging_enabled');

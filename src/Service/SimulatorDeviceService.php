@@ -11,13 +11,16 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 final class SimulatorDeviceService
 {
     public const SIMULATOR_DEVICE_ID = 'shed-simulator';
+
     private const SIMULATOR_NAME = 'Shed Simulator';
+
     private const DEFAULT_AREAS = ['sharing', 'workshop', 'depot', 'swap-house'];
 
     public function __construct(
         private readonly Connection $connection,
         private readonly DoorJobService $doorJobService,
-    ) {}
+    ) {
+    }
 
     /**
      * @return array<string, mixed>
@@ -27,7 +30,7 @@ final class SimulatorDeviceService
         $device = $this->findOrCreateSimulator($deviceId);
 
         $databaseId = (string) ($device['id'] ?? '');
-        if ($databaseId === '') {
+        if ('' === $databaseId) {
             throw new NotFoundHttpException('Simulator device id missing.');
         }
 
@@ -35,7 +38,7 @@ final class SimulatorDeviceService
         $jobs = $this->doorJobService->dispatchJobs($databaseId, $areas, 1);
 
         return [
-            'jobs' => array_map(static fn(array $job): array => [
+            'jobs' => array_map(static fn (array $job): array => [
                 'jobId' => $job['jobId'],
                 'area' => $job['area'],
                 'nonce' => $job['nonce'],
@@ -47,6 +50,7 @@ final class SimulatorDeviceService
 
     /**
      * @param array<string, mixed> $payload
+     *
      * @return array<string, mixed>
      */
     public function confirm(array $payload, string $deviceId = self::SIMULATOR_DEVICE_ID): array
@@ -54,7 +58,7 @@ final class SimulatorDeviceService
         $device = $this->findOrCreateSimulator($deviceId);
 
         $databaseId = (string) ($device['id'] ?? '');
-        if ($databaseId === '') {
+        if ('' === $databaseId) {
             throw new NotFoundHttpException('Simulator device id missing.');
         }
 
@@ -63,7 +67,7 @@ final class SimulatorDeviceService
         $ok = (bool) ($payload['ok'] ?? true);
         $meta = \is_array($payload['meta'] ?? null) ? $payload['meta'] : ['source' => 'door-simulator'];
 
-        if ($jobId <= 0 || $nonce === '') {
+        if ($jobId <= 0 || '' === $nonce) {
             throw new BadRequestHttpException('jobId and nonce are required.');
         }
 
@@ -88,12 +92,12 @@ final class SimulatorDeviceService
     {
         $device = $this->findSimulator($deviceId);
 
-        if ($device === null) {
+        if (null === $device) {
             $this->createSimulator($deviceId);
             $device = $this->findSimulator($deviceId);
         }
 
-        if ($device === null) {
+        if (null === $device) {
             throw new \RuntimeException('Failed to create simulator device.');
         }
 
@@ -103,7 +107,7 @@ final class SimulatorDeviceService
     /**
      * @return array<string, mixed>|null
      */
-    public function findSimulator(string $deviceId = self::SIMULATOR_DEVICE_ID): ?array
+    public function findSimulator(string $deviceId = self::SIMULATOR_DEVICE_ID): array|null
     {
         $row = $this->connection->fetchAssociative(
             'SELECT * FROM tl_co_device WHERE deviceId = ? LIMIT 1',
@@ -132,28 +136,29 @@ final class SimulatorDeviceService
 
     /**
      * @param array<string, mixed> $device
+     *
      * @return array<string, mixed>
      */
     private function ensureSimulatorConfiguration(array $device): array
     {
         $updates = [];
 
-        if ((int) ($device['isSimulator'] ?? 0) !== 1) {
+        if (1 !== (int) ($device['isSimulator'] ?? 0)) {
             $updates['isSimulator'] = 1;
         }
 
-        if ((int) ($device['enabled'] ?? 0) !== 1) {
+        if (1 !== (int) ($device['enabled'] ?? 0)) {
             $updates['enabled'] = 1;
         }
 
         $areas = $this->extractAreas($device);
         $missingAreas = array_diff(self::DEFAULT_AREAS, $areas);
 
-        if ($missingAreas !== []) {
+        if ([] !== $missingAreas) {
             $updates['areas'] = serialize(array_values(array_unique([...$areas, ...self::DEFAULT_AREAS])));
         }
 
-        if ($updates !== []) {
+        if ([] !== $updates) {
             $updates['tstamp'] = time();
 
             $this->connection->update(
@@ -164,7 +169,7 @@ final class SimulatorDeviceService
 
             $refetched = $this->findSimulator((string) $device['deviceId']);
 
-            if ($refetched !== null) {
+            if (null !== $refetched) {
                 return $refetched;
             }
         }
@@ -174,13 +179,14 @@ final class SimulatorDeviceService
 
     /**
      * @param array<string, mixed> $device
+     *
      * @return list<string>
      */
     private function extractAreas(array $device): array
     {
         $areasRaw = $device['areas'] ?? '';
 
-        if (!\is_string($areasRaw) || $areasRaw === '') {
+        if (!\is_string($areasRaw) || '' === $areasRaw) {
             return [];
         }
 

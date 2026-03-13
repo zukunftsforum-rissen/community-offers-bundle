@@ -16,13 +16,13 @@ final class Configuration implements ConfigurationInterface
         $rootNode = $treeBuilder->getRootNode();
         $children = $rootNode->children();
 
-        $loggingNode = $children->booleanNode('logging_enabled');
-        $loggingNode->defaultFalse();
-        $loggingNode->end();
+        $loggingEnabled = $children->booleanNode('logging_enabled');
+        $loggingEnabled->defaultFalse();
+        $loggingEnabled->end();
 
-        $debugNode = $children->booleanNode('debug_logging_enabled');
-        $debugNode->defaultFalse();
-        $debugNode->end();
+        $debugLoggingEnabled = $children->booleanNode('debug_logging_enabled');
+        $debugLoggingEnabled->defaultFalse();
+        $debugLoggingEnabled->end();
 
         return $treeBuilder;
     }

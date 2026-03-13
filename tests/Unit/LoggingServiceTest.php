@@ -111,19 +111,18 @@ class LoggingServiceTest extends TestCase
         $params
             ->method('has')
             ->willReturnCallback(static fn(string $name): bool => \in_array($name, [
-                'enable_logging',
-                'enable_debug_logging',
+                'community_offers.logging_enabled',
+                'community_offers.debug_logging_enabled',
                 'kernel.project_dir',
             ], true));
         $params
             ->method('get')
             ->willReturnCallback(static fn(string $name): string => match ($name) {
-                'enable_logging' => $enableLogging,
-                'enable_debug_logging' => $enableDebugLogging,
+                'community_offers.logging_enabled' => $enableLogging,
+                'community_offers.debug_logging_enabled' => $enableDebugLogging,
                 'kernel.project_dir' => $projectDir,
                 default => '',
             });
-
         return $params;
     }
 

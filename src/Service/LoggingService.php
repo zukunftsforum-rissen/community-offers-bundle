@@ -12,6 +12,10 @@ use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 
 class LoggingService
 {
+    private const PARAM_LOGGING_ENABLED = 'community_offers.logging_enabled';
+
+    private const PARAM_DEBUG_LOGGING_ENABLED = 'community_offers.debug_logging_enabled';
+
     private Logger|null $logger = null;
 
     private bool $loggingEnabled;
@@ -22,11 +26,8 @@ class LoggingService
 
     public function __construct(ParameterBagInterface $params)
     {
-        $enableLogging = $params->has('enable_logging') ? (string) $params->get('enable_logging') : 'false';
-        $enableDebugLogging = $params->has('enable_debug_logging') ? (string) $params->get('enable_debug_logging') : 'false';
-
-        $this->loggingEnabled = 'true' === $enableLogging;
-        $this->debugLoggingEnabled = 'true' === $enableDebugLogging;
+        $this->loggingEnabled = $this->readBoolParameter($params, self::PARAM_LOGGING_ENABLED);
+        $this->debugLoggingEnabled = $this->readBoolParameter($params, self::PARAM_DEBUG_LOGGING_ENABLED);
 
         $projectDir = rtrim((string) $params->get('kernel.project_dir'), '/');
         $this->logDir = $projectDir.'/var/logs/';
@@ -208,5 +209,22 @@ class LoggingService
         if (null === $this->logger) {
             $this->initiateLogging('door', 'community-offers');
         }
+    }
+
+    private function readBoolParameter(ParameterBagInterface $params, string $name): bool
+    {
+        if (!$params->has($name)) {
+            return false;
+        }
+
+        $value = $params->get($name);
+
+        if (\is_bool($value)) {
+            return $value;
+        }
+
+        $normalized = strtolower(trim((string) $value));
+
+        return \in_array($normalized, ['1', 'true', 'yes', 'on'], true);
     }
 }

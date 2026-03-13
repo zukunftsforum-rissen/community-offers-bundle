@@ -13,7 +13,8 @@ final class Configuration implements ConfigurationInterface
     {
         $treeBuilder = new TreeBuilder('community_offers');
 
-        $treeBuilder->getRootNode()
+        $rootNode = $treeBuilder->getRootNode();
+        $rootNode
             ->children()
             ->booleanNode('logging_enabled')
             ->defaultFalse()

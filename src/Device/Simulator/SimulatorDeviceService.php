@@ -7,6 +7,7 @@ namespace ZukunftsforumRissen\CommunityOffersBundle\Device\Simulator;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorJobService;
 
 final class SimulatorDeviceService
 {

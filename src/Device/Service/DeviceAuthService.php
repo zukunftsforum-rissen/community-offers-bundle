@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace ZukunftsforumRissen\CommunityOffersBundle\Service;
+namespace ZukunftsforumRissen\CommunityOffersBundle\Device\Service;
 
 use Contao\StringUtil;
 use Doctrine\DBAL\Connection;

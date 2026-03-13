@@ -9,7 +9,7 @@ use Contao\Database;
 use Contao\Date;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 
-final class DoorLogCallback
+final class TlCoDoorLogCallback
 {
     public function __construct(
         private readonly ParameterBagInterface $params,

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace ZukunftsforumRissen\CommunityOffersBundle\Controller;
+namespace ZukunftsforumRissen\CommunityOffersBundle\Controller\Frontend;
 
 use Contao\BackendUser;
 use Contao\CoreBundle\Exception\AccessDeniedException;

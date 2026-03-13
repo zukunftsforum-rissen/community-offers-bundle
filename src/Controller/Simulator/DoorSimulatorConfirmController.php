@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace ZukunftsforumRissen\CommunityOffersBundle\Controller;
+namespace ZukunftsforumRissen\CommunityOffersBundle\Controller\Simulator;
 
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -13,8 +13,7 @@ final class DoorSimulatorConfirmController extends AbstractController
 {
     public function __construct(
         private readonly SimulatorDeviceService $simulatorDeviceService,
-    ) {
-    }
+    ) {}
 
     public function __invoke(Request $request): JsonResponse
     {
@@ -24,6 +23,8 @@ final class DoorSimulatorConfirmController extends AbstractController
             $payload = [];
         }
 
-        return $this->json($this->simulatorDeviceService->confirm($payload, 'shed-simulator'));
+        return $this->json(
+            $this->simulatorDeviceService->confirm($payload, SimulatorDeviceService::SIMULATOR_DEVICE_ID)
+        );
     }
 }

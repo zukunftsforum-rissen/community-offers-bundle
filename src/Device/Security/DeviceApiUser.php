@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace ZukunftsforumRissen\CommunityOffersBundle\Security;
+namespace ZukunftsforumRissen\CommunityOffersBundle\Device\Security;
 
 use Symfony\Component\Security\Core\User\UserInterface;
 

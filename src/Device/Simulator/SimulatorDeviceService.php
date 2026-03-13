@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace ZukunftsforumRissen\CommunityOffersBundle\Service;
+namespace ZukunftsforumRissen\CommunityOffersBundle\Device\Simulator;
 
 use Doctrine\DBAL\Connection;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
@@ -11,16 +11,15 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 final class SimulatorDeviceService
 {
     public const SIMULATOR_DEVICE_ID = 'shed-simulator';
-
-    private const SIMULATOR_NAME = 'Shed Simulator';
+    public const SIMULATOR_DISPLAY_NAME = 'Shed Simulator';
 
     private const DEFAULT_AREAS = ['sharing', 'workshop', 'depot', 'swap-house'];
 
     public function __construct(
+
         private readonly Connection $connection,
         private readonly DoorJobService $doorJobService,
-    ) {
-    }
+    ) {}
 
     /**
      * @return array<string, mixed>
@@ -38,7 +37,7 @@ final class SimulatorDeviceService
         $jobs = $this->doorJobService->dispatchJobs($databaseId, $areas, 1);
 
         return [
-            'jobs' => array_map(static fn (array $job): array => [
+            'jobs' => array_map(static fn(array $job): array => [
                 'jobId' => $job['jobId'],
                 'area' => $job['area'],
                 'nonce' => $job['nonce'],
@@ -123,7 +122,7 @@ final class SimulatorDeviceService
 
         $this->connection->insert('tl_co_device', [
             'tstamp' => $now,
-            'name' => self::SIMULATOR_NAME,
+            'name' => self::SIMULATOR_DISPLAY_NAME,
             'deviceId' => $deviceId,
             'isSimulator' => 1,
             'enabled' => 1,

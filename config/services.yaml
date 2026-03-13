@@ -47,7 +47,7 @@ services:
                   method: handleActions,
               }
 
-    ZukunftsforumRissen\CommunityOffersBundle\DataContainer\TlCoDevice:
+    ZukunftsforumRissen\CommunityOffersBundle\DataContainer\TlCoDeviceDataContainer:
         tags:
             - {
                   name: contao.callback,
@@ -56,7 +56,7 @@ services:
                   method: formatLabel,
               }
 
-    ZukunftsforumRissen\CommunityOffersBundle\DataContainer\DoorLogCallback:
+    ZukunftsforumRissen\CommunityOffersBundle\DataContainer\TlCoDoorLogCallback:
         tags:
             - {
                   name: contao.callback,

@@ -2,10 +2,11 @@
 
 declare(strict_types=1);
 
-namespace ZukunftsforumRissen\CommunityOffersBundle\Controller;
+namespace ZukunftsforumRissen\CommunityOffersBundle\Controller\Simulator;
 
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\SimulatorDeviceService;
 
 final class DoorSimulatorController extends AbstractController
 {
@@ -13,7 +14,7 @@ final class DoorSimulatorController extends AbstractController
     {
         return $this->render('@CommunityOffers/simulator/simulator.html.twig', [
             'title' => 'Door Simulator',
-            'deviceName' => 'shed-simulator',
+            'deviceName' => SimulatorDeviceService::SIMULATOR_DEVICE_ID,
             'pollIntervalMs' => 2000,
             'pollUrl' => '/door-simulator/poll',
             'confirmUrl' => '/door-simulator/confirm',

@@ -7,7 +7,7 @@ namespace ZukunftsforumRissen\CommunityOffersBundle\DataContainer;
 use Contao\DataContainer;
 use Contao\StringUtil;
 
-final class TlCoDevice
+final class TlCoDeviceDataContainer
 {
     /**
      * Contao label_callback: return modified $args array.

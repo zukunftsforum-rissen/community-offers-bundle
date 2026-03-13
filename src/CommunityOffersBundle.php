@@ -15,8 +15,12 @@ class CommunityOffersBundle extends AbstractBundle
     /**
      * @param array<string, mixed> $config
      */
-    public function loadExtension(array $config, ContainerConfigurator $containerConfigurator, ContainerBuilder $containerBuilder): void
-    {
+    public function loadExtension(
+        array $config,
+        ContainerConfigurator $containerConfigurator,
+        ContainerBuilder $containerBuilder
+    ): void {
         $containerConfigurator->import('../config/services.yaml');
+        $containerConfigurator->import('../config/workflow.yaml');
     }
 }

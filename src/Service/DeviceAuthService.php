@@ -28,7 +28,7 @@ final class DeviceAuthService
 
         $hash = hash('sha256', $token);
 
-        $this->logging->info('device_auth.lookup_start', [
+        $this->logging->debug('device_auth.lookup_start', [
             'tokenPrefix' => substr($token, 0, 8),
             'tokenHashPrefix' => substr($hash, 0, 12),
         ]);

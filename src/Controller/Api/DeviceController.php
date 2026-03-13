@@ -8,10 +8,10 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
-use ZukunftsforumRissen\CommunityOffersBundle\Security\DeviceApiUser;
-use ZukunftsforumRissen\CommunityOffersBundle\Service\DeviceConfirmRateLimitService;
-use ZukunftsforumRissen\CommunityOffersBundle\Service\DeviceHeartbeatInterface;
-use ZukunftsforumRissen\CommunityOffersBundle\Service\DeviceRateLimitService;
+use ZukunftsforumRissen\CommunityOffersBundle\Device\Security\DeviceApiUser;
+use ZukunftsforumRissen\CommunityOffersBundle\Device\Service\DeviceConfirmRateLimitService;
+use ZukunftsforumRissen\CommunityOffersBundle\Device\Service\DeviceHeartbeatInterface;
+use ZukunftsforumRissen\CommunityOffersBundle\Device\Service\DeviceRateLimitService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorJobService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService;
 

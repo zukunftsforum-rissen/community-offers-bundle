@@ -12,15 +12,16 @@ use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorJobService;
 final class SimulatorDeviceService
 {
     public const SIMULATOR_DEVICE_ID = 'shed-simulator';
+
     public const SIMULATOR_DISPLAY_NAME = 'Shed Simulator';
 
     private const DEFAULT_AREAS = ['sharing', 'workshop', 'depot', 'swap-house'];
 
     public function __construct(
-
         private readonly Connection $connection,
         private readonly DoorJobService $doorJobService,
-    ) {}
+    ) {
+    }
 
     /**
      * @return array<string, mixed>
@@ -38,7 +39,7 @@ final class SimulatorDeviceService
         $jobs = $this->doorJobService->dispatchJobs($databaseId, $areas, 1);
 
         return [
-            'jobs' => array_map(static fn(array $job): array => [
+            'jobs' => array_map(static fn (array $job): array => [
                 'jobId' => $job['jobId'],
                 'area' => $job['area'],
                 'nonce' => $job['nonce'],

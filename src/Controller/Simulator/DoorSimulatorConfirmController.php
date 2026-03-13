@@ -13,7 +13,8 @@ final class DoorSimulatorConfirmController extends AbstractController
 {
     public function __construct(
         private readonly SimulatorDeviceService $simulatorDeviceService,
-    ) {}
+    ) {
+    }
 
     public function __invoke(Request $request): JsonResponse
     {
@@ -24,7 +25,7 @@ final class DoorSimulatorConfirmController extends AbstractController
         }
 
         return $this->json(
-            $this->simulatorDeviceService->confirm($payload, SimulatorDeviceService::SIMULATOR_DEVICE_ID)
+            $this->simulatorDeviceService->confirm($payload, SimulatorDeviceService::SIMULATOR_DEVICE_ID),
         );
     }
 }

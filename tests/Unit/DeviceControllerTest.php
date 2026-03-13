@@ -17,8 +17,8 @@ use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 use ZukunftsforumRissen\CommunityOffersBundle\Controller\Api\AccessController;
 use ZukunftsforumRissen\CommunityOffersBundle\Controller\Api\DeviceController;
-use ZukunftsforumRissen\CommunityOffersBundle\Security\DeviceApiUser;
-use ZukunftsforumRissen\CommunityOffersBundle\Service\DeviceHeartbeatInterface;
+use ZukunftsforumRissen\CommunityOffersBundle\Device\Security\DeviceApiUser;
+use ZukunftsforumRissen\CommunityOffersBundle\Device\Service\DeviceHeartbeatInterface;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\AccessRequestService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\AccessService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\CorrelationIdService;
@@ -30,8 +30,8 @@ use Symfony\Component\Workflow\MarkingStore\MethodMarkingStore;
 use Symfony\Component\Workflow\StateMachine;
 use Symfony\Component\Workflow\Transition;
 use Symfony\Component\EventDispatcher\EventDispatcher;
-use ZukunftsforumRissen\CommunityOffersBundle\Service\DeviceConfirmRateLimitService;
-use ZukunftsforumRissen\CommunityOffersBundle\Service\DeviceRateLimitService;
+use ZukunftsforumRissen\CommunityOffersBundle\Device\Service\DeviceConfirmRateLimitService;
+use ZukunftsforumRissen\CommunityOffersBundle\Device\Service\DeviceRateLimitService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorWorkflowTimelineService;
 use ZukunftsforumRissen\CommunityOffersBundle\Workflow\DoorJobWorkflowSubscriber;
 
@@ -1049,15 +1049,15 @@ class DeviceControllerTest extends TestCase
         return $db;
     }
 
-    private function createAlwaysAllowingDeviceRateLimitService(): \ZukunftsforumRissen\CommunityOffersBundle\Service\DeviceRateLimitService
+    private function createAlwaysAllowingDeviceRateLimitService(): \ZukunftsforumRissen\CommunityOffersBundle\Device\Service\DeviceRateLimitService
     {
         $db = $this->createStub(Connection::class);
         $db->method('fetchOne')->willReturn(false);
 
-        return new \ZukunftsforumRissen\CommunityOffersBundle\Service\DeviceRateLimitService($db);
+        return new \ZukunftsforumRissen\CommunityOffersBundle\Device\Service\DeviceRateLimitService($db);
     }
 
-    private function createAlwaysAllowingDeviceConfirmRateLimitService(): \ZukunftsforumRissen\CommunityOffersBundle\Service\DeviceConfirmRateLimitService
+    private function createAlwaysAllowingDeviceConfirmRateLimitService(): \ZukunftsforumRissen\CommunityOffersBundle\Device\Service\DeviceConfirmRateLimitService
     {
         $cache = $this->createStub(\Psr\Cache\CacheItemPoolInterface::class);
 
@@ -1096,7 +1096,7 @@ class DeviceControllerTest extends TestCase
         $cache->method('save')->willReturn(true);
         $cache->method('deleteItem')->willReturn(true);
 
-        return new \ZukunftsforumRissen\CommunityOffersBundle\Service\DeviceConfirmRateLimitService($cache);
+        return new \ZukunftsforumRissen\CommunityOffersBundle\Device\Service\DeviceConfirmRateLimitService($cache);
     }
 }
 

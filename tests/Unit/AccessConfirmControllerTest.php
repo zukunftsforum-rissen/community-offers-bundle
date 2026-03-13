@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace ZukunftsforumRissen\CommunityOffersBundle\Tests;
 
 use PHPUnit\Framework\TestCase;
-use ZukunftsforumRissen\CommunityOffersBundle\Controller\AccessConfirmController;
+use ZukunftsforumRissen\CommunityOffersBundle\Controller\Frontend\AccessConfirmController;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\AccessRequestService;
 
 class AccessConfirmControllerTest extends TestCase

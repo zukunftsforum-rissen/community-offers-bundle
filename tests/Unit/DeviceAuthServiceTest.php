@@ -6,7 +6,7 @@ namespace ZukunftsforumRissen\CommunityOffersBundle\Tests;
 
 use Doctrine\DBAL\Connection;
 use PHPUnit\Framework\TestCase;
-use ZukunftsforumRissen\CommunityOffersBundle\Service\DeviceAuthService;
+use ZukunftsforumRissen\CommunityOffersBundle\Device\Service\DeviceAuthService;
 
 class DeviceAuthServiceTest extends TestCase
 {

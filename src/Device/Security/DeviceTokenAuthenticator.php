@@ -12,7 +12,7 @@ use Symfony\Component\Security\Core\Exception\CustomUserMessageAuthenticationExc
 use Symfony\Component\Security\Http\Authenticator\AbstractAuthenticator;
 use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
 use Symfony\Component\Security\Http\Authenticator\Passport\SelfValidatingPassport;
-use ZukunftsforumRissen\CommunityOffersBundle\Service\DeviceAuthService;
+use ZukunftsforumRissen\CommunityOffersBundle\Device\Service\DeviceAuthService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService;
 
 final class DeviceTokenAuthenticator extends AbstractAuthenticator

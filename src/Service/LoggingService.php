@@ -29,7 +29,7 @@ class LoggingService
         $this->debugLoggingEnabled = 'true' === $enableDebugLogging;
 
         $projectDir = rtrim((string) $params->get('kernel.project_dir'), '/');
-        $this->logDir = $projectDir . '/var/logs/';
+        $this->logDir = $projectDir.'/var/logs/';
     }
 
     public function initiateLogging(string $moduleName, string $fileName = ''): void
@@ -43,7 +43,7 @@ class LoggingService
         }
 
         $logFileName = '' !== $fileName ? $fileName : 'app';
-        $logFile = $this->logDir . $logFileName . '.log';
+        $logFile = $this->logDir.$logFileName.'.log';
 
         $streamHandler = new RotatingFileHandler(
             $logFile,
@@ -68,7 +68,7 @@ class LoggingService
      */
     public function start(string $message, array $context = []): void
     {
-        $this->log('info', $message . '.start', $context);
+        $this->log('info', $message.'.start', $context);
     }
 
     /**
@@ -168,10 +168,10 @@ class LoggingService
         $context = $this->normalizeContext($context);
 
         $formattedContext = $this->formatContext($context);
-        $logMessage = '    ' . $message;
+        $logMessage = '    '.$message;
 
         if ('' !== $formattedContext) {
-            $logMessage .= "\n" . $formattedContext;
+            $logMessage .= "\n".$formattedContext;
         }
 
         switch ($level) {

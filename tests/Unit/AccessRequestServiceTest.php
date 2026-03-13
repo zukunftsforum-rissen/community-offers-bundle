@@ -13,7 +13,7 @@ use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Email;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Routing\RouterInterface;
-use ZukunftsforumRissen\CommunityOffersBundle\Controller\AccessConfirmController;
+use ZukunftsforumRissen\CommunityOffersBundle\Controller\Frontend\AccessConfirmController;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\AccessRequestService;
 
 /**

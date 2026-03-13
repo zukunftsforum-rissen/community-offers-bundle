@@ -12,12 +12,13 @@ final class DoorSimulatorPollController extends AbstractController
 {
     public function __construct(
         private readonly SimulatorDeviceService $simulatorDeviceService,
-    ) {}
+    ) {
+    }
 
     public function __invoke(): JsonResponse
     {
         return $this->json(
-            $this->simulatorDeviceService->poll(SimulatorDeviceService::SIMULATOR_DEVICE_ID)
+            $this->simulatorDeviceService->poll(SimulatorDeviceService::SIMULATOR_DEVICE_ID),
         );
     }
 }

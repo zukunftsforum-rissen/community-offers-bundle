@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ZukunftsforumRissen\CommunityOffersBundle\Device\Service;
 
 use Doctrine\DBAL\Connection;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorAuditLogger;
 
 final class DeviceHeartbeatService implements DeviceHeartbeatInterface
 {

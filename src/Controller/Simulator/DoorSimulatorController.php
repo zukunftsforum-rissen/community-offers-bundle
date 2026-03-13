@@ -6,7 +6,7 @@ namespace ZukunftsforumRissen\CommunityOffersBundle\Controller\Simulator;
 
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
-use ZukunftsforumRissen\CommunityOffersBundle\Service\SimulatorDeviceService;
+use ZukunftsforumRissen\CommunityOffersBundle\Device\Simulator\SimulatorDeviceService;
 
 final class DoorSimulatorController extends AbstractController
 {

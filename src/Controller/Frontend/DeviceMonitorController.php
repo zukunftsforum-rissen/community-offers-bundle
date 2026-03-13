@@ -8,7 +8,7 @@ use Contao\BackendUser;
 use Contao\CoreBundle\Exception\AccessDeniedException;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
-use ZukunftsforumRissen\CommunityOffersBundle\Service\DeviceMonitorService;
+use ZukunftsforumRissen\CommunityOffersBundle\Device\Service\DeviceMonitorService;
 
 final class DeviceMonitorController extends AbstractController
 {

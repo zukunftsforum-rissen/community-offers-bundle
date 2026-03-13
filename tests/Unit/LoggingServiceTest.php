@@ -109,6 +109,13 @@ class LoggingServiceTest extends TestCase
     {
         $params = $this->createStub(ParameterBagInterface::class);
         $params
+            ->method('has')
+            ->willReturnCallback(static fn(string $name): bool => \in_array($name, [
+                'enable_logging',
+                'enable_debug_logging',
+                'kernel.project_dir',
+            ], true));
+        $params
             ->method('get')
             ->willReturnCallback(static fn(string $name): string => match ($name) {
                 'enable_logging' => $enableLogging,

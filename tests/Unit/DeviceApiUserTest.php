@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace ZukunftsforumRissen\CommunityOffersBundle\Tests;
 
 use PHPUnit\Framework\TestCase;
-use ZukunftsforumRissen\CommunityOffersBundle\Security\DeviceApiUser;
+use ZukunftsforumRissen\CommunityOffersBundle\Device\Security\DeviceApiUser;
 
 class DeviceApiUserTest extends TestCase
 {

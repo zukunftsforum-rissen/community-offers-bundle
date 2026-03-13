@@ -63,7 +63,7 @@ class Plugin implements BundlePluginInterface, RoutingPluginInterface, Extension
                     'stateless' => true,
                     'provider' => 'contao.security.backend_user_provider',
                     'custom_authenticators' => [
-                        'ZukunftsforumRissen\CommunityOffersBundle\Security\DeviceTokenAuthenticator',
+                        'ZukunftsforumRissen\CommunityOffersBundle\Device\Security\DeviceTokenAuthenticator',
                     ],
                 ]] + $firewalls;
             }

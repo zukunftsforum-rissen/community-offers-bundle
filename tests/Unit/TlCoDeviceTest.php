@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace ZukunftsforumRissen\CommunityOffersBundle\Tests;
 
 use PHPUnit\Framework\TestCase;
-use ZukunftsforumRissen\CommunityOffersBundle\DataContainer\TlCoDevice;
+use ZukunftsforumRissen\CommunityOffersBundle\DataContainer\TlCoDeviceDataContainer;
 
 class TlCoDeviceTest extends TestCase
 {
@@ -14,7 +14,7 @@ class TlCoDeviceTest extends TestCase
      */
     public function testFormatLabelShowsAreasAndEnabledStatus(): void
     {
-        $dataContainer = new TlCoDevice();
+        $dataContainer = new TlCoDeviceDataContainer();
 
         $row = [
             'areas' => serialize(['workshop', 'depot']),
@@ -34,7 +34,7 @@ class TlCoDeviceTest extends TestCase
      */
     public function testFormatLabelUsesFallbackForEmptyAreasAndDisabledDevice(): void
     {
-        $dataContainer = new TlCoDevice();
+        $dataContainer = new TlCoDeviceDataContainer();
 
         $row = [
             'areas' => null,

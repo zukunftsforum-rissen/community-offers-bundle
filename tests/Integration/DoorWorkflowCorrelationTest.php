@@ -11,7 +11,7 @@ use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorJobService;
 
 final class DoorWorkflowCorrelationTest extends KernelTestCase
 {
-    private Connection $db;
+    private Connection|null $db = null;
     private DoorJobService $service;
 
     protected function setUp(): void
@@ -29,26 +29,57 @@ final class DoorWorkflowCorrelationTest extends KernelTestCase
 
         self::bootKernel();
 
-        $container = static::getContainer();
+        try {
+            $container = static::getContainer();
+        } catch (\LogicException) {
+            $kernel = self::$kernel;
+            if (null === $kernel) {
+                self::fail('Kernel is not available after boot.');
+            }
+
+            $container = $kernel->getContainer();
+        }
 
         /** @var ManagerRegistry $doctrine */
         $doctrine = $container->get('doctrine');
         $this->db = $doctrine->getConnection();
 
+        try {
+            $this->db->executeQuery('SELECT 1');
+        } catch (\Throwable $exception) {
+            self::markTestSkipped(sprintf(
+                'Database is not available for integration test (%s: %s).',
+                $exception::class,
+                $exception->getMessage(),
+            ));
+        }
+
+        $serviceId = 'test.' . DoorJobService::class;
         /** @var DoorJobService $service */
-        $service = $container->get('test.' . DoorJobService::class);
+        $service = $container->has($serviceId)
+            ? $container->get($serviceId)
+            : $container->get(DoorJobService::class);
         $this->service = $service;
         $this->cleanupTestRows();
     }
 
     protected function tearDown(): void
     {
-        $this->cleanupTestRows();
+        try {
+            $this->cleanupTestRows();
+        } catch (\Throwable) {
+            // Ignore cleanup failures in environments without a usable DB driver.
+        }
+
         parent::tearDown();
     }
 
     private function cleanupTestRows(): void
     {
+        if (null === $this->db) {
+            return;
+        }
+
         $this->db->executeStatement(
             "DELETE FROM tl_co_door_log WHERE message LIKE 'phpunit-correlation-%'"
         );

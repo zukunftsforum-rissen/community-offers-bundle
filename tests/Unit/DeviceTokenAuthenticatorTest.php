@@ -11,9 +11,9 @@ use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
 use Symfony\Component\Security\Core\Exception\CustomUserMessageAuthenticationException;
 use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
-use ZukunftsforumRissen\CommunityOffersBundle\Security\DeviceApiUser;
-use ZukunftsforumRissen\CommunityOffersBundle\Security\DeviceTokenAuthenticator;
-use ZukunftsforumRissen\CommunityOffersBundle\Service\DeviceAuthService;
+use ZukunftsforumRissen\CommunityOffersBundle\Device\Security\DeviceApiUser;
+use ZukunftsforumRissen\CommunityOffersBundle\Device\Security\DeviceTokenAuthenticator;
+use ZukunftsforumRissen\CommunityOffersBundle\Device\Service\DeviceAuthService;
 
 class DeviceTokenAuthenticatorTest extends TestCase
 {

@@ -6,6 +6,7 @@ namespace ZukunftsforumRissen\CommunityOffersBundle\Device\Service;
 
 use Contao\StringUtil;
 use Doctrine\DBAL\Connection;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService;
 
 final class DeviceAuthService
 {

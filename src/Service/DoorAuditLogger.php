@@ -8,13 +8,11 @@ use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\Database;
 use Contao\FrontendUser;
 use Symfony\Bundle\SecurityBundle\Security;
-use Symfony\Component\HttpFoundation\RequestStack;
 
 class DoorAuditLogger
 {
     public function __construct(
         private readonly ContaoFramework $framework,
-        private readonly RequestStack $requestStack,
         private readonly Security $security,
     ) {
     }
@@ -25,10 +23,6 @@ class DoorAuditLogger
     public function audit(string $action, string $area, string $result, string $message = '', array $context = [], string $correlationId = '', int|null $memberId = null): void
     {
         $this->framework->initialize();
-
-        $req = $this->requestStack->getCurrentRequest();
-        $ip = $req?->getClientIp() ?? '';
-        $ua = (string) ($req?->headers->get('User-Agent') ?? '');
 
         if (null === $memberId) {
             $user = $this->security->getUser();
@@ -45,15 +39,44 @@ class DoorAuditLogger
                 time(),
                 mb_substr($correlationId, 0, 64),
                 $memberId,
-                $context['deviceId'] ?? '',
+                (string) ($context['deviceId'] ?? ''),
                 $area,
                 $action,
                 $result,
-                mb_substr($ip, 0, 64),
-                mb_substr($ua, 0, 255),
+                '',
+                '',
                 mb_substr($message, 0, 255),
-                $context ? json_encode($context, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : null,
+                $this->encodeContext($context),
             )
         ;
+    }
+
+    /**
+     * @param array<string, mixed> $context
+     */
+    private function encodeContext(array $context): string|null
+    {
+        $allowed = [];
+
+        foreach (['jobId', 'deviceId', 'expiresAt', 'retryAfterSeconds', 'status', 'ok'] as $key) {
+            if (array_key_exists($key, $context)) {
+                $allowed[$key] = $context[$key];
+            }
+        }
+
+        if (isset($context['meta']) && \is_array($context['meta'])) {
+            $allowed['meta'] = [
+                'keys' => array_values(array_map('strval', array_keys($context['meta']))),
+                'count' => count($context['meta']),
+            ];
+        }
+
+        if ([] === $allowed) {
+            return null;
+        }
+
+        $encoded = json_encode($allowed, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        return false === $encoded ? null : $encoded;
     }
 }

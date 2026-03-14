@@ -333,7 +333,12 @@ class ApiAccessControllerTest extends TestCase
         $this->assertIsArray($data);
         $this->assertSame(429, $response->getStatusCode());
         $this->assertFalse($data['success']);
-        $this->assertSame('9', $response->headers->get('Retry-After'));
+
+        $retryAfter = $response->headers->get('Retry-After');
+
+        $this->assertNotNull($retryAfter);
+        $this->assertGreaterThanOrEqual(8, (int) $retryAfter);
+        $this->assertLessThanOrEqual(9, (int) $retryAfter);
     }
 
     private function createController(

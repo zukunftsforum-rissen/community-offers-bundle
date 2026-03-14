@@ -51,7 +51,10 @@
             "@test"
         ],
         "fix": [
-            "@ecs:fix"
+            "@ecs:fix",
+            "@phpstan",
+            "@phpstan:tests",
+            "@test"
         ]
     },
     "config": {

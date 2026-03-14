@@ -23,3 +23,5 @@ parameters:
         -
             message: '#Call to method booleanNode\(\) on an unknown class Symfony\\Component\\Config\\Definition\\Builder\\NodeBuilder#'
             path: src/DependencyInjection/Configuration.php
+            # Symfony Config Builder fluent API is runtime-correct here, but PHPStan
+            # cannot resolve the generic NodeBuilder type for booleanNode().

@@ -4,34 +4,27 @@ community_offers_controllers:
 
 co_app:
     path: /app
-    controller: ZukunftsforumRissen\CommunityOffersBundle\Controller\AppController
+    controller: ZukunftsforumRissen\CommunityOffersBundle\Controller\Frontend\AppController
     methods: [GET]
-
-co_app_slash:
-    path: /app/
-    controller: Symfony\Bundle\FrameworkBundle\Controller\RedirectController
-    defaults:
-        route: co_app
-        permanent: true
 
 co_door_simulator:
     path: /door-simulator
-    controller: ZukunftsforumRissen\CommunityOffersBundle\Controller\DoorSimulatorController
+    controller: ZukunftsforumRissen\CommunityOffersBundle\Controller\Simulator\DoorSimulatorController
     methods: [GET]
 
 co_door_simulator_poll:
     path: /door-simulator/poll
-    controller: ZukunftsforumRissen\CommunityOffersBundle\Controller\DoorSimulatorPollController
+    controller: ZukunftsforumRissen\CommunityOffersBundle\Controller\Simulator\DoorSimulatorPollController
     methods: [POST]
 
 co_door_simulator_confirm:
     path: /door-simulator/confirm
-    controller: ZukunftsforumRissen\CommunityOffersBundle\Controller\DoorSimulatorConfirmController
+    controller: ZukunftsforumRissen\CommunityOffersBundle\Controller\Simulator\DoorSimulatorConfirmController
     methods: [POST]
 
 co_device_monitor:
     path: /%contao.backend.route_prefix%/device-monitor
-    controller: ZukunftsforumRissen\CommunityOffersBundle\Controller\DeviceMonitorController
+    controller: ZukunftsforumRissen\CommunityOffersBundle\Controller\Frontend\DeviceMonitorController
     methods: [GET]
     defaults:
         _scope: backend

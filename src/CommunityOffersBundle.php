@@ -15,7 +15,7 @@ final class CommunityOffersBundle extends AbstractBundle
 {
     public function prependExtension(ContainerConfigurator $container, ContainerBuilder $builder): void
     {
-        $config = Yaml::parseFile(__DIR__.'/../config/workflow.yaml');
+        $config = Yaml::parseFile(__DIR__.'/../config/framework_workflow.yaml');
 
         if (\is_array($config) && isset($config['framework']) && \is_array($config['framework'])) {
             $builder->prependExtensionConfig('framework', $config['framework']);

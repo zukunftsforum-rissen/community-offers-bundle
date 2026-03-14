@@ -39,6 +39,8 @@ bundle.zip
 Archiv/
 FILELIST.txt
 Todos.txt
+*.zip
+git_hilfe.txt
 
 # Q&A from Claude
 Q&A-claude/

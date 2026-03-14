@@ -16,6 +16,16 @@ class LoggingService
 
     private const PARAM_DEBUG_LOGGING_ENABLED = 'community_offers.debug_logging_enabled';
 
+    /** @var list<string> */
+    private const SENSITIVE_CONTEXT_KEYS = [
+        'authorization',
+        'cookie',
+        'nonce',
+        'password',
+        'token',
+        'x-api-key',
+    ];
+
     private Logger|null $logger = null;
 
     private bool $loggingEnabled;
@@ -138,7 +148,18 @@ class LoggingService
             $context['cid'] = $context['correlationId'];
         }
 
+        foreach ($context as $key => $value) {
+            if ($this->isSensitiveKey((string) $key)) {
+                $context[$key] = '[redacted]';
+            }
+        }
+
         return $context;
+    }
+
+    private function isSensitiveKey(string $key): bool
+    {
+        return \in_array(strtolower($key), self::SENSITIVE_CONTEXT_KEYS, true);
     }
 
     /**

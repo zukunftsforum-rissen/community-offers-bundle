@@ -413,7 +413,7 @@ final class DoorJobService
             $this->logging->error('door_job.dispatch_failed', [
                 'deviceId' => $deviceId,
                 'areas' => $areas,
-                'error' => $e->getMessage(),
+                'exceptionClass' => $e::class,
             ]);
 
             throw $e;

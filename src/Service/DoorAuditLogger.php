@@ -14,8 +14,7 @@ class DoorAuditLogger
     public function __construct(
         private readonly ContaoFramework $framework,
         private readonly Security $security,
-    ) {
-    }
+    ) {}
 
     /**
      * @param array<string, mixed> $context
@@ -66,11 +65,11 @@ class DoorAuditLogger
 
         if (isset($context['meta']) && \is_array($context['meta'])) {
             $allowed['meta'] = [
-                'keys' => array_values(array_map('strval', array_keys($context['meta']))),
+                'keys' => array_map('strval', array_keys($context['meta'])),
                 'count' => count($context['meta']),
             ];
         }
-
+        
         if ([] === $allowed) {
             return null;
         }

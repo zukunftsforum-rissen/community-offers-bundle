@@ -1,18 +1,33 @@
 {
     "name": "zukunftsforum-rissen/community-offers-bundle",
     "type": "contao-bundle",
-    "require": {
-        "contao/core-bundle": "^5.0",
-        "symfony/workflow": "^7.4 || ^8.0",
-        "php": "^8.4"
-    },
+    "description": "Contao 5 bundle for community offers and door access (pull model) used by Zukunftsforum Rissen e.V.",
     "license": "MIT",
+
+    "require": {
+        "php": "^8.4",
+        "contao/core-bundle": "^5.0",
+        "symfony/workflow": "^7.4"
+    },
+
     "autoload": {
         "psr-4": {
             "ZukunftsforumRissen\\CommunityOffersBundle\\": "src/"
         }
     },
-    "description": "Contao 5 bundle for community offers and door access (pull model) used by Zukunftsforum Rissen e.V.",
+
+    "autoload-dev": {
+        "psr-4": {
+            "ZukunftsforumRissen\\CommunityOffersBundle\\Tests\\": "tests/"
+        }
+    },
+
+    "authors": [
+        {
+            "name": "Ernst Jendritzki"
+        }
+    ],
+
     "keywords": [
         "contao",
         "bundle",
@@ -21,43 +36,40 @@
         "raspberry-pi",
         "community"
     ],
-    "autoload-dev": {
-        "psr-4": {
-            "ZukunftsforumRissen\\CommunityOffersBundle\\Tests\\": "tests/"
-        }
-    },
-    "authors": [
-        {
-            "name": "Ernst Jendritzki"
-        }
-    ],
+
     "extra": {
         "contao-manager-plugin": "ZukunftsforumRissen\\CommunityOffersBundle\\ContaoManager\\Plugin"
     },
+
     "require-dev": {
         "contao/easy-coding-standard": "^6.13",
         "contao/manager-plugin": "^2.0",
-        "phpstan/phpstan": "^1.10",
-        "phpstan/phpstan-phpunit": "^1.4",
-        "phpstan/phpstan-symfony": "^1.4",
+        "phpstan/phpstan": "^2.0",
+        "phpstan/phpstan-phpunit": "^2.0",
+        "phpstan/phpstan-symfony": "^2.0",
         "phpunit/phpunit": "^9.5"
     },
+
     "scripts": {
         "ecs": "vendor/bin/ecs check",
         "ecs:fix": "vendor/bin/ecs check --fix",
         "test": "phpunit -c phpunit.xml.dist",
         "test:unit": "phpunit -c phpunit.xml.dist --testsuite Unit",
-        "test:integration": "cd ../.. && APP_ENV=${APP_ENV:-test} PROJECT_DIR=${PROJECT_DIR:-$PWD} KERNEL_CLASS=\"${KERNEL_CLASS:-Contao\\ManagerBundle\\HttpKernel\\ContaoKernel}\" ./vendor/bin/phpunit --bootstrap vendor/autoload.php -c zukunftsforum-rissen/community-offers-bundle/phpunit.xml.dist --testsuite Integration",
-        "test:integration:project": "cd ../.. && APP_ENV=${APP_ENV:-test} PROJECT_DIR=${PROJECT_DIR:-$PWD} KERNEL_CLASS=\"${KERNEL_CLASS:-Contao\\ManagerBundle\\HttpKernel\\ContaoKernel}\" ./vendor/bin/phpunit --bootstrap vendor/autoload.php -c zukunftsforum-rissen/community-offers-bundle/phpunit.xml.dist --testsuite Integration",
-        "test:integration:verbose": "cd ../.. && APP_ENV=${APP_ENV:-test} PROJECT_DIR=${PROJECT_DIR:-$PWD} KERNEL_CLASS=\"${KERNEL_CLASS:-Contao\\ManagerBundle\\HttpKernel\\ContaoKernel}\" ./vendor/bin/phpunit --bootstrap vendor/autoload.php -v -c zukunftsforum-rissen/community-offers-bundle/phpunit.xml.dist --testsuite Integration",
+
+        "test:integration": "cd ../.. && APP_ENV=${APP_ENV:-test} PROJECT_DIR=${PROJECT_DIR:-$PWD} KERNEL_CLASS=\"${KERNEL_CLASS:-Contao\\\\ManagerBundle\\\\HttpKernel\\\\ContaoKernel}\" ./vendor/bin/phpunit --bootstrap vendor/autoload.php -c zukunftsforum-rissen/community-offers-bundle/phpunit.xml.dist --testsuite Integration",
+
+        "test:integration:verbose": "cd ../.. && APP_ENV=${APP_ENV:-test} PROJECT_DIR=${PROJECT_DIR:-$PWD} KERNEL_CLASS=\"${KERNEL_CLASS:-Contao\\\\ManagerBundle\\\\HttpKernel\\\\ContaoKernel}\" ./vendor/bin/phpunit --bootstrap vendor/autoload.php -v -c zukunftsforum-rissen/community-offers-bundle/phpunit.xml.dist --testsuite Integration",
+
         "phpstan": "APP_ENV=test vendor/bin/phpstan analyse -c phpstan.neon",
         "phpstan:tests": "APP_ENV=test vendor/bin/phpstan analyse -c phpstan-tests.neon",
+
         "ci": [
             "@ecs",
             "@phpstan",
             "@phpstan:tests",
             "@test"
         ],
+
         "fix": [
             "@ecs:fix",
             "@phpstan",
@@ -65,12 +77,13 @@
             "@test"
         ]
     },
+
     "config": {
         "allow-plugins": {
             "contao-components/installer": true,
+            "contao/manager-plugin": true,
             "php-http/discovery": true,
-            "dealerdirect/phpcodesniffer-composer-installer": true,
-            "contao/manager-plugin": true
+            "dealerdirect/phpcodesniffer-composer-installer": true
         }
     }
 }

@@ -19,12 +19,16 @@ final class Configuration implements ConfigurationInterface
 
         $rootNode
             ->children()
-            ->booleanNode('logging_enabled')
-            ->defaultFalse()
-            ->end()
-            ->booleanNode('debug_logging_enabled')
-            ->defaultFalse()
-            ->end()
+              ->booleanNode('logging_enabled')
+                  ->defaultFalse()
+             ->end()
+              ->booleanNode('debug_logging_enabled')
+                 ->defaultFalse()
+              ->end()
+              ->enumNode('mode')
+                ->values(['live', 'demo'])
+                ->defaultValue('live')
+              ->end()
             ->end()
         ;
 

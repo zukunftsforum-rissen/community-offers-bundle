@@ -1,4 +1,5 @@
 community_offers:
+  mode: live
   app:
     login_path: /login
     logout_path: /_contao/logout

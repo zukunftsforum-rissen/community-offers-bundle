@@ -22,12 +22,16 @@ parameters:
         swap-house: 4
 
 when@dev:
-  imports:
-    - { resource: services_dev.yaml }
-    
+    imports:
+        - { resource: services_dev.yaml }
+
 when@test:
     imports:
         - { resource: services_test.yaml }
+
+when@demo:
+    imports:
+        - { resource: services_demo.yaml }
 
 services:
     _defaults:
@@ -37,6 +41,13 @@ services:
     ZukunftsforumRissen\CommunityOffersBundle\:
         resource: ../src/
         exclude: ../src/{DependencyInjection,Entity,Tests}
+
+    ZukunftsforumRissen\CommunityOffersBundle\Service\SystemMode:
+        arguments:
+            $mode: "%community_offers.mode%"
+
+    ZukunftsforumRissen\CommunityOffersBundle\Door\DoorGatewayInterface:
+        alias: ZukunftsforumRissen\CommunityOffersBundle\Door\RaspberryDoorGateway
 
     ZukunftsforumRissen\CommunityOffersBundle\Backend\AccessRequestBackend:
         tags:

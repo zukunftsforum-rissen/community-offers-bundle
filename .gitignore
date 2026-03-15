@@ -35,14 +35,17 @@ site/
 docs/ai/generated/*
 !docs/ai/generated/.gitkeep
 
+# Helper files
 Archiv/
 FILELIST.txt
 Todos.txt
 *.zip
 /git/
 bundle.zip
-/.vscode
 /.idea
 
 # Q&A from Claude
 Q&A-claude/
+
+# VSCode settings
+/.vscode

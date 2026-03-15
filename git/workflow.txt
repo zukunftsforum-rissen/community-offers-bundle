@@ -1,11 +1,8 @@
 git start
 → feat/device-monitor
 
-git add .
 git c
 
-git pr
-
-PR mergen
+Create PR - warten / refresh - merge PR : über github extension
 
 git done

@@ -39,7 +39,7 @@ Archiv/
 FILELIST.txt
 Todos.txt
 *.zip
-git_hilfe.txt
+/git/
 bundle.zip
 /.vscode
 /.idea

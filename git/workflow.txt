@@ -3,6 +3,6 @@ git start
 
 git c
 
-Create PR - warten / refresh - merge PR : über github extension
+Publish branch - Create PR - warten / refresh - merge PR : über github extension
 
 git done

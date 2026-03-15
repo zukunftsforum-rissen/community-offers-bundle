@@ -3,7 +3,8 @@
     "type": "contao-bundle",
     "require": {
         "contao/core-bundle": "^5.0",
-        "php": "^8.4"
+        "php": "^8.4",
+        "symfony/workflow": "^7.4 || ^8.0"
     },
     "license": "MIT",
     "autoload": {
@@ -36,9 +37,9 @@
     "require-dev": {
         "contao/easy-coding-standard": "^6.13",
         "contao/manager-plugin": "^2.0",
-        "phpstan/phpstan": "^1.10",
-        "phpstan/phpstan-phpunit": "^1.4",
-        "phpstan/phpstan-symfony": "^1.4",
+        "phpstan/phpstan": "^2.0",
+        "phpstan/phpstan-phpunit": "^2.0",
+        "phpstan/phpstan-symfony": "^2.0",
         "phpunit/phpunit": "^9.5"
     },
     "scripts": {

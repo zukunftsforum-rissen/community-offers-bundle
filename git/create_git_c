@@ -1,0 +1,19 @@
+git config --global alias.c '!f() {
+  branch=$(git rev-parse --abbrev-ref HEAD);
+
+  if [ "$branch" = "main" ]; then
+    echo "❌ Cannot commit on main."
+    echo "Create a branch first:"
+    echo "  git start"
+    exit 1
+  fi
+
+  git add .
+
+  if [ $# -eq 0 ]; then
+    read -p "Commit message: " msg
+    git commit -m "$msg"
+  else
+    git commit "$@"
+  fi
+}; f'

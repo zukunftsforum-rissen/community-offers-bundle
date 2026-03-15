@@ -1,0 +1,15 @@
+git config --global alias.start '!f() { 
+  git switch main >/dev/null 2>&1
+  git fetch origin >/dev/null 2>&1
+  git reset --hard origin/main >/dev/null 2>&1
+
+  echo "Branch type:"
+  echo "  fix  feat  docs  refactor  test  chore"
+  read -p "Type: " type
+  read -p "Name: " name
+
+  branch="$type/$name"
+
+  git switch -c "$branch"
+  echo "✔ Created branch $branch"
+}; f'

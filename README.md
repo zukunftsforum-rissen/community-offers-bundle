@@ -12,6 +12,33 @@ The bundle was developed for the **Zukunftsforum Rissen** community project and 
 
 ---
 
+## Why this project exists
+
+Many community spaces rely on simple mechanical keys.
+
+Keys are hard to manage, easy to duplicate, and difficult to revoke.
+
+This bundle provides a **secure digital alternative** that integrates with an existing web infrastructure and keeps the device network isolated from the internet.
+
+The system uses a **pull-based device architecture**, where hardware devices periodically poll the backend for jobs.
+
+This avoids inbound connections to devices and significantly reduces the attack surface.
+
+---
+
+## Use Cases
+
+Typical environments where this bundle can be used:
+
+- community workshops
+- neighborhood sheds
+- maker spaces
+- club buildings
+- shared tool libraries
+- community gardens
+
+---
+
 ## Features
 
 - device lending management
@@ -24,8 +51,8 @@ The bundle was developed for the **Zukunftsforum Rissen** community project and 
 - device monitoring
 - browser simulator for devices
 
-⚠️ This software controls **physical devices**.  
-Deploy it only in trusted environments and review authentication and network security carefully.
+⚠️ **This software controls physical devices.**  
+Deploy it only in trusted environments and carefully review authentication and network security.
 
 ---
 
@@ -35,50 +62,25 @@ The system uses a **secure pull architecture**.
 
 Devices (Raspberry Pi controllers) periodically poll the server for pending door jobs.
 
-```
-Member
-  │
-  │ open door request
-  ▼
-Contao Backend
-  │
-  │ create door job
-  ▼
-DoorJobService
-  │
-  │ job available
-  ▼
-Device API
-  ▲
-  │ poll
-  │
-Raspberry Pi Device
-  │
-  │ confirm execution 
-  ▼
-Door opened
-```
+Member → Contao Backend → DoorJobService → Device API ← Raspberry Pi Device → Door opened
 
 Workflow:
 
-```
-member open request
-    ↓
-door job created (pending)
-    ↓
-device poll
-    ↓
-job dispatched
-    ↓
-device confirm
-    ↓
-executed / failed / expired
-```
+member open request  
+↓  
+door job created (pending)  
+↓  
+device poll  
+↓  
+job dispatched  
+↓  
+device confirm  
+↓  
+executed / failed / expired  
 
-This design avoids inbound connections to the device network and significantly reduces the attack surface.
-
-Each door job can only be dispatched once.  
 Dispatch operations are atomic to prevent race conditions when multiple device polls occur.
+
+Each door job can only be dispatched once.
 
 ---
 
@@ -86,16 +88,14 @@ Dispatch operations are atomic to prevent race conditions when multiple device p
 
 Main endpoints:
 
-```
-POST /api/door/open/{area}
-GET  /api/device/poll
-POST /api/device/confirm
-GET  /api/door/whoami
-```
+POST /api/door/open/{area}  
+GET  /api/device/poll  
+POST /api/device/confirm  
+GET  /api/door/whoami  
 
 Devices authenticate using dedicated **device API users**.
 
-Authentication credentials should be restricted to device endpoints only and should never be reused for backend or member access.
+These credentials must be restricted to device endpoints only and should never be reused for backend or member access.
 
 ---
 
@@ -105,9 +105,7 @@ For development and testing the bundle includes a built-in browser simulator.
 
 Open:
 
-```
 /door-simulator
-```
 
 The simulator behaves like a Raspberry Pi device:
 
@@ -125,44 +123,27 @@ This allows testing the complete workflow without physical hardware.
 
 Typical installation:
 
-```
-Contao Server
-      │
-      ▼
-Raspberry Pi
-      │
-      ▼
-Shelly / relay modules
-      │
-      ▼
-Electric door strike
-```
+Contao Server → Raspberry Pi → Shelly / relay modules → Electric door strike
 
 The Raspberry Pi polls the backend and triggers relays to open doors.
 
 ---
 
-## Installation
+## Quick Start
 
 Install via Composer:
 
-```
 composer require zukunftsforum-rissen/community-offers-bundle
-```
 
-Run the Contao database migrations:
+Run Contao migrations:
 
-```
 vendor/bin/contao-console contao:migrate
-```
 
-No additional Symfony or Contao configuration is required.
+Start the simulator:
 
-The bundle automatically registers:
+/door-simulator
 
-- the `door_job` workflow
-- required services
-- the browser device simulator
+You can now test the complete workflow without hardware.
 
 ---
 
@@ -172,13 +153,21 @@ In production you must configure a real `DoorGateway` implementation.
 
 Example:
 
-```
 services:
   ZukunftsforumRissen\CommunityOffersBundle\Door\DoorGatewayInterface:
     alias: App\Door\ShellyDoorGateway
-```
 
 This implementation should connect the backend to the actual hardware (e.g. Shelly relays or other door control systems).
+
+---
+
+## Compatibility
+
+| Component | Version |
+|-----------|--------|
+| PHP | 8.4 |
+| Contao | 5.x |
+| Symfony | 6+ |
 
 ---
 
@@ -186,18 +175,14 @@ This implementation should connect the backend to the actual hardware (e.g. Shel
 
 Logging can be enabled via environment variables:
 
-```
-ENABLE_LOGGING=true
+ENABLE_LOGGING=true  
 ENABLE_DEBUG_LOGGING=true
-```
 
 If not configured, logging remains disabled.
 
 Log files are written to:
 
-```
 var/logs/community-offers.log
-```
 
 Debug logging should **never be enabled in production environments**.
 
@@ -209,9 +194,7 @@ Sensitive data such as IP addresses should be anonymized before logging.
 
 Run quality checks locally:
 
-```
 composer ci
-```
 
 This executes:
 
@@ -225,7 +208,6 @@ This executes:
 
 Detailed documentation is available in the `docs/` directory:
 
-```
 docs/
  ├ architecture/
  ├ api/
@@ -233,7 +215,6 @@ docs/
  ├ operations/
  ├ security/
  └ diagrams/
-```
 
 ---
 

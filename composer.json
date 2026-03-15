@@ -13,6 +13,14 @@
         }
     },
     "description": "Contao 5 bundle for community offers and door access (pull model) used by Zukunftsforum Rissen e.V.",
+    "keywords": [
+        "contao",
+        "bundle",
+        "access-control",
+        "iot",
+        "raspberry-pi",
+        "community"
+    ],
     "autoload-dev": {
         "psr-4": {
             "ZukunftsforumRissen\\CommunityOffersBundle\\Tests\\": "tests/"

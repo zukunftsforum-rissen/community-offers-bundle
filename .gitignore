@@ -34,13 +34,15 @@ site/
 # AI generated documentation
 docs/ai/generated/*
 !docs/ai/generated/.gitkeep
-bundle.zip
 
 Archiv/
 FILELIST.txt
 Todos.txt
 *.zip
 git_hilfe.txt
+bundle.zip
+/.vscode
+/.idea
 
 # Q&A from Claude
 Q&A-claude/

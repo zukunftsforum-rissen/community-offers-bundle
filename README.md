@@ -54,7 +54,7 @@ Device API
   │
 Raspberry Pi Device
   │
-  │ confirm execution
+  │ confirm execution 
   ▼
 Door opened
 ```

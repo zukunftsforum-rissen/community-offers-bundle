@@ -1,0 +1,11 @@
+git start
+→ feat/device-monitor
+
+git add .
+git c
+
+git pr
+
+PR mergen
+
+git done

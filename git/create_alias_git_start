@@ -1,15 +1,14 @@
-git config --global alias.start '!f() { 
-  git switch main >/dev/null 2>&1
-  git fetch origin >/dev/null 2>&1
-  git reset --hard origin/main >/dev/null 2>&1
+git config --global alias.start '!f() {
+  current=$(git rev-parse --abbrev-ref HEAD)
 
-  echo "Branch type:"
-  echo "  fix  feat  docs  refactor  test  chore"
-  read -p "Type: " type
-  read -p "Name: " name
+  if [ "$current" != "main" ]; then
+    echo "Already on branch $current"
+    exit 0
+  fi
 
-  branch="$type/$name"
+  read -p "Branch name: " name
 
-  git switch -c "$branch"
-  echo "✔ Created branch $branch"
+  git switch -c "$name"
+
+  echo "✔ Created branch $name"
 }; f'

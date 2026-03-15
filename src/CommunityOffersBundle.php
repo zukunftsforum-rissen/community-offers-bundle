@@ -32,6 +32,7 @@ final class CommunityOffersBundle extends AbstractBundle
 
         $builder->setParameter('community_offers.logging_enabled', $processedConfig['logging_enabled']);
         $builder->setParameter('community_offers.debug_logging_enabled', $processedConfig['debug_logging_enabled']);
+        $builder->setParameter('community_offers.mode', $processedConfig['mode']);
 
         $container->import('../config/services.yaml');
     }

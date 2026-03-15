@@ -6,18 +6,18 @@ namespace ZukunftsforumRissen\CommunityOffersBundle\Door;
 
 use ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService;
 
-class MockDoorGateway implements DoorGatewayInterface
+class DemoDoorGateway implements DoorGatewayInterface
 {
     public function __construct(
-        private readonly LoggingService $logging)
-    {
+        private readonly LoggingService $logging
+    ) {
     }
 
     public function open(string $area, int $memberId): bool
     {
-        // Mock: tut so, als ob die Tür geöffnet wurde
+        // Demo: tut so, als ob die Tür geöffnet wurde
         $this->logging->initiateLogging('door', 'community-offers');
-        $this->logging->info('door.gateway.mock_open', [
+        $this->logging->info('door.gateway.demo_open', [
             'area' => $area,
             'memberId' => $memberId,
         ]);

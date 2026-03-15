@@ -25,7 +25,7 @@ class DemoDoorGatewayTest extends TestCase
         $logging
             ->expects($this->once())
             ->method('info')
-            ->with('door.gateway.mock_open', [
+            ->with('door.gateway.demo_open', [
                 'area' => 'workshop',
                 'memberId' => 123,
             ]);

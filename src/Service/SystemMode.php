@@ -16,9 +16,9 @@ final class SystemMode
         return 'live' === $this->mode;
     }
 
-    public function isDemo(): bool
+    public function isSimulation(): bool
     {
-        return 'demo' === $this->mode;
+        return 'simulation' === $this->mode;
     }
 
     public function asString(): string

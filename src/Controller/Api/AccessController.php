@@ -14,8 +14,8 @@ use ZukunftsforumRissen\CommunityOffersBundle\Service\AccessRequestService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\AccessService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\CorrelationIdService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorAuditLogger;
-use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorJobService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\OpenDoorService;
 
 #[Route('/api/door', defaults: ['_scope' => 'frontend', '_token_check' => false])]
 final class AccessController
@@ -24,13 +24,12 @@ final class AccessController
         private readonly Security $security,
         private readonly AccessService $accessService,
         private readonly AccessRequestService $accessRequestService,
-        private readonly DoorJobService $doorJobs,
+        private readonly OpenDoorService $openDoorService,
         private readonly LoggingService $logging,
         private readonly DoorAuditLogger $audit,
         private readonly CorrelationIdService $correlationIds,
     ) {
     }
-
     #[Route('/whoami', name: 'community_offers_whoami', methods: ['GET'])]
     public function whoami(Request $request): JsonResponse
     {
@@ -230,44 +229,7 @@ final class AccessController
             'ip' => $request->getClientIp(),
         ]);
 
-        $this->audit->audit(
-            action: 'door_open',
-            area: $slug,
-            result: 'attempt',
-            message: 'Door open requested',
-            correlationId: $cid,
-            memberId: $memberId,
-            context: [
-                'ip' => $request->getClientIp(),
-                'userAgent' => $request->headers->get('User-Agent'),
-            ],
-        );
-
-        $areas = $this->accessService->getGrantedAreasForMemberId($memberId);
-        if (!\in_array($slug, $areas, true)) {
-            $this->logging->warning('door_open.forbidden', [
-                'cid' => $cid,
-                'memberId' => $memberId,
-                'area' => $slug,
-                'ip' => $request->getClientIp(),
-            ]);
-
-            $this->audit->audit(
-                action: 'door_open',
-                area: $slug,
-                result: 'forbidden',
-                message: 'Door open forbidden',
-                correlationId: $cid,
-                memberId: $memberId,
-                context: ['ip' => $request->getClientIp()],
-            );
-
-            return new JsonResponse(['success' => false, 'message' => 'Forbidden'], 403);
-        }
-
-        $this->doorJobs->expireOldJobs();
-
-        $result = $this->doorJobs->createOpenJob(
+        $result = $this->openDoorService->open(
             memberId: $memberId,
             area: $slug,
             ip: (string) ($request->getClientIp() ?? ''),
@@ -281,87 +243,34 @@ final class AccessController
             'success' => (bool) $result['ok'],
             'message' => (string) $result['message'],
             'correlationId' => $cid,
+            'accepted' => (bool) $result['accepted'],
+            'mode' => (string) $result['mode'],
         ];
 
         if (isset($result['jobId'])) {
-            $payload['accepted'] = true;
             $payload['jobId'] = (int) $result['jobId'];
+        }
 
-            if (isset($result['status'])) {
-                $payload['status'] = (string) $result['status'];
-            }
+        if (isset($result['status'])) {
+            $payload['status'] = (string) $result['status'];
+        }
 
-            if (isset($result['expiresAt'])) {
-                $payload['expiresAt'] = (int) $result['expiresAt'];
-            }
-        } else {
-            $payload['accepted'] = false;
+        if (isset($result['expiresAt'])) {
+            $payload['expiresAt'] = (int) $result['expiresAt'];
         }
 
         if (isset($result['retryAfterSeconds'])) {
             $payload['retryAfterSeconds'] = (int) $result['retryAfterSeconds'];
         }
 
+        if (isset($result['simulated'])) {
+            $payload['simulated'] = (bool) $result['simulated'];
+        }
+
         $response = new JsonResponse($payload, $status);
 
         if (429 === $status && isset($result['retryAfterSeconds'])) {
             $response->headers->set('Retry-After', (string) (int) $result['retryAfterSeconds']);
-        }
-
-        if ((bool) $result['ok']) {
-            $this->logging->info('door_open.granted', [
-                'cid' => $cid,
-                'memberId' => $memberId,
-                'area' => $slug,
-                'jobId' => $result['jobId'] ?? null,
-                'status' => $result['status'] ?? null,
-                'httpStatus' => $status,
-            ]);
-        } elseif (429 === $status) {
-            $this->logging->warning('door_open.rate_limited', [
-                'cid' => $cid,
-                'memberId' => $memberId,
-                'area' => $slug,
-                'retryAfterSeconds' => $result['retryAfterSeconds'] ?? null,
-                'httpStatus' => $status,
-            ]);
-
-            $this->audit->audit(
-                action: 'door_open',
-                area: $slug,
-                result: 'rate_limited',
-                message: 'Door open rate limited',
-                correlationId: $cid,
-                memberId: $memberId,
-                context: [
-                    'retryAfterSeconds' => $result['retryAfterSeconds'] ?? null,
-                    'httpStatus' => $status,
-                ],
-            );
-        } else {
-            $this->logging->error('door_open.error', [
-                'cid' => $cid,
-                'memberId' => $memberId,
-                'area' => $slug,
-                'httpStatus' => $status,
-                'message' => $result['message'],
-                'jobId' => $result['jobId'] ?? null,
-            ]);
-
-            $this->audit->audit(
-                action: 'door_open',
-                area: $slug,
-                result: 'error',
-                message: 'Door open failed',
-                correlationId: $cid,
-                memberId: $memberId,
-                context: [
-                    'httpStatus' => $status,
-                    'message' => $result['message'],
-                    'jobId' => $result['jobId'] ?? null,
-                    'status' => $result['status'] ?? null,
-                ],
-            );
         }
 
         return $response;

@@ -6,9 +6,10 @@ namespace ZukunftsforumRissen\CommunityOffersBundle\Door;
 
 interface DoorGatewayInterface
 {
+    public function supports(string $mode): bool;
+
     /**
-     * Öffnet eine Tür / schaltet ein Relais. Gibt true zurück, wenn der Trigger
-     * erfolgreich abgesetzt wurde.
+     * @param array<string, mixed> $context
      */
-    public function open(string $area, int $memberId): bool;
+    public function open(string $area, int $memberId, array $context = []): DoorGatewayResult;
 }

@@ -30,9 +30,13 @@ final class CommunityOffersBundle extends AbstractBundle
         $processor = new Processor();
         $processedConfig = $processor->processConfiguration(new Configuration(), [$config]);
 
-        $builder->setParameter('community_offers.logging_enabled', $processedConfig['logging_enabled']);
-        $builder->setParameter('community_offers.debug_logging_enabled', $processedConfig['debug_logging_enabled']);
-        $builder->setParameter('community_offers.mode', $processedConfig['mode']);
+        // $builder->setParameter('community_offers.logging_enabled', $processedConfig['logging_enabled']);
+        // $builder->setParameter('community_offers.debug_logging_enabled', $processedConfig['debug_logging_enabled']);
+        // $builder->setParameter('community_offers.mode', $processedConfig['mode']);
+
+        // $builder->setParameter('community_offers.app.login_path', $processedConfig['app']['login_path']);
+        // $builder->setParameter('community_offers.app.logout_path', $processedConfig['app']['logout_path']);
+        // $builder->setParameter('community_offers.app.logout_redirect_path', $processedConfig['app']['logout_redirect_path']);
 
         $container->import('../config/services.yaml');
     }

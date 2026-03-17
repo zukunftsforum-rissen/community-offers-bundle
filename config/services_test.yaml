@@ -1,11 +1,4 @@
 services:
-  ZukunftsforumRissen\CommunityOffersBundle\Door\DoorGatewayInterface:
-    alias: ZukunftsforumRissen\CommunityOffersBundle\Door\MockDoorGateway
-
-  test.ZukunftsforumRissen\CommunityOffersBundle\Service\DoorJobService:
-    alias: ZukunftsforumRissen\CommunityOffersBundle\Service\DoorJobService
-    public: true
-
   test.ZukunftsforumRissen\CommunityOffersBundle\Service\DoorWorkflowTimelineService:
     alias: ZukunftsforumRissen\CommunityOffersBundle\Service\DoorWorkflowTimelineService
     public: true

@@ -1,5 +1,5 @@
 community_offers:
-  mode: live
+  mode: simulation
   app:
     login_path: /login
     logout_path: /_contao/logout

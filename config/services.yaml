@@ -1,6 +1,7 @@
 parameters:
     enable_logging: "%env(bool:ENABLE_LOGGING)%"
     enable_debug_logging: "%env(bool:ENABLE_DEBUG_LOGGING)%"
+    community_offers.mode: "simulation"
     community_offers.mail_from: "%env(COMMUNITY_OFFERS_MAIL_FROM)%"
     community_offers.mail_reply_to: "%env(COMMUNITY_OFFERS_MAIL_REPLY_TO)%"
     community_offers.app_url: "%env(COMMUNITY_OFFERS_APP_URL)%"
@@ -45,9 +46,6 @@ services:
     ZukunftsforumRissen\CommunityOffersBundle\Service\SystemMode:
         arguments:
             $mode: "%community_offers.mode%"
-
-    ZukunftsforumRissen\CommunityOffersBundle\Door\DoorGatewayInterface:
-        alias: ZukunftsforumRissen\CommunityOffersBundle\Door\RaspberryDoorGateway
 
     ZukunftsforumRissen\CommunityOffersBundle\Backend\AccessRequestBackend:
         tags:
@@ -108,3 +106,15 @@ services:
             $confirmWindowSeconds: 30
         tags:
             - { name: kernel.event_subscriber }
+
+    _instanceof:
+        ZukunftsforumRissen\CommunityOffersBundle\Door\DoorGatewayInterface:
+            tags: ["community_offers.door_gateway"]
+
+    ZukunftsforumRissen\CommunityOffersBundle\Door\DoorGatewayResolver:
+        arguments:
+            $gateways: !tagged_iterator "community_offers.door_gateway" #
+
+    ZukunftsforumRissen\CommunityOffersBundle\Service\OpenDoorService:
+        arguments:
+            $mode: "%community_offers.mode%"

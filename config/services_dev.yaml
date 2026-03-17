@@ -1,4 +1,0 @@
-services:
-
-  ZukunftsforumRissen\CommunityOffersBundle\Door\DoorGatewayInterface:
-    alias: ZukunftsforumRissen\CommunityOffersBundle\Door\MockDoorGateway

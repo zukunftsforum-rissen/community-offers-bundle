@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace ZukunftsforumRissen\CommunityOffersBundle\Tests;
 
-use Contao\ManagerBundle\HttpKernel\ContaoKernel;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
@@ -22,10 +21,12 @@ class KernelBootIntegrationTest extends KernelTestCase
             $this->markTestSkipped(sprintf('Configured KERNEL_CLASS "%s" is not autoloadable in this context.', $kernelClass));
         }
 
-        if (is_a($kernelClass, ContaoKernel::class, true)) {
+        $contaoKernelClass = 'Contao\\ManagerBundle\\HttpKernel\\ContaoKernel';
+
+        if (class_exists($contaoKernelClass) && is_a($kernelClass, $contaoKernelClass, true)) {
             $projectDir = $_SERVER['PROJECT_DIR'] ?? $_ENV['PROJECT_DIR'] ?? getcwd();
 
-            if (!\is_string($projectDir) || '' === $projectDir) {
+            if (!\is_string($projectDir)) {
                 $projectDir = getcwd();
             }
 
@@ -33,7 +34,7 @@ class KernelBootIntegrationTest extends KernelTestCase
                 $this->markTestSkipped('Could not determine PROJECT_DIR for ContaoKernel initialization.');
             }
 
-            ContaoKernel::setProjectDir($projectDir);
+            $contaoKernelClass::setProjectDir($projectDir);
         }
 
         try {

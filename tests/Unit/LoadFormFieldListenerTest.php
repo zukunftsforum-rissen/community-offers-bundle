@@ -83,6 +83,7 @@ class LoadFormFieldListenerTest extends TestCase
 
         $listener = new LoadFormFieldListener($security, $accessService);
         $widget = $this->createWidget('requestedAreas');
+        // @phpstan-ignore-next-line dynamic Contao widget property
         $widget->options = [
             ['value' => 'depot', 'label' => 'Depot'],
             ['value' => 'sharing', 'label' => 'Sharing'],
@@ -91,6 +92,7 @@ class LoadFormFieldListenerTest extends TestCase
 
         $listener->__invoke($widget, 'auto_additional_access_request', [], $this->createStub(Form::class));
 
+        // @phpstan-ignore-next-line dynamic Contao widget property
         $this->assertSame([
             ['value' => 'sharing', 'label' => 'Sharing'],
             ['label' => 'no-value-kept'],

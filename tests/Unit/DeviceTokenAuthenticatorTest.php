@@ -50,6 +50,7 @@ class DeviceTokenAuthenticatorTest extends TestCase
             'deviceId' => 'device-a',
             'enabled' => '1',
             'areas' => serialize(['depot', 'sharing']),
+            'isEmulator' => 0,
         ]);
 
         $request = Request::create('/api/device/poll', 'POST');
@@ -77,6 +78,7 @@ class DeviceTokenAuthenticatorTest extends TestCase
             'deviceId' => 'device-b',
             'enabled' => '1',
             'areas' => serialize(['workshop']),
+            'isEmulator' => 0,
         ]);
 
         $request = Request::create('/api/device/poll', 'POST');
@@ -100,6 +102,7 @@ class DeviceTokenAuthenticatorTest extends TestCase
             'deviceId' => 'device-priority',
             'enabled' => '1',
             'areas' => serialize(['depot']),
+            'isEmulator' => 0,
         ]);
 
         $request = Request::create('/api/device/poll', 'POST');
@@ -122,6 +125,7 @@ class DeviceTokenAuthenticatorTest extends TestCase
             'deviceId' => 'device-trim',
             'enabled' => '1',
             'areas' => serialize(['sharing']),
+            'isEmulator' => 0,
         ]);
 
         $request = Request::create('/api/device/poll', 'POST');
@@ -144,6 +148,7 @@ class DeviceTokenAuthenticatorTest extends TestCase
             'deviceId' => 'device-x-fallback',
             'enabled' => '1',
             'areas' => serialize(['depot']),
+            'isEmulator' => 0,
         ]);
 
         $request = Request::create('/api/device/poll', 'POST');

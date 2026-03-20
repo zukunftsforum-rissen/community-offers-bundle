@@ -46,11 +46,12 @@ class DoorAuditLoggerTest extends TestCase
             ->willReturn(new class(static function (array $args) use (&$executeCalls): void {
                 $executeCalls[] = $args;
             }) {
-                private $onExecute;
+                /** @var \Closure(array<int, mixed>): void */
+                private \Closure $onExecute;
 
                 public function __construct(callable $onExecute)
                 {
-                    $this->onExecute = $onExecute;
+                    $this->onExecute = \Closure::fromCallable($onExecute);
                 }
 
                 public function execute(mixed ...$args): Result
@@ -99,11 +100,12 @@ class DoorAuditLoggerTest extends TestCase
         $db->method('prepare')->willReturn(new class(static function (array $args) use (&$executeCalls): void {
             $executeCalls[] = $args;
         }) {
-            private $onExecute;
+            /** @var \Closure(array<int, mixed>): void */
+            private \Closure $onExecute;
 
             public function __construct(callable $onExecute)
             {
-                $this->onExecute = $onExecute;
+                $this->onExecute = \Closure::fromCallable($onExecute);
             }
 
             public function execute(mixed ...$args): Result

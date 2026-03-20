@@ -163,7 +163,7 @@ class DoorJobServiceTest extends TestCase
         $this->assertSame('Job angenommen.', $result['message']);
         $this->assertSame(55, $result['jobId']);
         $this->assertSame('pending', $result['status']);
-        $this->assertIsInt($result['expiresAt']);
+        $this->assertGreaterThan(0, $result['expiresAt']);
     }
 
     /**

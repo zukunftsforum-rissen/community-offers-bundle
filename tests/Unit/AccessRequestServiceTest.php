@@ -899,7 +899,7 @@ class AccessRequestServiceTest extends TestCase
                     $matches = [];
 
                     foreach ($rows as $row) {
-                        if ((string) ($row['email'] ?? '') === $email && '' === (string) ($row['approved'] ?? '')) {
+                        if ((string) $row['email'] === $email && '' === (string) $row['approved']) {
                             $matches[] = ['id' => (int) $row['id']];
                             break;
                         }
@@ -965,7 +965,7 @@ class AccessRequestServiceTest extends TestCase
                     $tokenHash = (string) ($args[0] ?? '');
 
                     foreach ($rows as $row) {
-                        if ((string) ($row['token'] ?? '') === $tokenHash) {
+                        if ((string) $row['token'] === $tokenHash) {
                             return new Result([$row], 'confirm-hit');
                         }
                     }
@@ -993,7 +993,7 @@ class AccessRequestServiceTest extends TestCase
                     $id = (int) ($args[1] ?? 0);
 
                     foreach ($rows as &$row) {
-                        if ((int) ($row['id'] ?? 0) === $id) {
+                        if ((int) $row['id'] === $id) {
                             $row['emailConfirmed'] = '1';
                             $row['tstamp'] = (int) ($args[0] ?? $row['tstamp']);
                         }
@@ -1024,7 +1024,7 @@ class AccessRequestServiceTest extends TestCase
                     $matches = [];
 
                     foreach ($rows as $row) {
-                        if ((string) ($row['email'] ?? '') === $email && '' === (string) ($row['approved'] ?? '')) {
+                        if ((string) $row['email'] === $email && '' === (string) $row['approved']) {
                             $matches[] = [
                                 'id' => (int) $row['id'],
                                 'tstamp' => (int) $row['tstamp'],
@@ -1135,7 +1135,7 @@ class AccessRequestServiceTest extends TestCase
                     $matches = [];
 
                     foreach ($rows as $row) {
-                        if ((string) ($row['email'] ?? '') === $email && '' === (string) ($row['approved'] ?? '')) {
+                        if ((string) $row['email'] === $email && '' === (string) $row['approved']) {
                             $matches[] = ['id' => (int) $row['id']];
                             break;
                         }
@@ -1201,7 +1201,7 @@ class AccessRequestServiceTest extends TestCase
                     $tokenHash = (string) ($args[0] ?? '');
 
                     foreach ($rows as $row) {
-                        if ((string) ($row['token'] ?? '') === $tokenHash) {
+                        if ((string) $row['token'] === $tokenHash) {
                             return new Result([$row], 'confirm-expired-flow-hit');
                         }
                     }
@@ -1230,7 +1230,7 @@ class AccessRequestServiceTest extends TestCase
                     $matches = [];
 
                     foreach ($rows as $row) {
-                        if ((string) ($row['email'] ?? '') === $email && '' === (string) ($row['approved'] ?? '')) {
+                        if ((string) $row['email'] === $email && '' === (string) $row['approved']) {
                             $matches[] = [
                                 'id' => (int) $row['id'],
                                 'tstamp' => (int) $row['tstamp'],
@@ -1266,7 +1266,7 @@ class AccessRequestServiceTest extends TestCase
                     $id = (int) ($args[3] ?? 0);
 
                     foreach ($rows as &$row) {
-                        if ((int) ($row['id'] ?? 0) === $id) {
+                        if ((int) $row['id'] === $id) {
                             $row['tstamp'] = (int) ($args[0] ?? $row['tstamp']);
                             $row['token'] = (string) ($args[1] ?? $row['token']);
                             $row['tokenExpiresAt'] = (int) ($args[2] ?? $row['tokenExpiresAt']);

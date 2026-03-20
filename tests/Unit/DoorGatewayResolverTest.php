@@ -33,7 +33,7 @@ final class DoorGatewayResolverTest extends TestCase
         $resolver = new DoorGatewayResolver([$gateway]);
 
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('No door gateway found for device type "unknown".');
+        $this->expectExceptionMessage('No door gateway found for mode "unknown".');
 
         $resolver->resolve('unknown');
     }

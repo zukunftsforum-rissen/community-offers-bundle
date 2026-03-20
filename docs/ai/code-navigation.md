@@ -119,13 +119,13 @@ Used to determine online/offline state.
 
 ---
 
-## SimulatorDeviceService
+## DemoDeviceService
 
-Used for the browser-based simulator.
+Used for the browser-based demo.
 
 Important:
 
-Simulator endpoints differ from production device endpoints.
+Demo endpoints differ from production device endpoints.
 
 ---
 

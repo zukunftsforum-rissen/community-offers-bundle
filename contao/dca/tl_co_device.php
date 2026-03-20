@@ -97,8 +97,8 @@ $GLOBALS['TL_DCA']['tl_co_device'] = [
             'sql' => "varchar(64) NOT NULL default ''",
         ],
 
-        'isSimulator' => [
-            'label' => &$GLOBALS['TL_LANG']['tl_co_device']['isSimulator'],
+        'isEmulator' => [
+            'label' => &$GLOBALS['TL_LANG']['tl_co_device']['isEmulator'],
             'inputType' => 'checkbox',
             'eval' => ['tl_class' => 'w50 m12'],
             'sql' => "char(1) NOT NULL default ''",

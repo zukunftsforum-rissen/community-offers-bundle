@@ -1,0 +1,9 @@
+@startuml
+
+[*] --> pending
+pending --> dispatched : device poll
+dispatched --> executed : confirm
+dispatched --> failed : error
+pending --> expired : timeout
+
+@enduml

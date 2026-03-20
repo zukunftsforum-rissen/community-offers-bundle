@@ -1,0 +1,83 @@
+@startuml
+hide circle
+skinparam linetype ortho
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam entity {
+  BorderColor #111111
+  FontName Monospace
+}
+
+entity "tl_member (Contao)" as member #FFFFFF {
+  * id : int <<PK>>
+  --
+  ...
+}
+
+entity "tl_co_access_request" as access_request #F4FFF7 {
+  * id : int(10) NOT NULL auto_increment <<PK>>
+  tstamp : int(10) NOT NULL default 0
+  firstname : varchar(255) NOT NULL default ''
+  lastname : varchar(255) NOT NULL default ''
+  email : varchar(255) NOT NULL default ''
+  mobile : varchar(64) NOT NULL default ''
+  street : varchar(255) NOT NULL default ''
+  postal : varchar(16) NOT NULL default ''
+  city : varchar(255) NOT NULL default ''
+  requestedAreas : blob NULL
+  token : varchar(64) NOT NULL default ''
+  tokenExpiresAt : int(10) NOT NULL default 0
+  emailConfirmed : char(1) NOT NULL default ''
+  approved : char(1) NOT NULL default ''
+}
+
+entity "tl_co_device" as device #F7F2FF {
+  * id : int(10) NOT NULL auto_increment <<PK>>
+  tstamp : int(10) NOT NULL default 0
+  name : varchar(128) NOT NULL default ''
+  deviceId : varchar(64) NOT NULL default ''
+  areas : blob NULL
+  enabled : char(1) NOT NULL default ''
+  apiTokenHash : varchar(64) NOT NULL default ''
+  lastSeen : int(10) NOT NULL default 0
+  ipLast : varchar(64) NOT NULL default ''
+}
+
+entity "tl_co_door_job" as job #FFF7F0 {
+  * id : int(10) NOT NULL auto_increment <<PK>>
+  tstamp : int(10) NOT NULL default 0
+  createdAt : int(10) NOT NULL default 0
+  expiresAt : int(10) NOT NULL default 0
+  area : varchar(64) NOT NULL default ''
+  requestedByMemberId : int(10) NOT NULL default 0
+  requestIp : varchar(64) NOT NULL default ''
+  userAgent : varchar(255) NOT NULL default ''
+  status : varchar(20) NOT NULL default 'pending'
+  dispatchToDeviceId : varchar(64) NOT NULL default ''
+  dispatchedAt : int(10) NOT NULL default 0
+  executedAt : int(10) NOT NULL default 0
+  nonce : varchar(64) NOT NULL default ''
+  attempts : int(10) NOT NULL default 0
+  resultCode : varchar(40) NOT NULL default ''
+  resultMessage : varchar(255) NOT NULL default ''
+}
+
+entity "tl_co_door_log" as log #F3F8FF {
+  * id : int(10) NOT NULL auto_increment <<PK>>
+  tstamp : int(10) NOT NULL default 0
+  memberId : int(10) NOT NULL default 0
+  area : varchar(64) NOT NULL default ''
+  action : varchar(64) NOT NULL default ''
+  result : varchar(32) NOT NULL default ''
+  ip : varchar(64) NOT NULL default ''
+  userAgent : varchar(255) NOT NULL default ''
+  message : varchar(255) NOT NULL default ''
+  context : mediumtext NULL
+}
+
+member ||--o{ job : member.id → job.requestedByMemberId
+device ||--o{ job : device.deviceId → job.dispatchToDeviceId
+member ||--o{ log : member.id → log.memberId
+access_request ..> member : approval → member/group assignment (logical)
+
+@enduml

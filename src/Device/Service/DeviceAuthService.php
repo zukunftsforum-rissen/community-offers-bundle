@@ -17,7 +17,7 @@ final class DeviceAuthService
     }
 
     /**
-     * @return array{deviceId:string, areas:?array<string>}|null
+     * @return array{deviceId:string, areas:?array<string>, isEmulator:bool}|null
      */
     public function authenticate(string|null $token): array|null
     {
@@ -35,7 +35,7 @@ final class DeviceAuthService
         ]);
 
         $device = $this->db->fetchAssociative(
-            'SELECT id, deviceId, enabled, areas, apiTokenHash
+            'SELECT id, deviceId, enabled, areas, apiTokenHash, isEmulator
                     FROM tl_co_device
                     WHERE apiTokenHash = :hash
                     LIMIT 1',
@@ -66,12 +66,15 @@ final class DeviceAuthService
         $areasArr = array_values(array_map('strval', StringUtil::deserialize($areasRaw, true)));
         $areas = array_values(array_unique(array_filter(array_map('strval', $areasArr))));
 
+        $isEmulator = (bool) $device['isEmulator'];
+
         $this->logging->info('device_auth.lookup_success', [
             'deviceId' => $deviceId,
             'areas' => $areas,
+            'isEmulator' => $isEmulator,
             'tokenHashPrefix' => substr($hash, 0, 12),
         ]);
 
-        return ['deviceId' => $deviceId, 'areas' => $areas];
+        return ['deviceId' => $deviceId, 'areas' => $areas, 'isEmulator' => $isEmulator];
     }
 }

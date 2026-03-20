@@ -55,4 +55,4 @@ Typical indicators include:
 - last confirm time
 - last accessed area
 
-Simulator devices are excluded from production monitoring.
+Demo devices are excluded from production monitoring.

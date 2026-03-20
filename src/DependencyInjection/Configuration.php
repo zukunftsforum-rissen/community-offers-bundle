@@ -26,7 +26,7 @@ final class Configuration implements ConfigurationInterface
                     ->defaultFalse()
                 ->end()
                 ->enumNode('mode')
-                    ->values(['live', 'simulation'])
+                    ->values(['live', 'emulator'])
                     ->defaultValue('live')
                 ->end()
                 ->arrayNode('app')

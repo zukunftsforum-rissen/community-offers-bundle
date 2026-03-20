@@ -55,14 +55,16 @@ final class DeviceTokenAuthenticator extends AbstractAuthenticator
 
         $deviceId = $ctx['deviceId'];
         $areas = $ctx['areas'];
+        $isEmulator = $ctx['isEmulator'];
 
         $this->logging->info('device_auth.authenticate_success', [
             'deviceId' => $deviceId,
             'areas' => $areas,
+            'isEmulator' => $isEmulator,
         ]);
 
         return new SelfValidatingPassport(
-            new UserBadge($deviceId, static fn () => new DeviceApiUser($deviceId, $areas)),
+            new UserBadge($deviceId, static fn () => new DeviceApiUser($deviceId, $areas, $isEmulator)),
         );
     }
 

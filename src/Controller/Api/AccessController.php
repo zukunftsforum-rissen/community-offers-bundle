@@ -263,10 +263,6 @@ final class AccessController
             $payload['retryAfterSeconds'] = (int) $result['retryAfterSeconds'];
         }
 
-        if (isset($result['simulated'])) {
-            $payload['simulated'] = (bool) $result['simulated'];
-        }
-
         $response = new JsonResponse($payload, $status);
 
         if (429 === $status && isset($result['retryAfterSeconds'])) {

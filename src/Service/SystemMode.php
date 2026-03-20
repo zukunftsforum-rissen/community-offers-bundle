@@ -6,23 +6,29 @@ namespace ZukunftsforumRissen\CommunityOffersBundle\Service;
 
 final class SystemMode
 {
-    public function __construct(
-        private readonly string $mode,
-    ) {
+    public function __construct(private readonly string $mode)
+    {
+        if (!\in_array($mode, ['live', 'emulator'], true)) {
+            throw new \InvalidArgumentException(sprintf('Invalid system mode "%s"', $mode));
+        }
+    }
+    public function asString(): string
+    {
+        return $this->mode;
     }
 
     public function isLive(): bool
     {
-        return 'live' === $this->mode;
+        return $this->mode === 'live';
     }
 
-    public function isSimulation(): bool
+    public function isEmulator(): bool
     {
-        return 'simulation' === $this->mode;
+        return $this->mode === 'emulator';
     }
 
-    public function asString(): string
+    public function isValid(): bool
     {
-        return $this->mode;
+        return \in_array($this->mode, ['live', 'emulator'], true);
     }
 }

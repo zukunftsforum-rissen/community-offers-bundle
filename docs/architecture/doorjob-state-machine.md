@@ -8,7 +8,7 @@ Sie gilt für die Modi:
 - live
 - emulation
 
-Im Modus **simulation** wird kein DoorJob erzeugt.
+Im Modus **** wird kein DoorJob erzeugt.
 
 ---
 
@@ -122,7 +122,7 @@ Typische Ursache:
 |-----|-----|------|
 | live | ja | Raspberry Pi |
 | emulation | ja | Emulator |
-| simulation | nein | kein Device |
+|  | nein | kein Device |
 
 ---
 
@@ -134,7 +134,7 @@ Der Channel beschreibt den technischen Ausführungspfad.
 |-------|-------------|
 | physical | reale Hardware |
 | emulator | Emulator Device |
-| simulator | direkte Simulation (kein Job) |
+| demo | direkte  (kein Job) |
 
 ---
 

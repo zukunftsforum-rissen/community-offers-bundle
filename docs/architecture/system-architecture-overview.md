@@ -8,7 +8,7 @@ Es zeigt die wichtigsten Bausteine und deren Zusammenspiel in den Modi:
 
 - live
 - emulation
-- simulation
+- 
 
 ---
 
@@ -41,7 +41,7 @@ Aufgaben:
 
 - Türöffnung anstoßen
 - Responses anzeigen
-- im Simulation-Modus direkte Demo-Rückmeldung anzeigen
+- im -Modus direkte Demo-Rückmeldung anzeigen
 
 ---
 
@@ -80,7 +80,7 @@ Zuordnung:
 
 - live → RaspberryDoorGateway
 - emulation → RaspberryDoorGateway / Workflow-Gateway
-- simulation → SimulatorDoorGateway
+-  → DemoDoorGateway
 
 ---
 
@@ -99,7 +99,7 @@ In `emulation` wird derselbe Workflowpfad verwendet, aber nur Emulator-Devices d
 
 ---
 
-## SimulatorDoorGateway
+## DemoDoorGateway
 
 Direkter Simulationspfad ohne Device-Workflow.
 
@@ -225,7 +225,7 @@ DoorGatewayResolver
  │   ↓
  │   Physical Device / Emulator Device
  │
- └─ SimulatorDoorGateway
+ └─ DemoDoorGateway
      ↓
      Direkter Erfolg
 ```
@@ -277,7 +277,7 @@ Merkmale:
 
 ---
 
-## simulation
+## 
 
 Pfad:
 
@@ -285,7 +285,7 @@ App
 → AccessController
 → OpenDoorService
 → DoorGatewayResolver
-→ SimulatorDoorGateway
+→ DemoDoorGateway
 
 Merkmale:
 
@@ -306,7 +306,7 @@ Fachlicher Betriebsmodus:
 
 - live
 - emulation
-- simulation
+- 
 
 ## channel
 
@@ -314,13 +314,13 @@ Technischer Ausführungspfad:
 
 - physical
 - emulator
-- simulator
+- demo
 
 Beispiele:
 
 - live + physical
 - emulation + emulator
-- simulation + simulator
+-  + demo
 
 ---
 
@@ -338,7 +338,7 @@ Empfohlene Felder:
 - mode
 - channel
 
-Simulation erzeugt keinen Job.
+ erzeugt keinen Job.
 
 ---
 
@@ -348,7 +348,7 @@ Die wichtigste Schutzregel lautet:
 
 - im Live-Modus dürfen keine Emulator-Devices teilnehmen
 - im Emulation-Modus dürfen keine realen Devices teilnehmen
-- im Simulation-Modus gibt es keine Device-Kommunikation
+- im -Modus gibt es keine Device-Kommunikation
 
 Diese Regeln müssen serverseitig in Poll/Confirm geprüft werden.
 

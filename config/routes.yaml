@@ -7,20 +7,10 @@ co_app:
     controller: ZukunftsforumRissen\CommunityOffersBundle\Controller\Frontend\AppController
     methods: [GET]
 
-co_door_simulator:
-    path: /door-simulator
-    controller: ZukunftsforumRissen\CommunityOffersBundle\Controller\Simulator\DoorSimulatorController
+co_demo:
+    path: /demo
+    controller: ZukunftsforumRissen\CommunityOffersBundle\Controller\Demo\DemoController
     methods: [GET]
-
-co_door_simulator_poll:
-    path: /door-simulator/poll
-    controller: ZukunftsforumRissen\CommunityOffersBundle\Controller\Simulator\DoorSimulatorPollController
-    methods: [POST]
-
-co_door_simulator_confirm:
-    path: /door-simulator/confirm
-    controller: ZukunftsforumRissen\CommunityOffersBundle\Controller\Simulator\DoorSimulatorConfirmController
-    methods: [POST]
 
 co_device_monitor:
     path: /%contao.backend.route_prefix%/device-monitor

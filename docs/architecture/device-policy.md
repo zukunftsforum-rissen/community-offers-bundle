@@ -19,9 +19,7 @@ Ziel ist es, sicherzustellen, dass:
 
 Devices besitzen ein Merkmal:
 
-
 isEmulator (bool)
-
 
 Bedeutung:
 
@@ -36,11 +34,8 @@ Bedeutung:
 
 Das System kennt drei Betriebsmodi:
 
-
 live
 emulation
-simulation
-
 
 ---
 
@@ -50,7 +45,7 @@ simulation
 |-----|-------------|----------------|------------|
 | live | ja | ja | isEmulator = false |
 | emulation | ja | ja | isEmulator = true |
-| simulation | nein | nein | kein Device |
+|  | nein | nein | kein Device |
 
 ---
 
@@ -62,11 +57,9 @@ Im Live-Modus dürfen nur reale Geräte teilnehmen.
 
 Regel:
 
-
 if ($mode === 'live' && $device->isEmulator()) {
 deny();
 }
-
 
 Ziel:
 
@@ -81,11 +74,9 @@ Im Emulation-Modus dürfen ausschließlich Emulator-Devices teilnehmen.
 
 Regel:
 
-
 if ($mode === 'emulation' && !$device->isEmulator()) {
 deny();
 }
-
 
 Ziel:
 
@@ -94,9 +85,9 @@ Ziel:
 
 ---
 
-## Simulation-Modus
+## -Modus
 
-Im Simulation-Modus existiert kein Device-Workflow.
+Im -Modus existiert kein Device-Workflow.
 
 Eigenschaften:
 
@@ -112,11 +103,9 @@ Der Erfolg wird direkt simuliert.
 
 Die Regeln gelten für folgende API-Endpunkte:
 
-
 /api/device/poll
 /api/device/confirm
 /api/device/heartbeat
-
 
 Diese Endpunkte müssen jeweils prüfen:
 

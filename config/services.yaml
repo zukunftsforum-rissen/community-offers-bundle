@@ -1,7 +1,8 @@
 parameters:
     enable_logging: "%env(bool:ENABLE_LOGGING)%"
     enable_debug_logging: "%env(bool:ENABLE_DEBUG_LOGGING)%"
-    community_offers.mode: "simulation"
+
+    community_offers.mode: "%env(COMMUNITY_OFFERS_MODE)%"
     community_offers.mail_from: "%env(COMMUNITY_OFFERS_MAIL_FROM)%"
     community_offers.mail_reply_to: "%env(COMMUNITY_OFFERS_MAIL_REPLY_TO)%"
     community_offers.app_url: "%env(COMMUNITY_OFFERS_APP_URL)%"
@@ -10,29 +11,13 @@ parameters:
     community_offers.app.login_path: "/login"
     community_offers.app.logout_path: "/_contao/logout"
     community_offers.app.logout_redirect_path: "/app"
-    community_offers.app.areas:
-        - { slug: workshop, title: Werkstatt }
-        - { slug: sharing, title: Ausleihen }
-        - { slug: depot, title: Depot }
-        - { slug: swap-house, title: Tauschhaus }
 
-    community_offers.area_groups:
-        workshop: 1
-        sharing: 2
-        depot: 3
-        swap-house: 4
-
-when@dev:
-    imports:
-        - { resource: services_dev.yaml }
+    community_offers.app.areas: "%env(json:COMMUNITY_OFFERS_AREAS)%"
+    community_offers.area_groups: "%env(json:COMMUNITY_OFFERS_AREA_GROUPS)%"
 
 when@test:
     imports:
         - { resource: services_test.yaml }
-
-when@demo:
-    imports:
-        - { resource: services_demo.yaml }
 
 services:
     _defaults:
@@ -115,6 +100,6 @@ services:
         arguments:
             $gateways: !tagged_iterator "community_offers.door_gateway" #
 
-    ZukunftsforumRissen\CommunityOffersBundle\Service\OpenDoorService:
+    ZukunftsforumRissen\CommunityOffersBundle\Service\DoorOpenObserverResolver:
         arguments:
-            $mode: "%community_offers.mode%"
+            $workflowObserver: '@ZukunftsforumRissen\CommunityOffersBundle\Service\WorkflowDoorOpenObserver'

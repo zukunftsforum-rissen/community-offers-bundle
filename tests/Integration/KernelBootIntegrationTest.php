@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace ZukunftsforumRissen\CommunityOffersBundle\Tests;
 
-use Contao\ManagerBundle\HttpKernel\ContaoKernel;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
@@ -15,32 +14,42 @@ class KernelBootIntegrationTest extends KernelTestCase
         $kernelClass = $_SERVER['KERNEL_CLASS'] ?? $_ENV['KERNEL_CLASS'] ?? null;
 
         if (!\is_string($kernelClass) || '' === $kernelClass) {
-            $this->markTestSkipped('Set KERNEL_CLASS to run integration tests, e.g. KERNEL_CLASS=App\\Kernel.');
+            $this->markTestSkipped(
+                'Integration test intentionally skipped: no application kernel configured. '
+                . 'Set KERNEL_CLASS (for example App\\Kernel) to run full kernel boot tests.',
+            );
         }
 
         if (!class_exists($kernelClass)) {
-            $this->markTestSkipped(sprintf('Configured KERNEL_CLASS "%s" is not autoloadable in this context.', $kernelClass));
+            $this->markTestSkipped(sprintf(
+                'Integration test intentionally skipped: configured KERNEL_CLASS "%s" is not autoloadable.',
+                $kernelClass,
+            ));
         }
 
-        if (is_a($kernelClass, ContaoKernel::class, true)) {
+        $contaoKernelClass = 'Contao\\ManagerBundle\\HttpKernel\\ContaoKernel';
+
+        if (class_exists($contaoKernelClass) && is_a($kernelClass, $contaoKernelClass, true)) {
             $projectDir = $_SERVER['PROJECT_DIR'] ?? $_ENV['PROJECT_DIR'] ?? getcwd();
 
-            if (!\is_string($projectDir) || '' === $projectDir) {
+            if (!\is_string($projectDir)) {
                 $projectDir = getcwd();
             }
 
             if (!\is_string($projectDir) || '' === $projectDir) {
-                $this->markTestSkipped('Could not determine PROJECT_DIR for ContaoKernel initialization.');
+                $this->markTestSkipped(
+                    'Integration test intentionally skipped: PROJECT_DIR is required to initialize ContaoKernel.',
+                );
             }
 
-            ContaoKernel::setProjectDir($projectDir);
+            $contaoKernelClass::setProjectDir($projectDir);
         }
 
         try {
             self::bootKernel();
         } catch (\Throwable $exception) {
             $this->markTestSkipped(sprintf(
-                'Kernel boot failed in current environment (%s: %s).',
+                'Integration test intentionally skipped: kernel boot failed in this environment (%s: %s).',
                 $exception::class,
                 $exception->getMessage(),
             ));

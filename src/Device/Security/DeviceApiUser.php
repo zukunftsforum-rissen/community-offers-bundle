@@ -14,7 +14,13 @@ final class DeviceApiUser implements UserInterface
     public function __construct(
         private readonly string $deviceId,
         private readonly array $areas,
+        private readonly bool $isEmulator,
     ) {
+    }
+
+    public function isEmulator(): bool
+    {
+        return $this->isEmulator;
     }
 
     public function getUserIdentifier(): string

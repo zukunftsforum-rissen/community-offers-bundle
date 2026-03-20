@@ -10,11 +10,8 @@ für alle Betriebsmodi.
 
 Das System kennt drei Modi:
 
-
 live
 emulation
-simulation
-
 
 ---
 
@@ -24,7 +21,7 @@ simulation
 |-----|-------------|--------|--------|------------|--------|
 | live | ja | ja | ja | physical | physical |
 | emulation | ja | ja | ja | emulator | emulator |
-| simulation | nein | nein | nein | – | simulator |
+|  | nein | nein | nein | – | demo |
 
 ---
 
@@ -88,7 +85,7 @@ Workflow abgeschlossen
 
 ---
 
-# Mode: simulation
+# Mode: 
 
 Demo- und Präsentationsmodus.
 
@@ -105,7 +102,7 @@ App
 ↓  
 OpenDoorService  
 ↓  
-SimulatorDoorGateway  
+DemoDoorGateway  
 ↓  
 Direkter Erfolg
 
@@ -119,7 +116,7 @@ Der Channel beschreibt den technischen Ausführungsweg.
 |-------|-----------|
 | physical | reale Hardware |
 | emulator | Emulator-Device |
-| simulator | direkte Simulation |
+| demo | direkte  |
 
 ---
 
@@ -127,28 +124,22 @@ Der Channel beschreibt den technischen Ausführungsweg.
 
 Jobs speichern:
 
-
 mode
 channel
-
 
 Beispiele:
 
 Live:
 
-
 mode = live
 channel = physical
 
-
 Emulation:
-
 
 mode = emulation
 channel = emulator
 
-
-Simulation erzeugt keinen Job.
+ erzeugt keinen Job.
 Empfohlene Ordnerstruktur
 docs/
  └ architecture/

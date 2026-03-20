@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Zukunft Wohnen Demo</title>
+<style>
+body {
+    margin: 0;
+    font-family: system-ui;
+    background: #0f172a;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+.screen {
+    width: 360px;
+    height: 720px;
+    background: #111827;
+    border-radius: 24px;
+    padding: 20px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    position: relative;
+    overflow: hidden;
+}
+.step {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.6s ease;
+}
+.step.active {
+    opacity: 1;
+    transform: translateY(0);
+}
+h2 {
+    margin-top: 40px;
+}
+.button {
+    margin-top: 20px;
+    padding: 12px;
+    background: #3b82f6;
+    border-radius: 10px;
+    text-align: center;
+}
+.fake-list div {
+    padding: 10px;
+    background: #1f2937;
+    margin-bottom: 10px;
+    border-radius: 8px;
+}
+</style>
+</head>
+<body>
+
+<div class="screen">
+
+    <div class="step active">
+        <h2>App installieren</h2>
+        <p>Lade die App herunter</p>
+        <div class="button">Installieren</div>
+    </div>
+
+    <div class="step">
+        <h2>Zugang beantragen</h2>
+        <div class="button">Registrieren</div>
+    </div>
+
+    <div class="step">
+        <h2>Passwort setzen</h2>
+        <div class="button">Passwort speichern</div>
+    </div>
+
+    <div class="step">
+        <h2>Login</h2>
+        <div class="button">Anmelden</div>
+    </div>
+
+    <div class="step">
+        <h2>Tür öffnen</h2>
+        <div class="fake-list">
+            <div>Depot 🔒</div>
+            <div>Werkstatt</div>
+            <div>Tauschhaus</div>
+        </div>
+        <div class="button" id="open">Öffnen</div>
+    </div>
+
+</div>
+
+<script>
+const steps = document.querySelectorAll(".step");
+let current = 0;
+
+function nextStep() {
+    steps[current].classList.remove("active");
+    current++;
+    if (steps[current]) {
+        steps[current].classList.add("active");
+    }
+}
+
+setTimeout(nextStep, 1500);
+setTimeout(nextStep, 3500);
+setTimeout(nextStep, 5500);
+setTimeout(nextStep, 7500);
+
+// Tür öffnen
+setTimeout(() => {
+    document.getElementById("open").style.background = "#16a34a";
+}, 9000);
+
+// HIER kannst du später deine Demo-Animation triggern
+</script>
+
+</body>
+</html>

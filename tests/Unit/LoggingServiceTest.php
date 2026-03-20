@@ -62,9 +62,9 @@ class LoggingServiceTest extends TestCase
 
         sort($files);
         $logFile = end($files);
-        $this->assertIsString($logFile);
+        $this->assertNotFalse($logFile);
 
-        $content = file_get_contents($logFile);
+        $content = file_get_contents((string) $logFile);
 
         $this->assertIsString($content);
         $this->assertStringContainsString('Test info message', $content);
@@ -97,9 +97,9 @@ class LoggingServiceTest extends TestCase
 
         sort($files);
         $logFile = end($files);
-        $this->assertIsString($logFile);
+        $this->assertNotFalse($logFile);
 
-        $content = file_get_contents($logFile);
+        $content = file_get_contents((string) $logFile);
 
         $this->assertIsString($content);
         $this->assertStringNotContainsString('Debug should not be logged', $content);

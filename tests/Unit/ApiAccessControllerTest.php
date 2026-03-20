@@ -5,26 +5,22 @@ declare(strict_types=1);
 namespace ZukunftsforumRissen\CommunityOffersBundle\Tests;
 
 use Contao\FrontendUser;
-use Doctrine\DBAL\Connection;
 use PHPUnit\Framework\TestCase;
-use Psr\Cache\CacheItemInterface;
-use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Bundle\SecurityBundle\Security;
-use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\Workflow\Definition;
-use Symfony\Component\Workflow\MarkingStore\MethodMarkingStore;
-use Symfony\Component\Workflow\StateMachine;
-use Symfony\Component\Workflow\Transition;
 use ZukunftsforumRissen\CommunityOffersBundle\Controller\Api\AccessController;
+use ZukunftsforumRissen\CommunityOffersBundle\Door\DoorGatewayInterface;
+use ZukunftsforumRissen\CommunityOffersBundle\Door\DoorGatewayResolver;
+use ZukunftsforumRissen\CommunityOffersBundle\Door\DoorGatewayResult;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\AccessRequestService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\AccessService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\CorrelationIdService;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorOpenObserverInterface;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorOpenObserverResolver;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorAuditLogger;
-use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorJobService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService;
-use ZukunftsforumRissen\CommunityOffersBundle\Workflow\DoorJobWorkflowSubscriber;
-
+use ZukunftsforumRissen\CommunityOffersBundle\Service\OpenDoorService;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\SystemMode;
 class ApiAccessControllerTest extends TestCase
 {
     /**
@@ -277,13 +273,17 @@ class ApiAccessControllerTest extends TestCase
 
         $this->assertIsArray($data);
         $this->assertSame(403, $response->getStatusCode());
-        $this->assertSame(['success' => false, 'message' => 'Forbidden'], $data);
+        $this->assertFalse($data['success']);
+        $this->assertSame('Forbidden', $data['message']);
+        $this->assertFalse($data['accepted']);
+        $this->assertSame('live', $data['mode']);
+        $this->assertArrayHasKey('correlationId', $data);
     }
 
     /**
-     * Verifies HTTP 429 open responses forward Retry-After header from DoorJobService.
+     * Verifies HTTP 429 open responses forward Retry-After header from OpenDoorService.
      */
-    public function testOpenSetsRetryAfterHeaderWhenDoorJobServiceReturns429(): void
+    public function testOpenSetsRetryAfterHeaderWhenOpenDoorServiceReturns429(): void
     {
         $user = $this->createFrontendUser(13, 'Rate', 'Limited', 'rate@example.org');
 
@@ -296,26 +296,9 @@ class ApiAccessControllerTest extends TestCase
         $accessRequestService = $this->createMock(AccessRequestService::class);
         $logging = $this->createMock(LoggingService::class);
 
-        $db = $this->createMock(Connection::class);
-        $db->expects($this->exactly(3))->method('executeStatement')->willReturn(0);
-
-        $rateItem = $this->createMock(CacheItemInterface::class);
-        $rateItem->method('isHit')->willReturn(true);
-        $rateItem->method('get')->willReturn([
-            'count' => 3,
-            'resetAt' => time() + 9,
-        ]);
-
-        $cache = $this->createMock(CacheItemPoolInterface::class);
-        $cache->expects($this->once())->method('getItem')->willReturn($rateItem);
-        $cache->expects($this->never())->method('save');
-
-        $doorJobs = new DoorJobService(
-            $db,
-            $cache,
-            $this->createDoorJobStateMachine(),
-            $this->createStub(LoggingService::class),
-            $this->createStub(DoorAuditLogger::class),
+        $openDoorService = $this->createOpenDoorService(
+            $accessService,
+            DoorGatewayResult::failure('rate_limited', 'Rate limit exceeded', 429, 9),
         );
 
         $controller = $this->createController(
@@ -323,7 +306,7 @@ class ApiAccessControllerTest extends TestCase
             $accessService,
             $accessRequestService,
             $logging,
-            $doorJobs,
+            $openDoorService,
         );
 
         $request = Request::create('/api/door/open/depot', 'POST', [], [], [], ['REMOTE_ADDR' => '127.0.0.1']);
@@ -341,29 +324,54 @@ class ApiAccessControllerTest extends TestCase
         $this->assertLessThanOrEqual(9, (int) $retryAfter);
     }
 
-    private function createController(
-        Security $security,
-        AccessService $accessService,
-        AccessRequestService $accessRequestService,
-        LoggingService $logging,
-        DoorJobService|null $doorJobs = null,
-    ): AccessController {
-        $doorJobs ??= new DoorJobService(
-            $this->createStub(Connection::class),
-            $this->createStub(CacheItemPoolInterface::class),
-            $this->createDoorJobStateMachine(),
-            $this->createStub(LoggingService::class),
-            $this->createStub(DoorAuditLogger::class),
-        );
+private function createController(
+    Security $security,
+    AccessService $accessService,
+    AccessRequestService $accessRequestService,
+    LoggingService $logging,
+    OpenDoorService|null $openDoorService = null,
+): AccessController {
+    $openDoorService ??= $this->createOpenDoorService(
+        $accessService,
+        DoorGatewayResult::success('queued', 'Job angenommen.', 202, 1, time() + 30),
+    );
 
-        return new AccessController(
-            $security,
+    return new AccessController(
+        $security,
+        $accessService,
+        $accessRequestService,
+        $openDoorService,
+        $logging,
+        $this->createStub(DoorAuditLogger::class),
+        new CorrelationIdService(),
+    );
+}
+
+    private function createOpenDoorService(AccessService $accessService, DoorGatewayResult $result): OpenDoorService
+    {
+        $gateway = new class($result) implements DoorGatewayInterface {
+            public function __construct(private readonly DoorGatewayResult $result)
+            {
+            }
+
+            public function supports(string $mode): bool
+            {
+                return 'live' === $mode;
+            }
+
+            public function open(string $area, int $memberId, array $context = []): DoorGatewayResult
+            {
+                return $this->result;
+            }
+        };
+
+        $observer = $this->createMock(DoorOpenObserverInterface::class);
+
+        return new OpenDoorService(
             $accessService,
-            $accessRequestService,
-            $doorJobs,
-            $logging,
-            $this->createStub(DoorAuditLogger::class),
-            new CorrelationIdService(),
+            new DoorGatewayResolver([$gateway]),
+            new DoorOpenObserverResolver($observer),
+            new SystemMode('live'),
         );
     }
 
@@ -382,27 +390,4 @@ class ApiAccessControllerTest extends TestCase
         return $user;
     }
 
-    private function createDoorJobStateMachine(): StateMachine
-    {
-        $definition = new Definition(
-            ['pending', 'dispatched', 'executed', 'failed', 'expired'],
-            [
-                new Transition('dispatch', 'pending', 'dispatched'),
-                new Transition('execute', 'dispatched', 'executed'),
-                new Transition('fail', 'dispatched', 'failed'),
-                new Transition('expire_pending', 'pending', 'expired'),
-                new Transition('expire_dispatched', 'dispatched', 'expired'),
-            ]
-        );
-
-        $dispatcher = new EventDispatcher();
-        $dispatcher->addSubscriber(new DoorJobWorkflowSubscriber(30));
-
-        return new StateMachine(
-            $definition,
-            new MethodMarkingStore(true, 'status'),
-            $dispatcher,
-            'door_job'
-        );
-    }
 }

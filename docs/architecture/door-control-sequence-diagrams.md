@@ -6,7 +6,7 @@ für alle drei Betriebsmodi:
 
 - live
 - emulation
-- simulation
+- 
 
 Die Diagramme sind in **PlantUML** dargestellt.
 
@@ -102,7 +102,7 @@ DoorJobService -> Database : update executedAt
 
 ---
 
-# Simulation Mode
+#  Mode
 
 Demo-Modus ohne Workflow.
 
@@ -120,16 +120,16 @@ Eigenschaften:
 actor User
 participant App
 participant OpenDoorService
-participant SimulatorDoorGateway
+participant DemoDoorGateway
 
 User -> App : Tür öffnen
 App -> OpenDoorService : open(area)
 
-OpenDoorService -> SimulatorDoorGateway : simulateOpen()
+OpenDoorService -> DemoDoorGateway : simulateOpen()
 
-SimulatorDoorGateway --> OpenDoorService : success
+DemoDoorGateway --> OpenDoorService : success
 
-OpenDoorService --> App : simulated success
+OpenDoorService --> App :  success
 @enduml
 ```
 
@@ -143,7 +143,7 @@ Die drei Modi unterscheiden sich hauptsächlich im **Workflow-Verhalten**.
 |-----|-----|--------|--------|-------|
 | live | ja | ja | ja | Raspberry Pi |
 | emulation | ja | ja | ja | Emulator |
-| simulation | nein | nein | nein | keiner |
+|  | nein | nein | nein | keiner |
 
 ---
 
@@ -155,7 +155,7 @@ Zusätzlich wird der Ausführungspfad gespeichert.
 |-------|-------------|
 | physical | reale Hardware |
 | emulator | Emulator-Device |
-| simulator | direkte Simulation |
+| demo | direkte  |
 
 ---
 
@@ -178,4 +178,4 @@ Emulation:
 mode = emulation  
 channel = emulator  
 
-Simulation erzeugt keinen Job.
+ erzeugt keinen Job.

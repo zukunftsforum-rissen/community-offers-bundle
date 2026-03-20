@@ -36,7 +36,7 @@ class DeviceAuthServiceTest extends TestCase
             ->method('fetchAssociative')
             ->willReturnOnConsecutiveCalls(
                 false,
-                ['deviceId' => 'dev-1', 'enabled' => '0', 'areas' => serialize(['workshop'])],
+                ['deviceId' => 'dev-1', 'enabled' => '0', 'areas' => serialize(['workshop']), 'isEmulator' => 0],
             );
 
         $logging = $this->createMock(\ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService::class);
@@ -68,6 +68,7 @@ class DeviceAuthServiceTest extends TestCase
                 'deviceId' => 'dev-99',
                 'enabled' => '1',
                 'areas' => serialize(['workshop', '', 'depot', 'workshop']),
+                'isEmulator' => 0,
             ]);
 
         $logging = $this->createMock(\ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService::class);
@@ -78,6 +79,7 @@ class DeviceAuthServiceTest extends TestCase
         $this->assertSame([
             'deviceId' => 'dev-99',
             'areas' => ['workshop', 'depot'],
+            'isEmulator' => false,
         ], $result);
     }
 
@@ -94,6 +96,7 @@ class DeviceAuthServiceTest extends TestCase
                 'deviceId' => 'dev-null-areas',
                 'enabled' => '1',
                 'areas' => null,
+                'isEmulator' => 1,
             ])
         ;
 
@@ -105,6 +108,7 @@ class DeviceAuthServiceTest extends TestCase
         $this->assertSame([
             'deviceId' => 'dev-null-areas',
             'areas' => [],
+            'isEmulator' => true,
         ], $result);
     }
 
@@ -121,6 +125,7 @@ class DeviceAuthServiceTest extends TestCase
                 'deviceId' => 'dev-typed-enabled',
                 'enabled' => 1,
                 'areas' => serialize(['workshop']),
+                'isEmulator' => 0,
             ])
         ;
 
@@ -132,5 +137,6 @@ class DeviceAuthServiceTest extends TestCase
         $this->assertIsArray($result);
         $this->assertSame('dev-typed-enabled', $result['deviceId']);
         $this->assertSame(['workshop'], $result['areas']);
+        $this->assertFalse($result['isEmulator']);
     }
 }

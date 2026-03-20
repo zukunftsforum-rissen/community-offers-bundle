@@ -39,8 +39,12 @@ docs/ai/generated/*
 Archiv/
 FILELIST.txt
 Todos.txt
+prompts.txt
+/prompts/
+backup/
 *.zip
-/git/
+*.tar
+*.gz/git/
 bundle.zip
 /.idea
 

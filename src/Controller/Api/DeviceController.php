@@ -9,6 +9,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 use ZukunftsforumRissen\CommunityOffersBundle\Device\Security\DeviceApiUser;
+use ZukunftsforumRissen\CommunityOffersBundle\Device\Service\DeviceAccessPolicy;
 use ZukunftsforumRissen\CommunityOffersBundle\Device\Service\DeviceConfirmRateLimitService;
 use ZukunftsforumRissen\CommunityOffersBundle\Device\Service\DeviceHeartbeatInterface;
 use ZukunftsforumRissen\CommunityOffersBundle\Device\Service\DeviceRateLimitService;
@@ -24,6 +25,7 @@ final class DeviceController extends AbstractController
         private readonly DeviceHeartbeatInterface $deviceHeartbeatService,
         private readonly DeviceRateLimitService $deviceRateLimitService,
         private readonly DeviceConfirmRateLimitService $deviceConfirmRateLimitService,
+        private readonly DeviceAccessPolicy $deviceAccessPolicy,
     ) {
     }
 
@@ -39,6 +41,20 @@ final class DeviceController extends AbstractController
             ]);
 
             return new JsonResponse(['error' => 'unauthorized'], 401);
+        }
+
+        $isEmulator = $user->isEmulator();
+
+        if (!$this->deviceAccessPolicy->canPoll($user)) {
+            $this->logging->warning('device_access.denied', [
+                'deviceId' => $user->getDeviceId(),
+                'isEmulator' => $user->isEmulator(),
+                'reason' => $this->deviceAccessPolicy->denialReason($user),
+            ]);
+            return new JsonResponse(
+                ['error' => $this->deviceAccessPolicy->denialReason($user)],
+                $this->deviceAccessPolicy->denialStatusCode(),
+            );
         }
 
         $deviceId = $user->getDeviceId();
@@ -100,7 +116,7 @@ final class DeviceController extends AbstractController
             ];
         }
 
-        $this->logging->info('door_dispatch.poll_result', [
+        $this->logging->debug('door_dispatch.poll_result', [
             'deviceId' => $deviceId,
             'areas' => $areas,
             'limit' => $limit,
@@ -133,6 +149,21 @@ final class DeviceController extends AbstractController
             ]);
 
             return new JsonResponse(['error' => 'unauthorized'], 401);
+        }
+
+        $isEmulator = $user->isEmulator();
+
+        if (!$this->deviceAccessPolicy->canConfirm($user)) {
+            $this->logging->warning('device_access.denied', [
+                'deviceId' => $user->getDeviceId(),
+                'isEmulator' => $isEmulator,
+                'reason' => $this->deviceAccessPolicy->denialReason($user),
+            ]);
+
+            return new JsonResponse(
+                ['error' => $this->deviceAccessPolicy->denialReason($user)],
+                $this->deviceAccessPolicy->denialStatusCode(),
+            );
         }
 
         $deviceId = $user->getDeviceId();
@@ -244,6 +275,7 @@ final class DeviceController extends AbstractController
                     'authenticated' => false,
                     'deviceId' => null,
                     'areas' => [],
+                    'isEmulator' => false,
                 ],
                 401,
             );
@@ -253,6 +285,7 @@ final class DeviceController extends AbstractController
             'authenticated' => true,
             'deviceId' => $user->getDeviceId(),
             'areas' => $user->getAreas(),
+            'isEmulator' => $user->isEmulator(),
         ]);
     }
 }

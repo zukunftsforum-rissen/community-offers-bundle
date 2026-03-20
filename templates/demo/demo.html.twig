@@ -1,0 +1,129 @@
+{% extends "@CommunityOffers/layout/public.tool.html.twig" %}
+
+{% block main %}
+    <audio id="sound-door-buzzer" preload="auto" src="{{ asset('bundles/communityoffers/demo/sounds/door_opener.wav') }}"></audio>
+    <audio id="sound-door-open" preload="auto" src="{{ asset('bundles/communityoffers/demo/sounds/door_open.wav') }}"></audio>
+    <audio id="sound-door-close" preload="auto" src="{{ asset('bundles/communityoffers/demo/sounds/door_close.wav') }}"></audio>
+
+    <link rel="stylesheet" href="{{ asset('bundles/communityoffers/demo/demo.css') }}">
+
+    <div class="wrap">
+        <div class="demo-column demo-column--app">
+            <h2 class="section-title">App</h2>
+
+            <div class="phone-shell">
+                <div class="screen" id="screen">
+                    <div class="cursor" id="cursor"></div>
+
+                    <section class="step active"><div class="app-panel"><div class="app-title">Zugänge</div><button class="fake-button" id="btn-open-login">Login öffnen</button><div class="login-links" style="margin-top:28px;">Noch kein Zugang? -&gt; <span class="simple-link" id="link-request-first">Zugang anfragen</span></div><hr class="separator"><div class="legal">Mit der Nutzung dieser Anwendung gelten die <a href="#">Regeln unserer Community</a>. Türöffnungen werden zu Sicherheits- und Betriebszwecken protokolliert. <a href="#">Datenschutzerklärung</a></div></div></section>
+
+                    <section class="step"><div class="app-panel"><div class="app-title">Zugang beantragen</div><div class="request-form"><div class="field"><label>Vorname*</label><div class="input">Emma</div></div><div class="field"><label>Nachname*</label><div class="input">Musterfrau</div></div><div class="field"><label>Email-Adresse*</label><div class="input">emma.musterfrau@example.org</div></div><div class="field"><label>Mobiltelefon*</label><div class="input">0170 1234567</div></div><div class="field"><label>Strasse und Hausnummer*</label><div class="input">Musterweg 12</div></div><div class="field"><label>Postleitzahl*</label><div class="input">22587</div></div><div class="field"><label>Ort*</label><div class="input">Hamburg</div></div><div class="checkbox-group-title">Zu welchen Räumen möchten Sie Zugang beantragen?*</div><div class="check-item"><span class="box"></span><span>Gemüse/Eier/Obst Depot</span></div><div class="check-item"><span class="box checked"></span><span>Tauschhaus</span></div><div class="check-item"><span class="box checked"></span><span>Werkstatt</span></div><div class="check-item"><span class="box"></span><span>Ausleihe</span></div><div class="fineprint">Mit dem Absenden des Formulars erklären Sie sich damit einverstanden, dass Ihre Angaben zur Bearbeitung Ihrer Anfrage verwendet werden. Die übermittelten Daten werden ausschließlich zur Bearbeitung Ihrer Anfrage und zur Verwaltung der Zugangsberechtigungen verwendet. Weitere Informationen finden Sie in unserer <a href="#">Datenschutzerklärung</a>.<br><br>Die Nutzung der Zugangs-App setzt eine bestätigte Mitgliedschaft in der Community voraus. Türöffnungen werden zu Betriebs- und Sicherheitszwecken protokolliert. Die Protokolldaten können nur von den für den Betrieb verantwortlichen Personen eingesehen werden und ausschließlich zur Fehleranalyse oder bei sicherheitsrelevanten Ereignissen genutzt werden. Protokolldaten werden nur so lange gespeichert, wie dies für den sicheren Betrieb des Systems erforderlich ist. Mit der Nutzung dieser Anwendung gelten die <a href="#">Community-Regeln</a> unseres Projekts.</div><button class="request-submit" id="btn-submit-request">Absenden</button></div></div></section>
+
+                    <section class="step"><div class="app-panel"><div class="app-title">Vielen Dank!</div><div class="thankyou-illustration"><div class="check-big">✓</div><div class="envelope"></div></div><div class="mail-text">Vielen Dank, wir prüfen jetzt Ihre Zugangsanfrage. Sie erhalten eine Email sobald wir Sie freigeschaltet haben.</div></div></section>
+
+                    <section class="step"><div class="app-panel"><div class="app-title">Freigabe per E-Mail</div><div class="mail-text" style="margin-bottom:22px;">Sie haben eine neue Email erhalten. Bitte öffnen Sie die Email und klicken Sie auf den Link zur App.</div><div class="mail-card"><div class="mail-subject">E-Mail: Zugang freigeschaltet</div><div class="mail-preview">Hallo Emma Musterfrau, Ihr Zugang für Werkstatt und Tauschhaus wurde freigeschaltet. Öffnen Sie jetzt die App.</div><a class="mail-link" id="btn-mail-open-app" href="#">App-Link öffnen</a></div></div></section>
+
+                    <section class="step"><div class="app-panel"><div class="app-title">Login</div><div class="field"><label>Email-Adresse</label><div class="input">emma.musterfrau@example.org</div></div><div class="field"><label>Passwort</label><div class="input">••••••••••••</div></div><button class="fake-button" id="btn-login-submit" style="margin-top:22px;">Anmelden</button><div class="login-links" style="margin-top:28px;">Passwort vergessen oder noch nicht gesetzt? <span class="simple-link" id="link-open-reset">Passwort zurücksetzen</span></div></div></section>
+
+                    <section class="step"><div class="app-panel"><div class="app-title">Passwort erstmalig anlegen<br>oder ändern</div><div class="field"><label>E-Mail-Adresse</label><div class="input">emma.musterfrau@example.org</div></div><div class="field"><label>Neues Passwort</label><div class="input">••••••••••••</div></div><div class="field"><label>Passwort wiederholen</label><div class="input">••••••••••••</div></div><button class="fake-button" id="btn-send-reset-mail" style="margin-top:28px;">Link per E-Mail anfordern</button></div></section>
+
+                    <section class="step"><div class="app-panel"><div class="app-title">Passwort-Link gesendet</div><div class="mail-text" style="margin-bottom:22px;">Wir haben Ihnen eine Email geschickt. Bitte öffnen Sie die Email und klicken Sie auf den Link, um Ihr Passwort festzulegen oder zu ändern.</div><div class="mail-card"><div class="mail-subject">E-Mail: Passwort festlegen</div><div class="mail-preview">Hallo Emma Musterfrau, klicken Sie auf den Link, um Ihr Passwort jetzt festzulegen.</div><a class="mail-link" id="btn-mail-open-password" href="#">Passwort-Link öffnen</a></div></div></section>
+
+                    <section class="step"><div class="app-panel"><div class="app-title">Login</div><div class="field"><label>Email-Adresse</label><div class="input">emma.musterfrau@example.org</div></div><div class="field"><label>Passwort</label><div class="input">••••••••••••</div></div><button class="fake-button" id="btn-final-login" style="margin-top:22px;">Anmelden</button></div></section>
+
+                    <section class="step"><div class="app-panel"><div class="app-title">Zugänge</div><div class="info-box">Tür geöffnet ✅</div><div class="door-list"><div class="door-card"><div class="door-card__top openable" id="btn-open-workshop">Werkstatt öffnen 🔓</div></div><div class="door-card"><div class="door-card__top openable" id="btn-open-swap">Tauschhaus öffnen 🔓</div></div><div class="door-card"><div class="door-card__top">Depot (kein Zugang)</div><div class="door-card__bottom">Zugang beantragen</div></div><div class="door-card"><div class="door-card__top">Ausleihe (später möglich)</div><div class="door-card__bottom requested">nach Antrag noch nicht freigeschaltet</div></div></div><button class="fake-button logout">Logout</button><hr class="separator"><div class="legal">Mit der Nutzung dieser Anwendung gelten die <a href="#">Regeln unserer Community</a>. Türöffnungen werden zu Sicherheits- und Betriebszwecken protokolliert. <a href="#">Datenschutzerklärung</a></div></div></section>
+                </div>
+            </div>
+        </div>
+
+        <div class="demo-column demo-column--doors">
+            <div class="sim">
+                <div class="sim-top">
+                    <div>
+                        <h2>Türen</h2>
+                        <p>Visuelle Demo des Öffnungsvorgangs. Zwei Bereiche werden beantragt, bestätigt und danach geöffnet.</p>
+                    </div>
+                    <div class="sim-controls">
+                        <button class="sim-btn" id="enable-sound">Ton aktivieren</button>
+                        <button class="sim-btn pause" id="pause-btn">Pause</button>
+                        <button class="sim-btn repeat" id="repeat-btn">Wiederholen</button>
+                    </div>
+                </div>
+
+                <div class="sim-status" id="sim-status">Bereit.</div>
+
+                <div class="scene">
+                    <div class="scene-inner">
+                        <div class="cloud cloud--a"></div>
+                        <div class="cloud cloud--b"></div>
+                        <div class="path"></div>
+
+                        <div class="shed shed--left">
+                            <div class="roof"></div>
+                            <div class="body-house"></div>
+                            <div class="window window--a"></div>
+                            <div class="window window--b"></div>
+
+                            <div class="doors">
+                                <div class="door" data-area="depot" data-label="Depot" data-shed-key="shed-1">
+                                    <div class="door__leaf"></div>
+                                    <div class="door__knob"></div>
+                                    <div class="door__glow"></div>
+                                    <div class="door__caption">Depot</div>
+                                    <div class="door__state">Gesperrt</div>
+                                </div>
+
+                                <div class="door" data-area="swap-house" data-label="Tauschhaus" data-shed-key="shed-1">
+                                    <div class="door__leaf"></div>
+                                    <div class="door__knob"></div>
+                                    <div class="door__glow"></div>
+                                    <div class="door__caption">Tauschhaus</div>
+                                    <div class="door__state">Bereit</div>
+                                </div>
+                            </div>
+
+                            <div class="person person--left" data-person-for="shed-1" aria-hidden="true">
+                                <div class="person__head"></div>
+                                <div class="person__body"></div>
+                            </div>
+                        </div>
+
+                        <div class="shed shed--right">
+                            <div class="roof"></div>
+                            <div class="body-house"></div>
+                            <div class="window window--a"></div>
+                            <div class="window window--b"></div>
+
+                            <div class="doors">
+                                <div class="door" data-area="workshop" data-label="Werkstatt" data-shed-key="shed-2">
+                                    <div class="door__leaf"></div>
+                                    <div class="door__knob"></div>
+                                    <div class="door__glow"></div>
+                                    <div class="door__caption">Werkstatt</div>
+                                    <div class="door__state">Bereit</div>
+                                </div>
+
+                                <div class="door" data-area="sharing" data-label="Ausleihe" data-shed-key="shed-2">
+                                    <div class="door__leaf"></div>
+                                    <div class="door__knob"></div>
+                                    <div class="door__glow"></div>
+                                    <div class="door__caption">Ausleihe</div>
+                                    <div class="door__state">Später</div>
+                                </div>
+                            </div>
+
+                            <div class="person person--right" data-person-for="shed-2" aria-hidden="true">
+                                <div class="person__head"></div>
+                                <div class="person__body"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sim-note">Automatischer Ablauf mit Pause-Funktion und sichtbaren Mausklicks auf Buttons und Links.</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ asset('bundles/communityoffers/demo/demo.js') }}" defer></script>
+{% endblock %}

@@ -201,7 +201,7 @@ Typical indicators:
 - lastArea
 - device status
 
-Simulator devices are excluded from production monitoring.
+Demo devices are excluded from production monitoring.
 
 ---
 

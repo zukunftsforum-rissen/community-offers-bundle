@@ -14,7 +14,7 @@ class DeviceApiUserTest extends TestCase
      */
     public function testExposesIdentifierRolesAndAreasWhenConstructed(): void
     {
-        $user = new DeviceApiUser('device-42', ['workshop', 'depot']);
+        $user = new DeviceApiUser('device-42', ['workshop', 'depot'], false);
 
         $this->assertSame('device-42', $user->getUserIdentifier());
         $this->assertSame('device-42', $user->getDeviceId());
@@ -27,7 +27,7 @@ class DeviceApiUserTest extends TestCase
      */
     public function testKeepsIdentifierWhenEraseCredentialsIsCalled(): void
     {
-        $user = new DeviceApiUser('device-42', ['workshop']);
+        $user = new DeviceApiUser('device-42', ['workshop'], false);
 
         $user->eraseCredentials();
 

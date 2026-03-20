@@ -11,7 +11,7 @@ final class DeviceHeartbeatService implements DeviceHeartbeatInterface
 {
     public function __construct(
         private readonly Connection $connection,
-        private readonly DoorAuditLogger $audit,
+        // private readonly DoorAuditLogger $audit,
     ) {
     }
 
@@ -50,17 +50,17 @@ final class DeviceHeartbeatService implements DeviceHeartbeatInterface
             ],
         );
 
-        $this->audit->audit(
-            action: 'device_poll',
-            area: '',
-            result: 'ok',
-            message: 'Device poll received',
-            context: [
-                'deviceId' => $deviceId,
-                'areas' => $areas,
-            ],
-            correlationId: '',
-            memberId: 0,
-        );
+        // $this->audit->audit(
+        //     action: 'device_poll',
+        //     area: '',
+        //     result: 'ok',
+        //     message: 'Device poll received',
+        //     context: [
+        //         'deviceId' => $deviceId,
+        //         'areas' => $areas,
+        //     ],
+        //     correlationId: '',
+        //     memberId: 0,
+        // );
     }
 }

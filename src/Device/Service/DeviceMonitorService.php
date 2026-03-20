@@ -21,9 +21,7 @@ final class DeviceMonitorService
         $devices = $this->connection->fetchAllAssociative(
             'SELECT id, deviceId, name, enabled, areas, lastSeen, tstamp
                     FROM tl_co_device
-                    WHERE isSimulator != :isSimulator
                     ORDER BY name ASC',
-            ['isSimulator' => '1'],
         );
 
         $result = [];

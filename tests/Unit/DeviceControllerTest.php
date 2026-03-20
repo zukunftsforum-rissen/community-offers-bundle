@@ -17,19 +17,27 @@ use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 use ZukunftsforumRissen\CommunityOffersBundle\Controller\Api\AccessController;
 use ZukunftsforumRissen\CommunityOffersBundle\Controller\Api\DeviceController;
+use ZukunftsforumRissen\CommunityOffersBundle\Door\DoorGatewayInterface;
+use ZukunftsforumRissen\CommunityOffersBundle\Door\DoorGatewayResolver;
+use ZukunftsforumRissen\CommunityOffersBundle\Door\DoorGatewayResult;
 use ZukunftsforumRissen\CommunityOffersBundle\Device\Security\DeviceApiUser;
 use ZukunftsforumRissen\CommunityOffersBundle\Device\Service\DeviceHeartbeatInterface;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\AccessRequestService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\AccessService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\CorrelationIdService;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorOpenObserverInterface;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorOpenObserverResolver;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorAuditLogger;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorJobService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\OpenDoorService;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\SystemMode;
 use Symfony\Component\Workflow\Definition;
 use Symfony\Component\Workflow\MarkingStore\MethodMarkingStore;
 use Symfony\Component\Workflow\StateMachine;
 use Symfony\Component\Workflow\Transition;
 use Symfony\Component\EventDispatcher\EventDispatcher;
+use ZukunftsforumRissen\CommunityOffersBundle\Device\Service\DeviceAccessPolicy;
 use ZukunftsforumRissen\CommunityOffersBundle\Device\Service\DeviceConfirmRateLimitService;
 use ZukunftsforumRissen\CommunityOffersBundle\Device\Service\DeviceRateLimitService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorWorkflowTimelineService;
@@ -79,13 +87,13 @@ class DeviceControllerTest extends TestCase
      */
     public function testWorkflowMemberOpenThenDevicePollAndConfirmExecutesJob(): void
     {
-        $state = (object) ['rows' => [], 'nextId' => 1];
+        $state = $this->createWorkflowState();
         $db = $this->createStatefulDoorJobConnection($state);
         $cache = new InMemoryCachePool();
         $doorJobs = $this->createDoorJobService($db, $cache);
 
         $accessController = $this->createAccessControllerForWorkflow($doorJobs, ['depot']);
-        $deviceController = $this->createControllerWithUser($doorJobs, new DeviceApiUser('device-1', ['depot']));
+        $deviceController = $this->createControllerWithUser($doorJobs, new DeviceApiUser('device-1', ['depot'], false));
 
         $openRequest = Request::create('/api/door/open/depot', 'POST', [], [], [], [
             'REMOTE_ADDR' => '127.0.0.1',
@@ -152,13 +160,13 @@ class DeviceControllerTest extends TestCase
      */
     public function testWorkflowConfirmRejectsWrongNonceThenAcceptsCorrectNonce(): void
     {
-        $state = (object) ['rows' => [], 'nextId' => 1];
+        $state = $this->createWorkflowState();
         $db = $this->createStatefulDoorJobConnection($state);
         $cache = new InMemoryCachePool();
         $doorJobs = $this->createDoorJobService($db, $cache);
 
         $accessController = $this->createAccessControllerForWorkflow($doorJobs, ['depot']);
-        $deviceController = $this->createControllerWithUser($doorJobs, new DeviceApiUser('device-1', ['depot']));
+        $deviceController = $this->createControllerWithUser($doorJobs, new DeviceApiUser('device-1', ['depot'], false));
 
         $openResponse = $accessController->open(
             Request::create('/api/door/open/depot', 'POST', [], [], [], ['REMOTE_ADDR' => '127.0.0.1']),
@@ -223,13 +231,13 @@ class DeviceControllerTest extends TestCase
      */
     public function testWorkflowConfirmWithOkFalseMarksJobAsFailed(): void
     {
-        $state = (object) ['rows' => [], 'nextId' => 1];
+        $state = $this->createWorkflowState();
         $db = $this->createStatefulDoorJobConnection($state);
         $cache = new InMemoryCachePool();
         $doorJobs = $this->createDoorJobService($db, $cache);
 
         $accessController = $this->createAccessControllerForWorkflow($doorJobs, ['depot']);
-        $deviceController = $this->createControllerWithUser($doorJobs, new DeviceApiUser('device-1', ['depot']));
+        $deviceController = $this->createControllerWithUser($doorJobs, new DeviceApiUser('device-1', ['depot'], false));
 
         $openResponse = $accessController->open(
             Request::create('/api/door/open/depot', 'POST', [], [], [], ['REMOTE_ADDR' => '127.0.0.1']),
@@ -278,8 +286,10 @@ class DeviceControllerTest extends TestCase
         $this->assertSame(['accepted' => true, 'status' => 'failed', 'error' => null], $confirmData);
 
         $this->assertArrayHasKey($jobId, $state->rows);
-        $this->assertSame('failed', $state->rows[$jobId]['status']);
-        $this->assertSame('ERR', $state->rows[$jobId]['resultCode']);
+        $row = $state->rows[$jobId] ?? null;
+        $this->assertIsArray($row);
+        $this->assertSame('failed', $row['status'] ?? null);
+        $this->assertSame('ERR', $row['resultCode'] ?? null);
     }
 
     /**
@@ -287,13 +297,13 @@ class DeviceControllerTest extends TestCase
      */
     public function testWorkflowConfirmAfterTimeoutReturnsNotAcceptedAndExpiresJob(): void
     {
-        $state = (object) ['rows' => [], 'nextId' => 1];
+        $state = $this->createWorkflowState();
         $db = $this->createStatefulDoorJobConnection($state);
         $cache = new InMemoryCachePool();
         $doorJobs = $this->createDoorJobService($db, $cache);
 
         $accessController = $this->createAccessControllerForWorkflow($doorJobs, ['depot']);
-        $deviceController = $this->createControllerWithUser($doorJobs, new DeviceApiUser('device-1', ['depot']));
+        $deviceController = $this->createControllerWithUser($doorJobs, new DeviceApiUser('device-1', ['depot'], false));
 
         $openResponse = $accessController->open(
             Request::create('/api/door/open/depot', 'POST', [], [], [], ['REMOTE_ADDR' => '127.0.0.1']),
@@ -349,14 +359,14 @@ class DeviceControllerTest extends TestCase
      */
     public function testWorkflowConfirmFromDifferentDeviceIsRejected(): void
     {
-        $state = (object) ['rows' => [], 'nextId' => 1];
+        $state = $this->createWorkflowState();
         $db = $this->createStatefulDoorJobConnection($state);
         $cache = new InMemoryCachePool();
         $doorJobs = $this->createDoorJobService($db, $cache);
 
         $accessController = $this->createAccessControllerForWorkflow($doorJobs, ['depot']);
-        $dispatchingDeviceController = $this->createControllerWithUser($doorJobs, new DeviceApiUser('device-1', ['depot']));
-        $foreignDeviceController = $this->createControllerWithUser($doorJobs, new DeviceApiUser('device-2', ['depot']));
+        $dispatchingDeviceController = $this->createControllerWithUser($doorJobs, new DeviceApiUser('device-1', ['depot'], false));
+        $foreignDeviceController = $this->createControllerWithUser($doorJobs, new DeviceApiUser('device-2', ['depot'], false));
 
         $openResponse = $accessController->open(
             Request::create('/api/door/open/depot', 'POST', [], [], [], ['REMOTE_ADDR' => '127.0.0.1']),
@@ -395,8 +405,10 @@ class DeviceControllerTest extends TestCase
         $this->assertIsArray($confirmData);
         $this->assertSame(403, $confirmResponse->getStatusCode());
         $this->assertSame(['accepted' => false, 'status' => 'dispatched', 'error' => 'forbidden'], $confirmData);
-        $this->assertSame('dispatched', $state->rows[$jobId]['status']);
-        $this->assertSame('device-1', $state->rows[$jobId]['dispatchToDeviceId']);
+        $row = $state->rows[$jobId] ?? null;
+        $this->assertIsArray($row);
+        $this->assertSame('dispatched', $row['status'] ?? null);
+        $this->assertSame('device-1', $row['dispatchToDeviceId'] ?? null);
     }
 
     /**
@@ -404,13 +416,13 @@ class DeviceControllerTest extends TestCase
      */
     public function testWorkflowPollWithDifferentAreaReturnsNoJobs(): void
     {
-        $state = (object) ['rows' => [], 'nextId' => 1];
+        $state = $this->createWorkflowState();
         $db = $this->createStatefulDoorJobConnection($state);
         $cache = new InMemoryCachePool();
         $doorJobs = $this->createDoorJobService($db, $cache);
 
         $accessController = $this->createAccessControllerForWorkflow($doorJobs, ['depot']);
-        $wrongAreaDeviceController = $this->createControllerWithUser($doorJobs, new DeviceApiUser('device-9', ['workshop']));
+        $wrongAreaDeviceController = $this->createControllerWithUser($doorJobs, new DeviceApiUser('device-9', ['workshop'], false));
 
         $openResponse = $accessController->open(
             Request::create('/api/door/open/depot', 'POST', [], [], [], ['REMOTE_ADDR' => '127.0.0.1']),
@@ -423,7 +435,9 @@ class DeviceControllerTest extends TestCase
         $this->assertArrayHasKey('jobId', $openData);
 
         $jobId = (int) $openData['jobId'];
-        $this->assertSame('pending', $state->rows[$jobId]['status']);
+        $row = $state->rows[$jobId] ?? null;
+        $this->assertIsArray($row);
+        $this->assertSame('pending', $row['status'] ?? null);
 
         $pollResponse = $wrongAreaDeviceController->poll(Request::create(
             '/api/device/poll',
@@ -440,8 +454,10 @@ class DeviceControllerTest extends TestCase
         $this->assertSame(200, $pollResponse->getStatusCode());
         $this->assertSame([], $pollData['jobs']);
         $this->assertSame(800, $pollData['nextPollInMs']);
-        $this->assertSame('pending', $state->rows[$jobId]['status']);
-        $this->assertSame('', $state->rows[$jobId]['dispatchToDeviceId']);
+        $row = $state->rows[$jobId] ?? null;
+        $this->assertIsArray($row);
+        $this->assertSame('pending', $row['status'] ?? null);
+        $this->assertSame('', $row['dispatchToDeviceId'] ?? null);
     }
 
     /**
@@ -505,7 +521,7 @@ class DeviceControllerTest extends TestCase
         ;
 
         $jobs = $this->createDoorJobService($db, $this->createStub(CacheItemPoolInterface::class));
-        $controller = $this->createControllerWithUser($jobs, new DeviceApiUser('device-1', ['depot']));
+        $controller = $this->createControllerWithUser($jobs, new DeviceApiUser('device-1', ['depot'], false));
 
         $request = Request::create('/api/device/poll', 'POST', [], [], [], [], json_encode(['limit' => 2]));
         $response = $controller->poll($request);
@@ -537,7 +553,7 @@ class DeviceControllerTest extends TestCase
         $db->expects($this->never())->method('fetchAssociative');
 
         $jobs = $this->createDoorJobService($db, $this->createStub(CacheItemPoolInterface::class));
-        $controller = $this->createControllerWithUser($jobs, new DeviceApiUser('device-1', ['depot']));
+        $controller = $this->createControllerWithUser($jobs, new DeviceApiUser('device-1', ['depot'], false));
 
         $request = Request::create('/api/device/poll', 'POST', [], [], [], [], json_encode(['limit' => 2]));
         $response = $controller->poll($request);
@@ -576,7 +592,7 @@ class DeviceControllerTest extends TestCase
     {
         $controller = $this->createControllerWithUser(
             $this->createJobsServiceWithoutExpectations(),
-            new DeviceApiUser('device-1', ['depot']),
+            new DeviceApiUser('device-1', ['depot'], false),
         );
 
         $request = Request::create('/api/device/confirm', 'POST', [], [], [], [], json_encode(['jobId' => 0, 'nonce' => '']));
@@ -611,7 +627,7 @@ class DeviceControllerTest extends TestCase
         ;
 
         $jobs = $this->createDoorJobService($db, $this->createStub(CacheItemPoolInterface::class));
-        $controller = $this->createControllerWithUser($jobs, new DeviceApiUser('device-1', ['depot']));
+        $controller = $this->createControllerWithUser($jobs, new DeviceApiUser('device-1', ['depot'], false));
 
         $request = Request::create(
             '/api/device/confirm',
@@ -665,6 +681,7 @@ class DeviceControllerTest extends TestCase
             $heartbeat,
             $this->createAlwaysAllowingDeviceRateLimitService(),
             $this->createAlwaysAllowingDeviceConfirmRateLimitService(),
+            new DeviceAccessPolicy(new SystemMode('live')),
         );
 
         $tokenStorage = $this->createMock(TokenStorageInterface::class);
@@ -719,6 +736,9 @@ class DeviceControllerTest extends TestCase
         return $this->createDoorJobService($db, $this->createStub(CacheItemPoolInterface::class));
     }
 
+    /**
+     * @param list<string> $grantedAreas
+     */
     private function createAccessControllerForWorkflow(DoorJobService $doorJobs, array $grantedAreas): AccessController
     {
         $security = $this->createMock(Security::class);
@@ -730,15 +750,73 @@ class DeviceControllerTest extends TestCase
         $accessRequestService = $this->createMock(AccessRequestService::class);
         $logging = $this->createMock(LoggingService::class);
 
+        $openDoorService = $this->createOpenDoorServiceForWorkflow($doorJobs, $accessService);
+
         return new AccessController(
             $security,
             $accessService,
             $accessRequestService,
-            $doorJobs,
+            $openDoorService,
             $logging,
             $this->createStub(DoorAuditLogger::class),
             new CorrelationIdService(),
         );
+    }
+
+    private function createOpenDoorServiceForWorkflow(DoorJobService $doorJobs, AccessService $accessService): OpenDoorService
+    {
+        $gateway = new class($doorJobs) implements DoorGatewayInterface {
+            public function __construct(private readonly DoorJobService $doorJobs)
+            {
+            }
+
+            public function supports(string $mode): bool
+            {
+                return 'live' === $mode;
+            }
+
+            public function open(string $area, int $memberId, array $context = []): DoorGatewayResult
+            {
+                $result = $this->doorJobs->createOpenJob(
+                    $memberId,
+                    $area,
+                    (string) ($context['ip'] ?? ''),
+                    (string) ($context['userAgent'] ?? ''),
+                );
+
+                if ((bool) $result['ok']) {
+                    return DoorGatewayResult::success(
+                        (string) $result['status'],
+                        (string) $result['message'],
+                        (int) $result['httpStatus'],
+                        (int) ($result['jobId'] ?? 0),
+                        (int) ($result['expiresAt'] ?? (time() + 30)),
+                        isset($result['retryAfterSeconds']) ? (int) $result['retryAfterSeconds'] : null,
+                    );
+                }
+
+                return DoorGatewayResult::failure(
+                    (string) $result['status'],
+                    (string) $result['message'],
+                    (int) $result['httpStatus'],
+                    $result['retryAfterSeconds'] ?? null,
+                );
+            }
+        };
+
+        $observer = $this->createMock(DoorOpenObserverInterface::class);
+
+        return new OpenDoorService(
+            $accessService,
+            new DoorGatewayResolver([$gateway]),
+            new DoorOpenObserverResolver($observer),
+            new SystemMode('live'),
+        );
+    }
+
+    private function createWorkflowState(): WorkflowState
+    {
+        return new WorkflowState();
     }
 
     private function createFrontendUser(int $id, string $firstname, string $lastname, string $email): FrontendUser
@@ -756,7 +834,7 @@ class DeviceControllerTest extends TestCase
         return $user;
     }
 
-    private function createStatefulDoorJobConnection(object $state): Connection
+    private function createStatefulDoorJobConnection(WorkflowState $state): Connection
     {
         $db = $this->createMock(Connection::class);
 
@@ -803,8 +881,10 @@ class DeviceControllerTest extends TestCase
             }
 
             usort($rows, static function (array $left, array $right) use ($state): int {
-                $leftCreatedAt = (int) ($state->rows[(int) ($left['id'] ?? 0)]['createdAt'] ?? 0);
-                $rightCreatedAt = (int) ($state->rows[(int) ($right['id'] ?? 0)]['createdAt'] ?? 0);
+                $leftId = (int) $left['id'];
+                $rightId = (int) $right['id'];
+                $leftCreatedAt = isset($state->rows[$leftId]) ? (int) ($state->rows[$leftId]['createdAt'] ?? 0) : 0;
+                $rightCreatedAt = isset($state->rows[$rightId]) ? (int) ($state->rows[$rightId]['createdAt'] ?? 0) : 0;
 
                 return $leftCreatedAt <=> $rightCreatedAt;
             });
@@ -1100,6 +1180,13 @@ class DeviceControllerTest extends TestCase
     }
 }
 
+final class WorkflowState
+{
+    /** @var array<int, array<string, mixed>> */
+    public array $rows = [];
+    public int $nextId = 1;
+}
+
 final class InMemoryCachePool implements CacheItemPoolInterface
 {
     /** @var array<string, InMemoryCacheItem> */
@@ -1114,6 +1201,9 @@ final class InMemoryCachePool implements CacheItemPoolInterface
         return $this->items[$key];
     }
 
+    /**
+     * @return iterable<string, CacheItemInterface>
+     */
     public function getItems(array $keys = []): iterable
     {
         $result = [];

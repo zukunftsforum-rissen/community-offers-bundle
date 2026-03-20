@@ -12,9 +12,8 @@ final class OpenDoorService
     public function __construct(
         private readonly AccessService $accessService,
         private readonly DoorGatewayResolver $doorGatewayResolver,
-        private readonly LoggingService $logging,
-        private readonly DoorAuditLogger $audit,
-        private readonly string $mode = 'live',
+        private readonly DoorOpenObserverResolver $observerResolver,
+        private readonly SystemMode $systemMode,
     ) {
     }
 
@@ -25,7 +24,6 @@ final class OpenDoorService
      *   message: string,
      *   accepted: bool,
      *   mode: string,
-     *   simulated?: bool,
      *   jobId?: int,
      *   status?: string,
      *   expiresAt?: int,
@@ -39,28 +37,18 @@ final class OpenDoorService
         string $userAgent = '',
         string $correlationId = '',
     ): array {
+        $mode = $this->systemMode->asString();
+        $observer = $this->observerResolver->resolve($mode);
+
         $areas = $this->accessService->getGrantedAreasForMemberId($memberId);
 
         if (!\in_array($area, $areas, true)) {
-            $this->logging->warning('door_open.forbidden', [
-                'cid' => $correlationId,
-                'memberId' => $memberId,
-                'area' => $area,
-                'ip' => $ip,
-                'mode' => $this->mode,
-            ]);
-
-            $this->audit->audit(
-                action: 'door_open',
-                area: $area,
-                result: 'forbidden',
-                message: 'Door open forbidden',
-                correlationId: $correlationId,
+            $observer->onForbidden(
                 memberId: $memberId,
-                context: [
-                    'ip' => $ip,
-                    'mode' => $this->mode,
-                ],
+                area: $area,
+                ip: $ip,
+                correlationId: $correlationId,
+                mode: $mode,
             );
 
             return [
@@ -68,67 +56,30 @@ final class OpenDoorService
                 'httpStatus' => 403,
                 'message' => 'Forbidden',
                 'accepted' => false,
-                'mode' => $this->mode,
+                'mode' => $mode,
             ];
         }
 
-        $gateway = $this->doorGatewayResolver->resolve($this->mode);
+        $gateway = $this->doorGatewayResolver->resolve($mode);
 
-        $gatewayResult = $gateway->open($area, $memberId, [
+        $result = $gateway->open($area, $memberId, [
             'ip' => $ip,
             'userAgent' => $userAgent,
             'correlationId' => $correlationId,
+            'mode' => $mode,
         ]);
 
-        $auditResult = $gatewayResult->isOk() ? $gatewayResult->getStatus() : 'error';
-
-        $this->audit->audit(
-            action: 'door_open',
-            area: $area,
-            result: $auditResult,
-            message: $gatewayResult->getMessage(),
-            correlationId: $correlationId,
+        $observer->onResult(
             memberId: $memberId,
-            context: [
-                'ip' => $ip,
-                'userAgent' => $userAgent,
-                'mode' => $this->mode,
-            ] + $gatewayResult->getContext(),
+            area: $area,
+            ip: $ip,
+            userAgent: $userAgent,
+            correlationId: $correlationId,
+            mode: $mode,
+            result: $result,
         );
 
-        if ($gatewayResult->isOk()) {
-            $this->logging->info('door_open.success', [
-                'cid' => $correlationId,
-                'memberId' => $memberId,
-                'area' => $area,
-                'jobId' => $gatewayResult->getJobId(),
-                'status' => $gatewayResult->getStatus(),
-                'httpStatus' => $gatewayResult->getHttpStatus(),
-                'mode' => $this->mode,
-            ]);
-        } elseif (429 === $gatewayResult->getHttpStatus()) {
-            $this->logging->warning('door_open.rate_limited', [
-                'cid' => $correlationId,
-                'memberId' => $memberId,
-                'area' => $area,
-                'retryAfterSeconds' => $gatewayResult->getRetryAfterSeconds(),
-                'httpStatus' => $gatewayResult->getHttpStatus(),
-                'mode' => $this->mode,
-            ]);
-        } else {
-            $this->logging->error('door_open.error', [
-                'cid' => $correlationId,
-                'memberId' => $memberId,
-                'area' => $area,
-                'httpStatus' => $gatewayResult->getHttpStatus(),
-                'message' => $gatewayResult->getMessage(),
-                'jobId' => $gatewayResult->getJobId(),
-                'status' => $gatewayResult->getStatus(),
-                'mode' => $this->mode,
-            ]);
-        }
-
-        return $this->toResponsePayload($gatewayResult);
+        return $this->toResponsePayload($result, $mode);
     }
 
     /**
@@ -138,27 +89,22 @@ final class OpenDoorService
      *   message: string,
      *   accepted: bool,
      *   mode: string,
-     *   simulated?: bool,
      *   jobId?: int,
      *   status?: string,
      *   expiresAt?: int,
      *   retryAfterSeconds?: int
      * }
      */
-    private function toResponsePayload(DoorGatewayResult $result): array
+    private function toResponsePayload(DoorGatewayResult $result, string $mode): array
     {
         $payload = [
             'ok' => $result->isOk(),
             'httpStatus' => $result->getHttpStatus(),
             'message' => $result->getMessage(),
-            'accepted' => $result->isOk() && (null !== $result->getJobId() || 'simulation' === $this->mode),
-            'mode' => $this->mode,
+            'accepted' => $result->isOk() && null !== $result->getJobId(),
+            'mode' => $mode,
             'status' => $result->getStatus(),
         ];
-
-        if ('simulation' === $this->mode) {
-            $payload['simulated'] = true;
-        }
 
         if (null !== $result->getJobId()) {
             $payload['jobId'] = $result->getJobId();

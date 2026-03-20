@@ -3,17 +3,15 @@
 Community Offers Bundle – Door Control Architecture
 
 ## Ziel
-Das System unterstützt drei Betriebsmodi, um unterschiedliche Anforderungen zu erfüllen:
+Das System unterstützt zwei Betriebsmodi, um unterschiedliche Anforderungen zu erfüllen:
 
 1. Produktivbetrieb (live)
-2. Diagnose/Testbetrieb mit vollem Workflow (emulation)
-3. Präsentations-/Demo-Modus ohne Workflow (simulation)
+2. Diagnose/Testbetrieb mit vollem Workflow (emulator)
 
 Diese Modi ermöglichen:
 
 - sicheren Produktivbetrieb
 - reproduzierbare Fehleranalyse in Produktion
-- Hardware-freie Demonstrationen
 
 Die Modi werden über die Konfiguration `community_offers.mode` gesteuert.
 
@@ -60,7 +58,7 @@ isEmulator = true
 
 ---
 
-## 2. emulation
+## 2. emulator
 
 Diagnose- und Testmodus mit vollständigem Workflow, aber ohne reale Hardware.
 
@@ -105,37 +103,6 @@ isEmulator = false
 
 ---
 
-## 3. simulation
-
-Demo- und Präsentationsmodus ohne Workflow.
-
-Zweck:
-
-- Präsentationen
-- UI-Demonstrationen
-- Hardwarefreie Tests
-
-Eigenschaften:
-
-- kein Job
-- kein Polling
-- kein Confirm
-- direkter Erfolg
-
-Workflow:
-
-App  
-↓  
-OpenDoorService  
-↓  
-SimulatorDoorGateway  
-↓  
-Direkter Erfolg  
-
-Es existiert kein Device-Workflow.
-
----
-
 # Device-Typen
 
 Devices besitzen ein Merkmal:
@@ -149,8 +116,6 @@ Bedeutung:
 | isEmulator = false | reales Device (Raspberry Pi) |
 | isEmulator = true | Emulator-Device für Workflow-Tests |
 
-Ein separates `isSimulator` ist nicht mehr erforderlich.
-
 ---
 
 # Execution Channel
@@ -161,7 +126,6 @@ Zusätzlich zum Mode wird der technische Ausführungspfad gespeichert.
 
 physical  
 emulator  
-simulator  
 
 Bedeutung:
 
@@ -169,7 +133,6 @@ Bedeutung:
 |-------|-------------|
 | physical | reale Hardware |
 | emulator | Emulator-Device |
-| simulator | direkte Simulation |
 
 ---
 
@@ -189,12 +152,12 @@ Live-Job:
 mode = live  
 channel = physical  
 
-Emulation:
+emulator:
 
-mode = emulation  
+mode = emulator
 channel = emulator  
 
-Simulation erzeugt keinen Job.
+ erzeugt keinen Job.
 
 ---
 
@@ -212,12 +175,11 @@ door_open.success
 context:
   area: workshop
   memberId: 23
-  mode: emulation
+  mode: emulator
   channel: emulator
   jobId: 1284
 
 Damit lassen sich später eindeutig unterscheiden:
 
 - echte Öffnungen
-- Emulation
-- Demo-Simulation
+- emulator

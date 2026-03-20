@@ -1,4 +1,4 @@
-Der Simulator dient ausschließlich zu Demonstrations- und
+Der Demo dient ausschließlich zu Demonstrations- und
 Testzwecken.
 
 Er verwendet nicht den produktiven Poll-Endpunkt

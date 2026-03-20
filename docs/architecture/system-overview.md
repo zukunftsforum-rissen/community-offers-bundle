@@ -12,7 +12,7 @@ DoorAuditLogger
 DoorWorkflowTimelineService
 DeviceHeartbeatService
 DeviceMonitorService
-SimulatorDeviceService
+DemoDeviceService
 CorrelationIdService
 DeviceRateLimitService
 DeviceConfirmRateLimitService

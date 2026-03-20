@@ -24,7 +24,7 @@ use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorAuditLogger;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorJobService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService;
 use ZukunftsforumRissen\CommunityOffersBundle\Workflow\DoorJobWorkflowSubscriber;
-
+use ZukunftsforumRissen\CommunityOffersBundle\Service\OpenDoorService;
 class ApiAccessControllerTest extends TestCase
 {
     /**
@@ -341,31 +341,25 @@ class ApiAccessControllerTest extends TestCase
         $this->assertLessThanOrEqual(9, (int) $retryAfter);
     }
 
-    private function createController(
-        Security $security,
-        AccessService $accessService,
-        AccessRequestService $accessRequestService,
-        LoggingService $logging,
-        DoorJobService|null $doorJobs = null,
-    ): AccessController {
-        $doorJobs ??= new DoorJobService(
-            $this->createStub(Connection::class),
-            $this->createStub(CacheItemPoolInterface::class),
-            $this->createDoorJobStateMachine(),
-            $this->createStub(LoggingService::class),
-            $this->createStub(DoorAuditLogger::class),
-        );
+private function createController(
+    Security $security,
+    AccessService $accessService,
+    AccessRequestService $accessRequestService,
+    LoggingService $logging,
+    OpenDoorService|null $openDoorService = null,
+): AccessController {
+    $openDoorService ??= $this->createMock(OpenDoorService::class);
 
-        return new AccessController(
-            $security,
-            $accessService,
-            $accessRequestService,
-            $doorJobs,
-            $logging,
-            $this->createStub(DoorAuditLogger::class),
-            new CorrelationIdService(),
-        );
-    }
+    return new AccessController(
+        $security,
+        $accessService,
+        $accessRequestService,
+        $openDoorService,
+        $logging,
+        $this->createStub(DoorAuditLogger::class),
+        new CorrelationIdService(),
+    );
+}
 
     private function createFrontendUser(int $id, string $firstname, string $lastname, string $email): FrontendUser
     {

@@ -30,6 +30,7 @@ use Symfony\Component\Workflow\MarkingStore\MethodMarkingStore;
 use Symfony\Component\Workflow\StateMachine;
 use Symfony\Component\Workflow\Transition;
 use Symfony\Component\EventDispatcher\EventDispatcher;
+use ZukunftsforumRissen\CommunityOffersBundle\Device\Service\DeviceAccessPolicy;
 use ZukunftsforumRissen\CommunityOffersBundle\Device\Service\DeviceConfirmRateLimitService;
 use ZukunftsforumRissen\CommunityOffersBundle\Device\Service\DeviceRateLimitService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorWorkflowTimelineService;
@@ -85,7 +86,7 @@ class DeviceControllerTest extends TestCase
         $doorJobs = $this->createDoorJobService($db, $cache);
 
         $accessController = $this->createAccessControllerForWorkflow($doorJobs, ['depot']);
-        $deviceController = $this->createControllerWithUser($doorJobs, new DeviceApiUser('device-1', ['depot']));
+        $deviceController = $this->createControllerWithUser($doorJobs, new DeviceApiUser('device-1', ['depot'], false));
 
         $openRequest = Request::create('/api/door/open/depot', 'POST', [], [], [], [
             'REMOTE_ADDR' => '127.0.0.1',
@@ -659,13 +660,19 @@ class DeviceControllerTest extends TestCase
             public function registerPoll(int|string $deviceId, array $areas = []): void {}
         };
 
-        $controller = new DeviceController(
-            $jobs,
-            $this->createStub(LoggingService::class),
-            $heartbeat,
-            $this->createAlwaysAllowingDeviceRateLimitService(),
-            $this->createAlwaysAllowingDeviceConfirmRateLimitService(),
-        );
+$policy = $this->createMock(DeviceAccessPolicy::class);
+
+$policy->method('canPoll')->willReturn(true);
+$policy->method('canConfirm')->willReturn(true);
+
+$controller = new DeviceController(
+    $jobs,
+    $this->createStub(LoggingService::class),
+    $heartbeat,
+    $this->createAlwaysAllowingDeviceRateLimitService(),
+    $this->createAlwaysAllowingDeviceConfirmRateLimitService(),
+    $policy
+);
 
         $tokenStorage = $this->createMock(TokenStorageInterface::class);
 

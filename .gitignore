@@ -41,8 +41,10 @@ FILELIST.txt
 Todos.txt
 prompts.txt
 /prompts/
+backup/
 *.zip
-/git/
+*.tar
+*.gz/git/
 bundle.zip
 /.idea
 

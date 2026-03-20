@@ -20,11 +20,22 @@ final class DoorWorkflowCorrelationTest extends KernelTestCase
         $kernelClass = $_SERVER['KERNEL_CLASS'] ?? $_ENV['KERNEL_CLASS'] ?? null;
 
         if (!\is_string($kernelClass) || '' === $kernelClass || !class_exists($kernelClass)) {
-            self::markTestSkipped('KERNEL_CLASS is not available or does not exist.');
+            self::markTestSkipped(
+                'Integration test intentionally skipped: requires a bootable application kernel. '
+                . 'Set KERNEL_CLASS to run correlation workflow integration checks.',
+            );
         }
 
         if (method_exists($kernelClass, 'setProjectDir')) {
-            $kernelClass::setProjectDir(\dirname(__DIR__, 4));
+            $projectDir = $_SERVER['PROJECT_DIR'] ?? $_ENV['PROJECT_DIR'] ?? getcwd();
+
+            if (!\is_string($projectDir) || '' === $projectDir) {
+                self::markTestSkipped(
+                    'Integration test intentionally skipped: PROJECT_DIR is required to initialize ContaoKernel.',
+                );
+            }
+
+            $kernelClass::setProjectDir($projectDir);
         }
 
         self::bootKernel();
@@ -48,7 +59,7 @@ final class DoorWorkflowCorrelationTest extends KernelTestCase
             $this->db->executeQuery('SELECT 1');
         } catch (\Throwable $exception) {
             self::markTestSkipped(sprintf(
-                'Database is not available for integration test (%s: %s).',
+                'Integration test intentionally skipped: requires a reachable test database for real workflow persistence (%s: %s).',
                 $exception::class,
                 $exception->getMessage(),
             ));

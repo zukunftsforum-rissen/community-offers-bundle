@@ -14,11 +14,17 @@ class KernelBootIntegrationTest extends KernelTestCase
         $kernelClass = $_SERVER['KERNEL_CLASS'] ?? $_ENV['KERNEL_CLASS'] ?? null;
 
         if (!\is_string($kernelClass) || '' === $kernelClass) {
-            $this->markTestSkipped('Set KERNEL_CLASS to run integration tests, e.g. KERNEL_CLASS=App\\Kernel.');
+            $this->markTestSkipped(
+                'Integration test intentionally skipped: no application kernel configured. '
+                . 'Set KERNEL_CLASS (for example App\\Kernel) to run full kernel boot tests.',
+            );
         }
 
         if (!class_exists($kernelClass)) {
-            $this->markTestSkipped(sprintf('Configured KERNEL_CLASS "%s" is not autoloadable in this context.', $kernelClass));
+            $this->markTestSkipped(sprintf(
+                'Integration test intentionally skipped: configured KERNEL_CLASS "%s" is not autoloadable.',
+                $kernelClass,
+            ));
         }
 
         $contaoKernelClass = 'Contao\\ManagerBundle\\HttpKernel\\ContaoKernel';
@@ -31,7 +37,9 @@ class KernelBootIntegrationTest extends KernelTestCase
             }
 
             if (!\is_string($projectDir) || '' === $projectDir) {
-                $this->markTestSkipped('Could not determine PROJECT_DIR for ContaoKernel initialization.');
+                $this->markTestSkipped(
+                    'Integration test intentionally skipped: PROJECT_DIR is required to initialize ContaoKernel.',
+                );
             }
 
             $contaoKernelClass::setProjectDir($projectDir);
@@ -41,7 +49,7 @@ class KernelBootIntegrationTest extends KernelTestCase
             self::bootKernel();
         } catch (\Throwable $exception) {
             $this->markTestSkipped(sprintf(
-                'Kernel boot failed in current environment (%s: %s).',
+                'Integration test intentionally skipped: kernel boot failed in this environment (%s: %s).',
                 $exception::class,
                 $exception->getMessage(),
             ));

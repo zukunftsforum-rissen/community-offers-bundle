@@ -52,5 +52,11 @@ export async function openDoor(slug) {
         message: body.message,
         retryAfterSeconds: body.retryAfterSeconds,
         door: body.door,
+        jobId: body.jobId,
+        accepted: body.accepted,
+        mode: body.mode,
+        jobStatus: body.status,
+        expiresAt: body.expiresAt,
+        correlationId: body.correlationId,
     };
 }

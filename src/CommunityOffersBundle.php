@@ -28,7 +28,7 @@ final class CommunityOffersBundle extends AbstractBundle
     public function loadExtension(array $config, ContainerConfigurator $container, ContainerBuilder $builder): void
     {
         $processor = new Processor();
-        $processedConfig = $processor->processConfiguration(new Configuration(), [$config]);
+        $processor->processConfiguration(new Configuration(), [$config]);
 
         $container->import('../config/services.yaml');
     }

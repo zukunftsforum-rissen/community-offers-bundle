@@ -14,9 +14,9 @@ final class DoorGatewayResult
         private readonly string $status,
         private readonly string $message,
         private readonly int $httpStatus = 200,
-        private readonly ?int $jobId = null,
-        private readonly ?int $expiresAt = null,
-        private readonly ?int $retryAfterSeconds = null,
+        private readonly int|null $jobId = null,
+        private readonly int|null $expiresAt = null,
+        private readonly int|null $retryAfterSeconds = null,
         private readonly array $context = [],
     ) {
     }
@@ -24,15 +24,8 @@ final class DoorGatewayResult
     /**
      * @param array<string, mixed> $context
      */
-    public static function success(
-        string $status,
-        string $message,
-        int $httpStatus = 200,
-        ?int $jobId = null,
-        ?int $expiresAt = null,
-        ?int $retryAfterSeconds = null,
-        array $context = [],
-    ): self {
+    public static function success(string $status, string $message, int $httpStatus = 200, int|null $jobId = null, int|null $expiresAt = null, int|null $retryAfterSeconds = null, array $context = []): self
+    {
         return new self(
             ok: true,
             status: $status,
@@ -48,13 +41,8 @@ final class DoorGatewayResult
     /**
      * @param array<string, mixed> $context
      */
-    public static function failure(
-        string $status,
-        string $message,
-        int $httpStatus = 500,
-        ?int $retryAfterSeconds = null,
-        array $context = [],
-    ): self {
+    public static function failure(string $status, string $message, int $httpStatus = 500, int|null $retryAfterSeconds = null, array $context = []): self
+    {
         return new self(
             ok: false,
             status: $status,
@@ -87,17 +75,17 @@ final class DoorGatewayResult
         return $this->httpStatus;
     }
 
-    public function getJobId(): ?int
+    public function getJobId(): int|null
     {
         return $this->jobId;
     }
 
-    public function getExpiresAt(): ?int
+    public function getExpiresAt(): int|null
     {
         return $this->expiresAt;
     }
 
-    public function getRetryAfterSeconds(): ?int
+    public function getRetryAfterSeconds(): int|null
     {
         return $this->retryAfterSeconds;
     }

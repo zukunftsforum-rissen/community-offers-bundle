@@ -15,7 +15,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(
     name: 'community-offers:emulator:create-device',
-    description: 'Creates or updates the emulator device and prints a fresh plaintext token.'
+    description: 'Creates or updates the emulator device and prints a fresh plaintext token.',
 )]
 final class CreateEmulatorDeviceCommand extends Command
 {
@@ -30,19 +30,9 @@ final class CreateEmulatorDeviceCommand extends Command
         $this
             ->addArgument('deviceId', InputArgument::OPTIONAL, 'Device ID', 'pi-emulator')
             ->addArgument('name', InputArgument::OPTIONAL, 'Device name', 'PI Emulator')
-            ->addOption(
-                'areas',
-                null,
-                InputOption::VALUE_REQUIRED,
-                'Comma-separated list of areas',
-                'workshop,sharing,depot,swap-house'
-            )
-            ->addOption(
-                'print-env-snippet',
-                null,
-                InputOption::VALUE_NONE,
-                'Print a .env.local snippet with the generated token'
-            );
+            ->addOption('areas', null, InputOption::VALUE_REQUIRED, 'Comma-separated list of areas', 'workshop,sharing,depot,swap-house')
+            ->addOption('print-env-snippet', null, InputOption::VALUE_NONE, 'Print a .env.local snippet with the generated token')
+        ;
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -56,7 +46,7 @@ final class CreateEmulatorDeviceCommand extends Command
 
         $areas = array_values(array_filter(array_map(
             static fn (string $v): string => trim($v),
-            explode(',', $areasOption)
+            explode(',', $areasOption),
         )));
 
         if ([] === $areas) {
@@ -73,7 +63,7 @@ final class CreateEmulatorDeviceCommand extends Command
 
         $existing = $this->db->fetchAssociative(
             'SELECT id FROM tl_co_device WHERE deviceId = :deviceId LIMIT 1',
-            ['deviceId' => $deviceId]
+            ['deviceId' => $deviceId],
         );
 
         if ($existing) {
@@ -87,32 +77,29 @@ final class CreateEmulatorDeviceCommand extends Command
                     'areas' => $serializedAreas,
                     'apiTokenHash' => $tokenHash,
                 ],
-                ['id' => (int) $existing['id']]
+                ['id' => (int) $existing['id']],
             );
 
             $action = 'updated';
             $id = (int) $existing['id'];
         } else {
-            $this->db->insert(
-                'tl_co_device',
-                [
-                    'tstamp' => $now,
-                    'name' => $name,
-                    'deviceId' => $deviceId,
-                    'enabled' => '1',
-                    'isEmulator' => '1',
-                    'areas' => $serializedAreas,
-                    'apiTokenHash' => $tokenHash,
-                    'lastSeen' => 0,
-                    'ipLast' => '',
-                ]
-            );
+            $this->db->insert('tl_co_device', [
+                'tstamp' => $now,
+                'name' => $name,
+                'deviceId' => $deviceId,
+                'enabled' => '1',
+                'isEmulator' => '1',
+                'areas' => $serializedAreas,
+                'apiTokenHash' => $tokenHash,
+                'lastSeen' => 0,
+                'ipLast' => '',
+            ]);
 
             $action = 'created';
             $id = (int) $this->db->lastInsertId();
         }
 
-        $io->success(sprintf('Emulator device %s.', $action));
+        $io->success(\sprintf('Emulator device %s.', $action));
 
         $io->table(
             ['Field', 'Value'],
@@ -123,21 +110,21 @@ final class CreateEmulatorDeviceCommand extends Command
                 ['isEmulator', '1'],
                 ['enabled', '1'],
                 ['areas', implode(', ', $areas)],
-            ]
+            ],
         );
 
         $io->warning('The plaintext token is shown only once. Store it securely now.');
 
         $io->writeln('');
-        $io->writeln('<info>CO_EMULATOR_TOKEN=' . $plainToken . '</info>');
+        $io->writeln('<info>CO_EMULATOR_TOKEN='.$plainToken.'</info>');
         $io->writeln('');
 
         if ((bool) $input->getOption('print-env-snippet')) {
             $io->section('.env.local snippet');
 
             $io->writeln('CO_EMULATOR_BASE_URL=https://your-domain');
-            $io->writeln('CO_EMULATOR_DEVICE_ID=' . $deviceId);
-            $io->writeln('CO_EMULATOR_TOKEN=' . $plainToken);
+            $io->writeln('CO_EMULATOR_DEVICE_ID='.$deviceId);
+            $io->writeln('CO_EMULATOR_TOKEN='.$plainToken);
             $io->writeln('CO_EMULATOR_POLL_INTERVAL_SECONDS=2');
         }
 

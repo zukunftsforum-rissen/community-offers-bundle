@@ -10,6 +10,7 @@ use ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService;
 final class WorkflowDoorGateway implements DoorGatewayInterface
 {
     public const MODE_LIVE = 'live';
+
     public const MODE_EMULATOR = 'emulator';
 
     public function __construct(
@@ -20,10 +21,14 @@ final class WorkflowDoorGateway implements DoorGatewayInterface
 
     public function supports(string $mode): bool
     {
-        return \in_array($mode, [
-            self::MODE_LIVE,
-            self::MODE_EMULATOR,
-        ], true);
+        return \in_array(
+            $mode,
+            [
+                self::MODE_LIVE,
+                self::MODE_EMULATOR,
+            ],
+            true,
+        );
     }
 
     /**
@@ -35,7 +40,7 @@ final class WorkflowDoorGateway implements DoorGatewayInterface
         $channel = match ($mode) {
             self::MODE_LIVE => 'physical',
             self::MODE_EMULATOR => 'emulator',
-            default => throw new \RuntimeException(sprintf('Unsupported mode "%s"', $mode)),
+            default => throw new \RuntimeException(\sprintf('Unsupported mode "%s"', $mode)),
         };
 
         $ip = isset($context['ip']) ? (string) $context['ip'] : '';

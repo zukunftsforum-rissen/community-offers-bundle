@@ -9,9 +9,10 @@ final class SystemMode
     public function __construct(private readonly string $mode)
     {
         if (!\in_array($mode, ['live', 'emulator'], true)) {
-            throw new \InvalidArgumentException(sprintf('Invalid system mode "%s"', $mode));
+            throw new \InvalidArgumentException(\sprintf('Invalid system mode "%s"', $mode));
         }
     }
+
     public function asString(): string
     {
         return $this->mode;
@@ -19,12 +20,12 @@ final class SystemMode
 
     public function isLive(): bool
     {
-        return $this->mode === 'live';
+        return 'live' === $this->mode;
     }
 
     public function isEmulator(): bool
     {
-        return $this->mode === 'emulator';
+        return 'emulator' === $this->mode;
     }
 
     public function isValid(): bool

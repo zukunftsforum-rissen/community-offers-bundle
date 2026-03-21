@@ -22,9 +22,6 @@ final class DoorGatewayResolver
             }
         }
 
-        throw new \RuntimeException(sprintf(
-            'No door gateway found for mode "%s".',
-            $mode,
-        ));
+        throw new \RuntimeException(\sprintf('No door gateway found for mode "%s".', $mode));
     }
 }

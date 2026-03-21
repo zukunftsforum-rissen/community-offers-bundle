@@ -8,21 +8,7 @@ use ZukunftsforumRissen\CommunityOffersBundle\Door\DoorGatewayResult;
 
 interface DoorOpenObserverInterface
 {
-    public function onForbidden(
-        int $memberId,
-        string $area,
-        string $ip,
-        string $correlationId,
-        string $mode,
-    ): void;
+    public function onForbidden(int $memberId, string $area, string $ip, string $correlationId, string $mode): void;
 
-    public function onResult(
-        int $memberId,
-        string $area,
-        string $ip,
-        string $userAgent,
-        string $correlationId,
-        string $mode,
-        DoorGatewayResult $result,
-    ): void;
+    public function onResult(int $memberId, string $area, string $ip, string $userAgent, string $correlationId, string $mode, DoorGatewayResult $result): void;
 }

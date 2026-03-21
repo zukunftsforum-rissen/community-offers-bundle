@@ -43,14 +43,13 @@ final class DeviceController extends AbstractController
             return new JsonResponse(['error' => 'unauthorized'], 401);
         }
 
-        $isEmulator = $user->isEmulator();
-
         if (!$this->deviceAccessPolicy->canPoll($user)) {
             $this->logging->warning('device_access.denied', [
                 'deviceId' => $user->getDeviceId(),
                 'isEmulator' => $user->isEmulator(),
                 'reason' => $this->deviceAccessPolicy->denialReason($user),
             ]);
+
             return new JsonResponse(
                 ['error' => $this->deviceAccessPolicy->denialReason($user)],
                 $this->deviceAccessPolicy->denialStatusCode(),

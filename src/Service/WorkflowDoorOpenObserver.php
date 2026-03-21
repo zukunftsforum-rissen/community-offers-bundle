@@ -14,13 +14,8 @@ final class WorkflowDoorOpenObserver implements DoorOpenObserverInterface
     ) {
     }
 
-    public function onForbidden(
-        int $memberId,
-        string $area,
-        string $ip,
-        string $correlationId,
-        string $mode,
-    ): void {
+    public function onForbidden(int $memberId, string $area, string $ip, string $correlationId, string $mode): void
+    {
         $this->logging->warning('door_open.forbidden', [
             'cid' => $correlationId,
             'memberId' => $memberId,
@@ -43,15 +38,8 @@ final class WorkflowDoorOpenObserver implements DoorOpenObserverInterface
         );
     }
 
-    public function onResult(
-        int $memberId,
-        string $area,
-        string $ip,
-        string $userAgent,
-        string $correlationId,
-        string $mode,
-        DoorGatewayResult $result,
-    ): void {
+    public function onResult(int $memberId, string $area, string $ip, string $userAgent, string $correlationId, string $mode, DoorGatewayResult $result): void
+    {
         $auditResult = $result->isOk() ? $result->getStatus() : 'error';
 
         $this->audit->audit(

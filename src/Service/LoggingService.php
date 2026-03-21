@@ -16,7 +16,6 @@ class LoggingService
 
     private const PARAM_DEBUG_LOGGING_ENABLED = 'community_offers.debug_logging_enabled';
 
-    /** @var list<string> */
     private const SENSITIVE_CONTEXT_KEYS = [
         'authorization',
         'cookie',

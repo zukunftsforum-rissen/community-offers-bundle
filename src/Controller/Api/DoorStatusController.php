@@ -28,21 +28,27 @@ final class DoorStatusController extends AbstractController
 
         $user = $this->getUser();
         if (!$user instanceof FrontendUser) {
-            return new JsonResponse([
-                'success' => false,
-                'message' => 'unauthorized',
-            ], Response::HTTP_UNAUTHORIZED);
+            return new JsonResponse(
+                [
+                    'success' => false,
+                    'message' => 'unauthorized',
+                ],
+                Response::HTTP_UNAUTHORIZED,
+            );
         }
 
         $result = $this->doorJobService->getJobStatus($jobId, (int) $user->id);
 
-        return new JsonResponse([
-            'success' => $result['ok'],
-            'message' => $result['message'],
-            'jobId' => $result['jobId'] ?? null,
-            'status' => $result['status'] ?? null,
-            'area' => $result['area'] ?? null,
-            'expiresAt' => $result['expiresAt'] ?? null,
-        ], $result['httpStatus']);
+        return new JsonResponse(
+            [
+                'success' => $result['ok'],
+                'message' => $result['message'],
+                'jobId' => $result['jobId'] ?? null,
+                'status' => $result['status'] ?? null,
+                'area' => $result['area'] ?? null,
+                'expiresAt' => $result['expiresAt'] ?? null,
+            ],
+            $result['httpStatus'],
+        );
     }
 }

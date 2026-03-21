@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace ZukunftsforumRissen\CommunityOffersBundle\Device\Service;
 
 use Doctrine\DBAL\Connection;
-use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorAuditLogger;
 
 final class DeviceHeartbeatService implements DeviceHeartbeatInterface
 {
@@ -50,17 +49,9 @@ final class DeviceHeartbeatService implements DeviceHeartbeatInterface
             ],
         );
 
-        // $this->audit->audit(
-        //     action: 'device_poll',
-        //     area: '',
-        //     result: 'ok',
-        //     message: 'Device poll received',
-        //     context: [
-        //         'deviceId' => $deviceId,
-        //         'areas' => $areas,
-        //     ],
-        //     correlationId: '',
-        //     memberId: 0,
-        // );
+        // $this->audit->audit(     action: 'device_poll',     area: '',     result:
+        // 'ok',     message: 'Device poll received',     context: [         'deviceId'
+        // => $deviceId,         'areas' => $areas,     ],     correlationId: '',
+        // memberId: 0, );
     }
 }

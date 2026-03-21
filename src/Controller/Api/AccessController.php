@@ -30,6 +30,7 @@ final class AccessController
         private readonly CorrelationIdService $correlationIds,
     ) {
     }
+
     #[Route('/whoami', name: 'community_offers_whoami', methods: ['GET'])]
     public function whoami(Request $request): JsonResponse
     {

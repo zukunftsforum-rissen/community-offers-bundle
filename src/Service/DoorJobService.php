@@ -771,23 +771,23 @@ final class DoorJobService
     }
 
     /**
- * @return array{
- *   ok: bool,
- *   httpStatus: int,
- *   message: string,
- *   jobId?: int,
- *   status?: string,
- *   area?: string,
- *   expiresAt?: int
- * }
- */
+     * @return array{
+     *   ok: bool,
+     *   httpStatus: int,
+     *   message: string,
+     *   jobId?: int,
+     *   status?: string,
+     *   area?: string,
+     *   expiresAt?: int
+     * }
+     */
     public function getJobStatus(int $jobId, int $memberId): array
     {
         $job = $this->db->fetchAssociative(
-            "SELECT id, area, status, expiresAt, requestedByMemberId
+            'SELECT id, area, status, expiresAt, requestedByMemberId
          FROM tl_co_door_job
          WHERE id = :jobId
-         LIMIT 1",
+         LIMIT 1',
             ['jobId' => $jobId],
         );
 

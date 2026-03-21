@@ -30,13 +30,8 @@ final class OpenDoorService
      *   retryAfterSeconds?: int
      * }
      */
-    public function open(
-        int $memberId,
-        string $area,
-        string $ip = '',
-        string $userAgent = '',
-        string $correlationId = '',
-    ): array {
+    public function open(int $memberId, string $area, string $ip = '', string $userAgent = '', string $correlationId = ''): array
+    {
         $mode = $this->systemMode->asString();
         $observer = $this->observerResolver->resolve($mode);
 
@@ -62,12 +57,16 @@ final class OpenDoorService
 
         $gateway = $this->doorGatewayResolver->resolve($mode);
 
-        $result = $gateway->open($area, $memberId, [
-            'ip' => $ip,
-            'userAgent' => $userAgent,
-            'correlationId' => $correlationId,
-            'mode' => $mode,
-        ]);
+        $result = $gateway->open(
+            $area,
+            $memberId,
+            [
+                'ip' => $ip,
+                'userAgent' => $userAgent,
+                'correlationId' => $correlationId,
+                'mode' => $mode,
+            ],
+        );
 
         $observer->onResult(
             memberId: $memberId,

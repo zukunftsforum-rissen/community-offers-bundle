@@ -16,7 +16,7 @@ Im Modus **** wird kein DoorJob erzeugt.
 
 Ein DoorJob durchläuft typischerweise folgende Zustände:
 
-created → dispatched → confirmed
+created → dispatched → executed
 
 Optional können zusätzliche Zustände auftreten:
 
@@ -34,10 +34,10 @@ created → dispatched → expired
 created --> dispatched : device poll + job dispatch
 created --> expired : confirm timeout
 
-dispatched --> confirmed : device confirm
+dispatched --> executed : device confirm
 dispatched --> expired : confirm timeout
 
-confirmed --> [*]
+executed --> [*]
 expired --> [*]
 @enduml
 ```
@@ -79,7 +79,7 @@ Ein Device hat den Job über den Poll-Endpunkt abgeholt.
 
 ---
 
-## confirmed
+## executed
 
 Das Device hat die Ausführung bestätigt.
 
@@ -145,7 +145,7 @@ Der Channel beschreibt den technischen Ausführungspfad.
 3. Raspberry Pi pollt Device API
 4. Job wird dispatcht
 5. Raspberry Pi sendet confirm
-6. Job wird confirmed
+6. Job wird executed
 
 ---
 
@@ -156,4 +156,29 @@ Der Channel beschreibt den technischen Ausführungspfad.
 3. Emulator pollt Device API
 4. Job wird dispatcht
 5. Emulator sendet confirm
-6. Job wird confirmed
+6. Job wird executed
+
+
+## Door Job Status Lifecycle
+
+pending
+→ dispatched
+→ executed
+
+### Bedeutungen
+
+pending  
+Job erstellt, wartet auf Abholung durch Gerät.
+
+dispatched  
+Job wurde vom Gerät abgeholt.
+
+executed  
+Gerät hat Auftrag erfolgreich ausgeführt
+(z. B. Tür entriegelt).
+
+### Hinweis zur Benennung
+
+Der API-Endpunkt `/api/device/confirm`
+löst intern die Workflow-Transition `execute`
+aus, die den Status auf `executed` setzt.

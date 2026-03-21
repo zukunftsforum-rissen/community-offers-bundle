@@ -490,17 +490,17 @@ body {
 
 .shed {
     position: absolute;
-    width: 260px;
+    width: 300px;
     height: 300px;
     bottom: 72px;
 }
 
 .shed--left {
-    left: 48px;
+    left: 60px;
 }
 
 .shed--right {
-    right: 48px;
+    right: 60px;
 }
 
 .roof {
@@ -525,7 +525,7 @@ body {
     inset: auto 24px 14px;
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 26px 22px;
+    gap: 30px 28px;
     z-index: 4;
 }
 
@@ -588,7 +588,10 @@ body {
     bottom: 10px;
     transform: translateX(-50%);
     font-weight: 700;
-    white-space: nowrap;
+    white-space: normal;
+    text-align: center;
+    max-width: 110px;
+    line-height: 1.1;
     color: #fff;
     font-size: 20px;
     text-shadow: 0 2px 4px rgb(0 0 0 / 28%);
@@ -601,7 +604,10 @@ body {
     transform: translateX(-50%);
     font-size: 14px;
     color: #26435c;
-    white-space: nowrap;
+    white-space: normal;
+    text-align: center;
+    max-width: 110px;
+    line-height: 1.1;
 }
 
 .door.is-unlocking .door__leaf {
@@ -968,45 +974,20 @@ body {
         min-height: 300px;
     }
 
+    /* ONLY scale scene */
     .scene-inner {
         min-height: 620px;
-        transform: scale(0.62);
+        transform: scale(0.48);
         transform-origin: top center;
     }
 
-    .shed--left {
-        left: -28px;
-    }
-
-    .shed--right {
-        right: -28px;
-    }
-
-    .doors {
-        grid-template-columns: 1fr;
-        justify-items: center;
-        gap: 26px 38px;
-    }
-
-    .door {
-        width: 72px;
-    }
-
-    .door__leaf {
-        width: 72px;
-    }
-
-    .door__knob {
-        left: 56px;
-    }
-
+    /* Text simplification */
     .door__caption {
-        font-size: 13px;
+        font-size: 12px;
     }
 
     .door__state {
-        font-size: 10px;
-        bottom: -16px;
+        display: none;
     }
 
     .section-title {

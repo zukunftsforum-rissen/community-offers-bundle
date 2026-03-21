@@ -770,6 +770,54 @@ final class DoorJobService
         return ['accepted' => true, 'httpStatus' => 200, 'status' => $newStatus];
     }
 
+    /**
+ * @return array{
+ *   ok: bool,
+ *   httpStatus: int,
+ *   message: string,
+ *   jobId?: int,
+ *   status?: string,
+ *   area?: string,
+ *   expiresAt?: int
+ * }
+ */
+    public function getJobStatus(int $jobId, int $memberId): array
+    {
+        $job = $this->db->fetchAssociative(
+            "SELECT id, area, status, expiresAt, requestedByMemberId
+         FROM tl_co_door_job
+         WHERE id = :jobId
+         LIMIT 1",
+            ['jobId' => $jobId],
+        );
+
+        if (!$job) {
+            return [
+                'ok' => false,
+                'httpStatus' => 404,
+                'message' => 'Job nicht gefunden.',
+            ];
+        }
+
+        if ((int) $job['requestedByMemberId'] !== $memberId) {
+            return [
+                'ok' => false,
+                'httpStatus' => 403,
+                'message' => 'Kein Zugriff auf diesen Job.',
+            ];
+        }
+
+        return [
+            'ok' => true,
+            'httpStatus' => 200,
+            'message' => 'OK',
+            'jobId' => (int) $job['id'],
+            'status' => (string) $job['status'],
+            'area' => (string) $job['area'],
+            'expiresAt' => (int) $job['expiresAt'],
+        ];
+    }
+
     private function generateCorrelationId(): string
     {
         return str_pad(dechex(time()), 8, '0', STR_PAD_LEFT)

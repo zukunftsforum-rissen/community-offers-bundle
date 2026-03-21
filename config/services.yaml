@@ -1,6 +1,6 @@
 parameters:
-    enable_logging: "%env(bool:ENABLE_LOGGING)%"
-    enable_debug_logging: "%env(bool:ENABLE_DEBUG_LOGGING)%"
+    community_offers.logging_enabled: "%env(bool:ENABLE_LOGGING)%"
+    community_offers.debug_logging_enabled: "%env(bool:ENABLE_DEBUG_LOGGING)%"
 
     community_offers.mode: "%env(COMMUNITY_OFFERS_MODE)%"
     community_offers.mail_from: "%env(COMMUNITY_OFFERS_MAIL_FROM)%"

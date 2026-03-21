@@ -92,65 +92,6 @@ function getRequestState(me, slug) {
     };
 }
 
-async function fetchDoorStatus(jobId) {
-    const response = await fetch(`/api/door/status/${jobId}`, {
-        method: 'GET',
-        credentials: 'same-origin',
-        headers: {
-            'Accept': 'application/json',
-        },
-    });
-
-    let data = {};
-
-    try {
-        data = await response.json();
-    } catch (_) {
-        data = {};
-    }
-
-    return {
-        ok: response.ok,
-        httpStatus: response.status,
-        ...data,
-    };
-}
-
-async function waitForDoorConfirmation(jobId, statusEl) {
-    const maxAttempts = 10;
-    const delayMs = 1000;
-
-    for (let i = 0; i < maxAttempts; i++) {
-        await new Promise((resolve) => setTimeout(resolve, delayMs));
-
-        try {
-            const result = await fetchDoorStatus(jobId);
-
-            if (!result.ok) {
-                continue;
-            }
-
-            if (result.status === 'executed') {
-                statusEl.textContent = 'Tür geöffnet ✅';
-                return;
-            }
-
-            if (result.status === 'dispatched') {
-                statusEl.textContent = 'Tür wird geöffnet ⏳';
-                continue;
-            }
-
-            if (result.status === 'pending') {
-                statusEl.textContent = 'Öffnung angefordert ⏳';
-            }
-        } catch (err) {
-            console.warn('Door status polling failed', err);
-        }
-    }
-
-    statusEl.textContent = 'Öffnung angefordert ⏳';
-}
-
 async function initApp() {
     const statusEl = document.getElementById('status');
     const actionsEl = document.getElementById('actions');
@@ -218,7 +159,6 @@ async function initApp() {
 
                     try {
                         const result = await openDoor(slug);
-
                         if (result.status === 429) {
                             startCooldownOnButton(
                                 doorBtn,
@@ -231,10 +171,7 @@ async function initApp() {
                         }
 
                         if (result.status === 202) {
-                            statusEl.textContent = 'Öffnung angefordert ⏳';
-                            if (result.jobId) {
-                                void waitForDoorConfirmation(result.jobId, statusEl);
-                            }
+                            statusEl.textContent = 'Job angenommen ⏳ Gerät hat den Auftrag noch nicht abgeholt.';
                         } else if (result.success) {
                             statusEl.textContent = 'Tür geöffnet ✅';
                         } else if (result.status === 403) {

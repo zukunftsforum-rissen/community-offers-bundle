@@ -33,4 +33,15 @@ class DeviceApiUserTest extends TestCase
 
         $this->assertSame('device-42', $user->getUserIdentifier());
     }
+    /**
+     * Verifies isEmulator flag is exposed correctly from the constructor.
+     */
+    public function testIsEmulatorFlagIsExposedFromConstructor(): void
+    {
+        $emulator = new DeviceApiUser('emu-1', ['depot'], true);
+        $physical = new DeviceApiUser('phys-1', ['depot'], false);
+
+        $this->assertTrue($emulator->isEmulator());
+        $this->assertFalse($physical->isEmulator());
+    }
 }

@@ -669,7 +669,133 @@ class DeviceControllerTest extends TestCase
         $this->assertSame(200, $response->getStatusCode(), 'Actual response: ' . $content);
     }
 
-    private function createControllerWithUser(DoorJobService $jobs, UserInterface|null $user): DeviceController
+    /**
+     * Verifies poll endpoint denies emulator devices when system mode is live.
+     */
+    public function testPollDeniesEmulatorDeviceInLiveMode(): void
+    {
+        $controller = $this->createControllerWithUser(
+            $this->createJobsServiceWithoutExpectations(),
+            new DeviceApiUser('emu-1', ['depot'], true),
+            new SystemMode('live'),
+        );
+
+        $response = $controller->poll(Request::create(
+            '/api/device/poll',
+            'POST',
+            [],
+            [],
+            [],
+            ['CONTENT_TYPE' => 'application/json'],
+            json_encode(['limit' => 1], JSON_THROW_ON_ERROR),
+        ));
+        $data = json_decode((string) $response->getContent(), true);
+
+        $this->assertIsArray($data);
+        $this->assertSame(403, $response->getStatusCode());
+        $this->assertSame(['error' => 'emulator_not_allowed_in_live'], $data);
+    }
+
+    /**
+     * Verifies poll endpoint denies physical devices when system mode is emulator.
+     */
+    public function testPollDeniesPhysicalDeviceInEmulatorMode(): void
+    {
+        $controller = $this->createControllerWithUser(
+            $this->createJobsServiceWithoutExpectations(),
+            new DeviceApiUser('dev-1', ['depot'], false),
+            new SystemMode('emulator'),
+        );
+
+        $response = $controller->poll(Request::create(
+            '/api/device/poll',
+            'POST',
+            [],
+            [],
+            [],
+            ['CONTENT_TYPE' => 'application/json'],
+            json_encode(['limit' => 1], JSON_THROW_ON_ERROR),
+        ));
+        $data = json_decode((string) $response->getContent(), true);
+
+        $this->assertIsArray($data);
+        $this->assertSame(403, $response->getStatusCode());
+        $this->assertSame(['error' => 'physical_device_not_allowed_in_emulator'], $data);
+    }
+
+    /**
+     * Verifies confirm endpoint denies emulator devices when system mode is live.
+     */
+    public function testConfirmDeniesEmulatorDeviceInLiveMode(): void
+    {
+        $controller = $this->createControllerWithUser(
+            $this->createJobsServiceWithoutExpectations(),
+            new DeviceApiUser('emu-1', ['depot'], true),
+            new SystemMode('live'),
+        );
+
+        $request = Request::create('/api/device/confirm', 'POST', [], [], [], [], json_encode([
+            'jobId' => 7,
+            'nonce' => self::TEST_NONCE,
+            'ok' => true,
+        ], JSON_THROW_ON_ERROR));
+        $response = $controller->confirm($request);
+        $data = json_decode((string) $response->getContent(), true);
+
+        $this->assertIsArray($data);
+        $this->assertSame(403, $response->getStatusCode());
+        $this->assertSame(['error' => 'emulator_not_allowed_in_live'], $data);
+    }
+
+    /**
+     * Verifies whoami reports unauthorized payload for non-device users.
+     */
+    public function testWhoamiReturnsUnauthorizedWhenNoDeviceUserIsAuthenticated(): void
+    {
+        $controller = $this->createControllerWithUser($this->createJobsServiceWithoutExpectations(), null);
+
+        $response = $controller->whoami(Request::create('/api/device/whoami', 'GET'));
+        $data = json_decode((string) $response->getContent(), true);
+
+        $this->assertIsArray($data);
+        $this->assertSame(401, $response->getStatusCode());
+        $this->assertSame([
+            'authenticated' => false,
+            'deviceId' => null,
+            'areas' => [],
+            'isEmulator' => false,
+        ], $data);
+    }
+
+    /**
+     * Verifies whoami returns authenticated device payload including emulator flag.
+     */
+    public function testWhoamiReturnsAuthenticatedDevicePayload(): void
+    {
+        $controller = $this->createControllerWithUser(
+            $this->createJobsServiceWithoutExpectations(),
+            new DeviceApiUser('emu-1', ['depot', 'sharing'], true),
+            new SystemMode('emulator'),
+        );
+
+        $response = $controller->whoami(Request::create('/api/device/whoami', 'GET'));
+        $data = json_decode((string) $response->getContent(), true);
+
+        $this->assertIsArray($data);
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame([
+            'authenticated' => true,
+            'deviceId' => 'emu-1',
+            'areas' => ['depot', 'sharing'],
+            'isEmulator' => true,
+        ], $data);
+    }
+
+    private function createControllerWithUser(
+        DoorJobService $jobs,
+        UserInterface|null $user,
+        SystemMode|null $systemMode = null,
+    ): DeviceController
     {
         $heartbeat = new class() implements DeviceHeartbeatInterface {
             public function registerPoll(int|string $deviceId, array $areas = []): void {}
@@ -681,7 +807,7 @@ class DeviceControllerTest extends TestCase
             $heartbeat,
             $this->createAlwaysAllowingDeviceRateLimitService(),
             $this->createAlwaysAllowingDeviceConfirmRateLimitService(),
-            new DeviceAccessPolicy(new SystemMode('live')),
+            new DeviceAccessPolicy($systemMode ?? new SystemMode('live')),
         );
 
         $tokenStorage = $this->createMock(TokenStorageInterface::class);

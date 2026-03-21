@@ -67,6 +67,7 @@ class DeviceTokenAuthenticatorTest extends TestCase
         /** @var DeviceApiUser $user */
         $this->assertSame('device-a', $user->getDeviceId());
         $this->assertSame(['depot', 'sharing'], $user->getAreas());
+        $this->assertFalse($user->isEmulator());
     }
 
     /**

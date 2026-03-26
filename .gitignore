@@ -45,7 +45,7 @@ prompts.txt
 backup/
 *.zip
 *.tar
-*.gz/git/
+*.gz
 bundle.zip
 /.idea
 
@@ -57,3 +57,6 @@ Q&A-claude/
 
 # Doku
 additional_text.txt
+
+# git
+git/

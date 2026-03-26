@@ -27,7 +27,7 @@ final class AccessConfirmController
         name: 'community_offers_access_confirm',
         methods: ['GET'],
         defaults: ['_scope' => 'frontend'],
-        requirements: ['token' => '[a-f0-9]{64}']
+        requirements: ['token' => '[a-f0-9]{64}'],
     )]
     public function confirm(string $token): RedirectResponse
     {

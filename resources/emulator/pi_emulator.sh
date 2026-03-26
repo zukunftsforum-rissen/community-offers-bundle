@@ -3,10 +3,19 @@ set -euo pipefail
 
 BASE_URL="${CO_EMULATOR_BASE_URL:-}"
 DEVICE_ID="${CO_EMULATOR_DEVICE_ID:-pi-emulator}"
-DEVICE_TOKEN="${CO_EMULATOR_TOKEN:-}"
 POLL_INTERVAL_SECONDS="${CO_EMULATOR_POLL_INTERVAL_SECONDS:-2}"
 ONESHOT="${ONESHOT:-0}"
 VERBOSE="${VERBOSE:-1}"
+
+TOKEN_FILE="${CO_EMULATOR_TOKEN_FILE:-var/device-tokens/${DEVICE_ID}.token}"
+
+if [[ -f "$TOKEN_FILE" ]]; then
+	DEVICE_TOKEN="$(tr -d '\n' <"$TOKEN_FILE")"
+	echo "Using token from file: $TOKEN_FILE"
+else
+	DEVICE_TOKEN="${CO_EMULATOR_TOKEN:-}"
+	echo "Using token from environment"
+fi
 
 if [[ -z "$BASE_URL" ]]; then
 	echo "ERROR: CO_EMULATOR_BASE_URL is empty."
@@ -14,7 +23,9 @@ if [[ -z "$BASE_URL" ]]; then
 fi
 
 if [[ -z "$DEVICE_TOKEN" ]]; then
-	echo "ERROR: CO_EMULATOR_TOKEN is empty."
+	echo "ERROR: No device token available."
+	echo "Either set CO_EMULATOR_TOKEN or create:"
+	echo "  $TOKEN_FILE"
 	exit 1
 fi
 
@@ -81,11 +92,11 @@ poll_once() {
 	case "$status" in
 	200) ;;
 	400)
-		echo "Polling not available in current mode (likely simulation). Exiting."
+		echo "Polling not available in current mode. Exiting."
 		exit 0
 		;;
 	403)
-		echo "Emulator not allowed in current mode (likely live). Exiting."
+		echo "Emulator not allowed in current mode. Exiting."
 		exit 0
 		;;
 	429)
@@ -168,6 +179,7 @@ echo "== PI Emulator starting =="
 echo "BASE_URL=${BASE_URL}"
 echo "DEVICE_ID=${DEVICE_ID}"
 echo "POLL_INTERVAL_SECONDS=${POLL_INTERVAL_SECONDS}"
+echo "TOKEN_FILE=${TOKEN_FILE}"
 echo
 
 whoami

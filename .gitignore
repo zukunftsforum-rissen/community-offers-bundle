@@ -21,6 +21,7 @@ var/cache/
 # Device tokens / exports
 **/token*.txt
 **/secrets*.yml
+var/device-tokens/
 
 # Generated (optional)
 site/

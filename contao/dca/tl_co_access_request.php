@@ -143,12 +143,20 @@ $GLOBALS['TL_DCA']['tl_co_access_request'] = [
         'emailConfirmed' => [
             'label' => ['E-Mail bestätigt'],
             'inputType' => 'checkbox',
+            'eval' => [
+                    'doNotCopy' => true,
+                    'disabled' => true,
+                ],  
             'sql' => "char(1) NOT NULL default ''"
         ],
 
         'approved' => [
             'label' => ['Freigegeben'],
             'inputType' => 'checkbox',
+            'eval' => [
+                    'doNotCopy' => true,
+                    'disabled' => true,
+                ],  
             'sql' => "char(1) NOT NULL default ''"
         ],
 

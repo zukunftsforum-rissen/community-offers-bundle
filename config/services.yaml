@@ -19,6 +19,10 @@ parameters:
     community_offers.app.areas: "%env(json:COMMUNITY_OFFERS_AREAS)%"
     community_offers.area_groups: "%env(json:COMMUNITY_OFFERS_AREA_GROUPS)%"
 
+    community_offers.doi_ttl: "%env(int:COMMUNITY_OFFERS_DOI_TTL)%"
+    community_offers.password_ttl: "%env(int:COMMUNITY_OFFERS_PASSWORD_TTL)%"
+    community_offers.confirm_window: "%env(int:COMMUNITY_OFFERS_CONFIRM_WINDOW)%"
+
 when@test:
     imports:
         - { resource: services_test.yaml }
@@ -74,7 +78,7 @@ services:
 
     ZukunftsforumRissen\CommunityOffersBundle\Workflow\DoorJobWorkflowSubscriber:
         arguments:
-            $confirmWindowSeconds: 30
+          $confirmWindowSeconds: "%community_offers.confirm_window%"
         tags:
             - { name: kernel.event_subscriber }
 
@@ -99,3 +103,11 @@ services:
 
     ZukunftsforumRissen\CommunityOffersBundle\Service\PasswordSetupServiceInterface:
         alias: ZukunftsforumRissen\CommunityOffersBundle\Service\PasswordSetupService
+
+    ZukunftsforumRissen\CommunityOffersBundle\Service\AccessRequestService:
+        arguments:
+            $doiTtl: "%community_offers.doi_ttl%"
+
+    ZukunftsforumRissen\CommunityOffersBundle\Service\PasswordSetupService:
+        arguments:
+            $passwordTtl: "%community_offers.password_ttl%"

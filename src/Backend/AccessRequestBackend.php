@@ -13,20 +13,17 @@ use Contao\Message;
 use Contao\StringUtil;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\AccessService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\ApprovalMailer;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\InternalNotificationMailer;
 
 class AccessRequestBackend extends Backend
 {
     public function __construct(
         private readonly ApprovalMailer $approvalMailer,
         private readonly AccessService $accessService,
+        private readonly InternalNotificationMailer $internalNotificationMailer,
     ) {
     }
 
-    /**
-     * Handle backend actions. Diese Methode prüft, ob eine Aktion (hier: "approve")
-     * ausgeführt werden soll. Wenn ja, führt sie die entsprechenden Schritte aus
-     * (Member anlegen/aktualisieren, Antrag freigeben).
-     */
     public function handleActions(): void
     {
         if ('approve' !== $this->getInputValue('key')) {
@@ -34,7 +31,6 @@ class AccessRequestBackend extends Backend
         }
 
         $id = (int) $this->getInputValue('id');
-
         $row = $this->fetchAccessRequestRow($id);
 
         if (!$row || !$row['emailConfirmed'] || $row['approved']) {
@@ -43,67 +39,61 @@ class AccessRequestBackend extends Backend
             return;
         }
 
-        // 🔹 Member finden oder neu anlegen (E-Mail als Kriterium)
-        $email = mb_strtolower(trim((string) $row['email']));
+        $memberId = (int) ($row['memberId'] ?? 0);
 
-        $member = $this->findMemberByEmail($email);
+        if ($memberId <= 0) {
+            $this->addError('Kein Member verknüpft. Bitte DOI-Provisionierung prüfen.');
+            $this->redirectToRequestList();
 
-        $isNew = false;
-        if (null === $member) {
-            $member = $this->createMember();
-            $isNew = true;
-
-            // Minimaler Satz Pflichtwerte für neuen Member
-            $member->tstamp = time();
-            $member->email = $email;
-
-            $member->username = $email; // $email ist bereits lowercased/trimmed
-
-            // Login aktivieren (Contao-Standard)
-            $member->login = true;
-
-            // Passwort-Reset erzwingen: zufälliges Passwort setzen
-            $member->password = password_hash(bin2hex(random_bytes(8)), PASSWORD_DEFAULT);
+            return;
         }
 
-        // immer aktualisieren (auch bei existing)
-        $member->tstamp = time();
-        $member->firstname = (string) $row['firstname'];
-        $member->lastname = (string) $row['lastname'];
-        $member->street = (string) $row['street'];
-        $member->postal = (string) $row['postal'];
-        $member->city = (string) $row['city'];
-        $member->mobile = (string) $row['mobile'];
+        $member = $this->findMemberByPk($memberId);
 
-        // Gruppen zuweisen (merge statt überschreiben? – siehe unten)
+        if (null === $member) {
+            $this->addError('Verknüpfter Member nicht gefunden.');
+            $this->redirectToRequestList();
+
+            return;
+        }
+
         $areas = array_values(array_map('strval', StringUtil::deserialize($row['requestedAreas'], true)));
         $groupIds = $this->mapAreasToGroups($areas);
 
-        // Bestehende Gruppen optional behalten und nur ergänzen:
         $existingGroups = StringUtil::deserialize($member->groups, true);
         $mergedGroups = array_values(array_unique(array_merge($existingGroups, $groupIds)));
 
         $member->groups = serialize($mergedGroups);
-
-        // disable nicht blind überschreiben (nur wenn neu)
-        if ($isNew) {
-            $member->disable = false;
-        }
+        $member->disable = false;
+        $member->tstamp = time();
 
         $this->saveMember($member);
-
-        // 🔹 Antrag als approved markieren
         $this->markRequestApproved($id);
 
-        $this->addConfirmation('Der Antrag wurde erfolgreich freigegeben.');
+        $this->addConfirmation(
+            'Der Antrag wurde erfolgreich freigegeben. '
+            .'Bereits eingeloggte Nutzer müssen sich neu anmelden, '
+            .'damit die neuen Bereiche in der App sichtbar werden.'
+        );
 
-        $areas = array_values(array_map('strval', StringUtil::deserialize($row['requestedAreas'], true)));
         $areasHuman = $this->formatAreasHuman($areas);
 
         $this->approvalMailer->sendApprovalMail(
-            $email,
+            (string) $row['email'],
             (string) $row['firstname'],
             (string) $row['lastname'],
+            $areasHuman,
+            (string) $member->username,
+        );
+
+        $this->internalNotificationMailer->sendApprovedNotification(
+            (string) $row['firstname'],
+            (string) $row['lastname'],
+            (string) $row['street'],
+            (string) $row['postal'],
+            (string) $row['city'],
+            (string) $row['mobile'],
+            (string) $row['email'],
             $areasHuman,
         );
 
@@ -115,8 +105,12 @@ class AccessRequestBackend extends Backend
      */
     public function generateApproveButton(array $row, string|null $href, string $label, string $title, string|null $icon, string $attributes): string
     {
-        if (!$row['emailConfirmed'] || $row['approved']) {
-            return ''; // nicht anzeigen
+        if (
+            !$row['emailConfirmed']
+            || $row['approved']
+            || (int) ($row['memberId'] ?? 0) <= 0
+        ) {
+            return '';
         }
 
         return \sprintf(
@@ -144,14 +138,9 @@ class AccessRequestBackend extends Backend
         ;
     }
 
-    protected function findMemberByEmail(string $email): object|null
+    protected function findMemberByPk(int $memberId): MemberModel|null
     {
-        return MemberModel::findOneBy('email', $email);
-    }
-
-    protected function createMember(): object
-    {
-        return new MemberModel();
+        return MemberModel::findById($memberId);
     }
 
     protected function saveMember(object $member): void
@@ -174,6 +163,11 @@ class AccessRequestBackend extends Backend
         Message::addConfirmation($message);
     }
 
+    protected function addError(string $message): void
+    {
+        Message::addError($message);
+    }
+
     protected function redirectToRequestList(): void
     {
         $this->redirect('contao?do=co_access_request');
@@ -182,7 +176,7 @@ class AccessRequestBackend extends Backend
     /**
      * @param list<string> $areas
      *
-     * @return list<int> Group IDs
+     * @return list<int>
      */
     private function mapAreasToGroups(array $areas): array
     {

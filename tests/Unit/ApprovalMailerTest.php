@@ -34,16 +34,18 @@ class ApprovalMailerTest extends TestCase
             'reply@example.org',
             'https://app.example.org',
             'https://app.example.org/reset',
+            '/login',
+            'email',
         );
 
-        $service->sendApprovalMail('user@example.org', 'Max', 'Mustermann', ['Werkstatt', 'Tauschhaus']);
+        $service->sendApprovalMail('user@example.org', 'Max', 'Mustermann', ['Werkstatt', 'Tauschhaus'], 'max_user');
 
         $this->assertInstanceOf(Email::class, $capturedMail);
         /** @var Email $capturedMail */
         $this->assertSame('admin@example.org', $capturedMail->getFrom()[0]->getAddress());
         $this->assertSame('reply@example.org', $capturedMail->getReplyTo()[0]->getAddress());
         $this->assertSame('user@example.org', $capturedMail->getTo()[0]->getAddress());
-        $this->assertSame('Freigeschaltet: Zugang zur Zukunftwohnen-App', $capturedMail->getSubject());
+        $this->assertSame('Ihre Zugangsanfrage wurde freigegeben', $capturedMail->getSubject());
 
         $text = $capturedMail->getTextBody() ?? '';
         $this->assertStringContainsString('Hallo Max Mustermann,', $text);
@@ -75,16 +77,18 @@ class ApprovalMailerTest extends TestCase
             'reply@example.org',
             'https://app.example.org',
             'https://app.example.org/reset',
+            '/login',
+            'email',
         );
 
-        $service->sendApprovalMail('user@example.org', 'Max', '', []);
+        $service->sendApprovalMail('user@example.org', 'Max', '', [], 'max_user');
 
         $this->assertInstanceOf(Email::class, $capturedMail);
        /** @var Email $capturedMail */
         $text = $capturedMail->getTextBody() ?? '';
 
-        $this->assertStringContainsString('Hallo Max,', $text);
-        $this->assertStringContainsString("Freigeschaltete Bereiche:\n-", $text);
+        $this->assertStringContainsString('Hallo Max ,', $text);
+        $this->assertStringContainsString("Freigegebene Bereiche:\n- ", $text);
     }
 
     /**
@@ -110,14 +114,16 @@ class ApprovalMailerTest extends TestCase
             'reply@example.org',
             'https://app.example.org',
             'https://app.example.org/reset',
+            '/login',
+            'email',
         );
 
-        $service->sendApprovalMail('user@example.org', '', 'Mustermann', ['Werkstatt']);
+        $service->sendApprovalMail('user@example.org', '', 'Mustermann', ['Werkstatt'], 'mustermann_user');
 
         $this->assertInstanceOf(Email::class, $capturedMail);
         /** @var Email $capturedMail */
         $text = $capturedMail->getTextBody() ?? '';
 
-        $this->assertStringContainsString('Hallo Mustermann,', $text);
+        $this->assertStringContainsString('Hallo  Mustermann,', $text);
     }
 }

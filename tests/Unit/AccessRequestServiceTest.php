@@ -15,6 +15,11 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Routing\RouterInterface;
 use ZukunftsforumRissen\CommunityOffersBundle\Controller\Frontend\AccessConfirmController;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\AccessRequestService;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\InternalNotificationMailer;
+use Contao\MemberModel;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\MemberProvisioningResult;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\MemberProvisioningServiceInterface;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\PasswordSetupServiceInterface;
 
 /**
  * Unit test suite for AccessRequestService.
@@ -465,7 +470,7 @@ class AccessRequestServiceTest extends TestCase
     /**
      * Verifies unknown confirmation tokens return false.
      */
-    public function testConfirmTokenReturnsFalseWhenTokenDoesNotExist(): void
+    public function testConfirmTokenReturnsNullWhenTokenDoesNotExist(): void
     {
         $framework = $this->createMock(ContaoFramework::class);
         $framework->expects($this->once())->method('initialize');
@@ -473,27 +478,27 @@ class AccessRequestServiceTest extends TestCase
         $db = $this->createPrepareOnlyDatabaseMock();
         $db->expects($this->once())
             ->method('prepare')
-            ->with($this->stringContains('SELECT * FROM tl_co_access_request WHERE token=?'))
+            ->with($this->stringContains('FROM tl_co_access_request WHERE token=? LIMIT 1'))
             ->willReturn($this->statementReturning(new Result([], 'not-found')))
         ;
         $this->setDatabaseSingleton($db);
 
         $service = $this->createService($framework);
 
-        $this->assertFalse($service->confirmToken('missing-token'));
+        $this->assertNull($service->confirmTokenAndGetRequestId('missing-token'));
     }
 
     /**
      * Verifies already confirmed rows are not confirmed again.
      */
-    public function testConfirmTokenReturnsFalseWhenAlreadyConfirmed(): void
+    public function testConfirmTokenReturnsNullWhenAlreadyConfirmed(): void
     {
         $framework = $this->createMock(ContaoFramework::class);
         $framework->expects($this->once())->method('initialize');
 
         $db = $this->createPrepareOnlyDatabaseMock();
         $db->method('prepare')->willReturnCallback(function (string $query): object {
-            if (str_contains($query, 'SELECT * FROM tl_co_access_request WHERE token=?')) {
+            if (str_contains($query, 'FROM tl_co_access_request WHERE token=? LIMIT 1')) {
                 return $this->statementReturning(new Result([[
                     'id' => 7,
                     'emailConfirmed' => '1',
@@ -507,20 +512,20 @@ class AccessRequestServiceTest extends TestCase
 
         $service = $this->createService($framework);
 
-        $this->assertFalse($service->confirmToken('already-confirmed-token'));
+        $this->assertNull($service->confirmTokenAndGetRequestId('already-confirmed-token'));
     }
 
     /**
      * Verifies expired confirmation tokens are rejected.
      */
-    public function testConfirmTokenReturnsFalseWhenExpired(): void
+    public function testConfirmTokenReturnsNullWhenExpired(): void
     {
         $framework = $this->createMock(ContaoFramework::class);
         $framework->expects($this->once())->method('initialize');
 
         $db = $this->createPrepareOnlyDatabaseMock();
         $db->method('prepare')->willReturnCallback(function (string $query): object {
-            if (str_contains($query, 'SELECT * FROM tl_co_access_request WHERE token=?')) {
+            if (str_contains($query, 'FROM tl_co_access_request WHERE token=? LIMIT 1')) {
                 return $this->statementReturning(new Result([[
                     'id' => 8,
                     'emailConfirmed' => '',
@@ -534,11 +539,11 @@ class AccessRequestServiceTest extends TestCase
 
         $service = $this->createService($framework);
 
-        $this->assertFalse($service->confirmToken('expired-token'));
+        $this->assertNull($service->confirmTokenAndGetRequestId('expired-token'));
     }
 
     /**
-     * Verifies valid confirmation updates the row and returns true.
+     * Verifies valid confirmation updates the row and returns the request ID.
      */
     public function testConfirmTokenMarksRowAsConfirmedWhenValid(): void
     {
@@ -549,7 +554,7 @@ class AccessRequestServiceTest extends TestCase
 
         $db = $this->createPrepareOnlyDatabaseMock();
         $db->method('prepare')->willReturnCallback(function (string $query) use (&$updateCalls): object {
-            if (str_contains($query, 'SELECT * FROM tl_co_access_request WHERE token=?')) {
+            if (str_contains($query, 'FROM tl_co_access_request WHERE token=? LIMIT 1')) {
                 return $this->statementReturning(new Result([[
                     'id' => 9,
                     'emailConfirmed' => '',
@@ -557,7 +562,7 @@ class AccessRequestServiceTest extends TestCase
                 ]], 'valid'));
             }
 
-            if (str_contains($query, "UPDATE tl_co_access_request SET emailConfirmed='1'")) {
+            if (str_contains($query, "emailConfirmed='1'") && str_contains($query, 'UPDATE tl_co_access_request')) {
                 return new class(static function (array $args) use (&$updateCalls): void {
                     $updateCalls[] = $args;
                 }) {
@@ -585,7 +590,8 @@ class AccessRequestServiceTest extends TestCase
 
         $service = $this->createService($framework);
 
-        $this->assertTrue($service->confirmToken('valid-token'));
+        $result = $service->confirmTokenAndGetRequestId('valid-token');
+        $this->assertSame(9, $result);
         $this->assertCount(1, $updateCalls);
         $this->assertSame(9, $updateCalls[0][1]);
     }
@@ -602,7 +608,7 @@ class AccessRequestServiceTest extends TestCase
 
         $db = $this->createPrepareOnlyDatabaseMock();
         $db->method('prepare')->willReturnCallback(function (string $query) use (&$updateCalls): object {
-            if (str_contains($query, 'SELECT * FROM tl_co_access_request WHERE token=?')) {
+            if (str_contains($query, 'FROM tl_co_access_request WHERE token=? LIMIT 1')) {
                 return $this->statementReturning(new Result([[
                     'id' => 14,
                     'emailConfirmed' => '',
@@ -610,7 +616,7 @@ class AccessRequestServiceTest extends TestCase
                 ]], 'no-expiry'));
             }
 
-            if (str_contains($query, "UPDATE tl_co_access_request SET emailConfirmed='1'")) {
+            if (str_contains($query, "emailConfirmed='1'") && str_contains($query, 'UPDATE tl_co_access_request')) {
                 return new class(static function (array $args) use (&$updateCalls): void {
                     $updateCalls[] = $args;
                 }) {
@@ -638,7 +644,8 @@ class AccessRequestServiceTest extends TestCase
 
         $service = $this->createService($framework);
 
-        $this->assertTrue($service->confirmToken('token-without-expiry'));
+        $result = $service->confirmTokenAndGetRequestId('token-without-expiry');
+        $this->assertSame(14, $result);
         $this->assertCount(1, $updateCalls);
         $this->assertSame(14, $updateCalls[0][1]);
     }
@@ -867,7 +874,7 @@ class AccessRequestServiceTest extends TestCase
     public function testWorkflowCreateConfirmAndResendFlowReturnsPendingConfirmed(): void
     {
         $framework = $this->createMock(ContaoFramework::class);
-        $framework->expects($this->exactly(3))->method('initialize');
+        $framework->expects($this->exactly(4))->method('initialize');
 
         $router = $this->createMock(RouterInterface::class);
         $router->expects($this->once())
@@ -960,7 +967,7 @@ class AccessRequestServiceTest extends TestCase
                 };
             }
 
-            if (str_contains($query, 'SELECT * FROM tl_co_access_request WHERE token=? LIMIT 1')) {
+            if (str_contains($query, 'FROM tl_co_access_request WHERE token=? LIMIT 1')) {
                 return new class(static function (array $args) use (&$rows): Result {
                     $tokenHash = (string) ($args[0] ?? '');
 
@@ -988,7 +995,35 @@ class AccessRequestServiceTest extends TestCase
                 };
             }
 
-            if (str_contains($query, "UPDATE tl_co_access_request SET emailConfirmed='1'")) {
+            if (str_contains($query, 'FROM tl_co_access_request WHERE id=? LIMIT 1')) {
+                return new class(static function (array $args) use (&$rows): Result {
+                    $id = (int) ($args[0] ?? 0);
+
+                    foreach ($rows as $row) {
+                        if ((int) $row['id'] === $id) {
+                            return new Result([$row], 'request-row-hit');
+                        }
+                    }
+
+                    return new Result([], 'request-row-miss');
+                }) {
+                    /** @var callable(array<int, mixed>): Result */
+                    private $onExecute;
+
+                    /** @param callable(array<int, mixed>): Result $onExecute */
+                    public function __construct(callable $onExecute)
+                    {
+                        $this->onExecute = $onExecute;
+                    }
+
+                    public function execute(mixed ...$args): Result
+                    {
+                        return ($this->onExecute)($args);
+                    }
+                };
+            }
+
+            if (str_contains($query, "emailConfirmed='1'") && str_contains($query, 'UPDATE tl_co_access_request')) {
                 return new class(static function (array $args) use (&$rows): Result {
                     $id = (int) ($args[1] ?? 0);
 
@@ -1082,10 +1117,24 @@ class AccessRequestServiceTest extends TestCase
         $token = $m[1] ?? '';
         $this->assertNotSame('', $token);
 
-        $confirmController = new AccessConfirmController($service);
+        $memberProvisioningService = $this->createMock(MemberProvisioningServiceInterface::class);
+        $memberProvisioningService->expects($this->once())
+            ->method('createMemberFromConfirmedRequest')
+            ->willReturn(new MemberProvisioningResult($this->createStub(MemberModel::class), true))
+        ;
+        $passwordSetupService = $this->createMock(PasswordSetupServiceInterface::class);
+        $passwordSetupService->expects($this->once())
+            ->method('createSetupTokenForRequest')
+            ->willReturn('setup-token-123')
+        ;
+        $internalMailerTransport = $this->createMock(MailerInterface::class);
+        $internalMailerTransport->expects($this->once())->method('send');
+        $internalNotificationMailer = new InternalNotificationMailer($internalMailerTransport, 'info@example.org', 'noreply@example.org');
+
+        $confirmController = new AccessConfirmController($service, $memberProvisioningService, $passwordSetupService, $internalNotificationMailer);
         $confirmResponse = $confirmController->confirm($token);
 
-        $this->assertSame('/zugangsanfrage-bestaetigt', $confirmResponse->getTargetUrl());
+        $this->assertStringStartsWith('/access/set-password/', $confirmResponse->getTargetUrl());
 
         $resendResult = $service->sendOrResendDoiForArea('Max', 'Mustermann', 'max@example.org', 'depot');
 
@@ -1196,7 +1245,7 @@ class AccessRequestServiceTest extends TestCase
                 };
             }
 
-            if (str_contains($query, 'SELECT * FROM tl_co_access_request WHERE token=? LIMIT 1')) {
+            if (str_contains($query, 'FROM tl_co_access_request WHERE token=? LIMIT 1')) {
                 return new class(static function (array $args) use (&$rows): Result {
                     $tokenHash = (string) ($args[0] ?? '');
 
@@ -1319,7 +1368,19 @@ class AccessRequestServiceTest extends TestCase
         $token = $m[1] ?? '';
         $this->assertNotSame('', $token);
 
-        $confirmController = new AccessConfirmController($service);
+        $memberProvisioningService = $this->createMock(MemberProvisioningServiceInterface::class);
+        $memberProvisioningService->expects($this->never())
+            ->method('createMemberFromConfirmedRequest')
+        ;
+        $passwordSetupService = $this->createMock(PasswordSetupServiceInterface::class);
+        $passwordSetupService->expects($this->never())
+            ->method('createSetupTokenForRequest')
+        ;
+        $internalMailerTransport = $this->createMock(MailerInterface::class);
+        $internalMailerTransport->expects($this->never())->method('send');
+        $internalNotificationMailer = new InternalNotificationMailer($internalMailerTransport, 'info@example.org', 'noreply@example.org');
+
+        $confirmController = new AccessConfirmController($service, $memberProvisioningService, $passwordSetupService, $internalNotificationMailer);
         $confirmResponse = $confirmController->confirm($token);
         $this->assertSame('/zugangsanfrage-ungueltig', $confirmResponse->getTargetUrl());
 

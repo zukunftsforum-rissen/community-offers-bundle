@@ -48,8 +48,6 @@ class AccessRequestService
 
         $requestedAreas = $this->cleanAreas($requestedAreas);
 
-        // Blockt parallel laufende (unfreigegebene) Anfragen über das Formular –
-        // bleibt wie bisher:
         $existing = Database::getInstance()
             ->prepare("SELECT id FROM tl_co_access_request WHERE email=? AND approved='' LIMIT 1")
             ->execute($email)
@@ -121,42 +119,62 @@ class AccessRequestService
 
     public function confirmToken(string $rawToken): bool
     {
+        return null !== $this->confirmTokenAndGetRequestId($rawToken);
+    }
+
+    public function confirmTokenAndGetRequestId(string $rawToken): int|null
+    {
         $this->framework->initialize();
 
         $tokenHash = hash('sha256', $rawToken);
 
         $row = Database::getInstance()
-            ->prepare('SELECT * FROM tl_co_access_request WHERE token=? LIMIT 1')
+            ->prepare('SELECT id, emailConfirmed, tokenExpiresAt FROM tl_co_access_request WHERE token=? LIMIT 1')
             ->execute($tokenHash)
             ->fetchAssoc()
         ;
 
         if (!$row) {
-            return false;
+            return null;
         }
 
         if (!empty($row['emailConfirmed'])) {
-            return false;
+            return null;
         }
 
         if (!empty($row['tokenExpiresAt']) && (int) $row['tokenExpiresAt'] < time()) {
-            return false;
+            return null;
         }
 
         Database::getInstance()
-            ->prepare("UPDATE tl_co_access_request SET emailConfirmed='1', tstamp=? WHERE id=?")
+            ->prepare("
+                UPDATE tl_co_access_request
+                SET emailConfirmed='1',
+                    tstamp=?
+                WHERE id=?
+            ")
             ->execute(time(), (int) $row['id'])
         ;
 
-        return true;
+        return (int) $row['id'];
     }
 
     /**
-     * Pending-Status für whoami(): [
-     *   'depot' => ['state' => 'pending_unconfirmed', 'retryAfterSeconds' => 420],
-     *   'swap-house' => ['state' => 'pending_confirmed'],
-     * ].
+     * @return array<string, mixed>|null
      */
+    public function getRequestRow(int $id): array|null
+    {
+        $this->framework->initialize();
+
+        $row = Database::getInstance()
+            ->prepare('SELECT * FROM tl_co_access_request WHERE id=? LIMIT 1')
+            ->execute($id)
+            ->fetchAssoc()
+        ;
+
+        return $row ?: null;
+    }
+
     /**
      * @return array<string, array<string, int|string>>
      */
@@ -189,14 +207,12 @@ class AccessRequestService
             $areas = array_map('strval', $areas);
 
             foreach ($areas as $area) {
-                // nur erlaubte Areas berücksichtigen
                 $areaClean = $this->cleanAreas([$area]);
                 if ([] === $areaClean) {
                     continue;
                 }
                 $area = $areaClean[0];
 
-                // pro Area nur den neuesten Eintrag verwenden
                 if (isset($result[$area])) {
                     continue;
                 }
@@ -222,13 +238,9 @@ class AccessRequestService
     }
 
     /**
-     * App-Flow: Anfrage für genau eine Area.
-     * - pending_confirmed: keine erneute Mail (wartet auf Admin)
-     * - pending_unconfirmed: Cooldown, danach Resend möglich
-     * - sonst: neue Anfrage + DOI-Mail.
+     * Sends or resends a DOI (Double Opt-In) email for a specific area.
      *
      * @return array{code:string, retryAfterSeconds?:int}
-     *                                                    code: ok|pending_confirmed|cooldown|invalid_email
      */
     public function sendOrResendDoiForArea(string $firstname, string $lastname, string $email, string $area): array
     {
@@ -244,12 +256,10 @@ class AccessRequestService
 
         $areaList = $this->cleanAreas([$area]);
         if ([] === $areaList) {
-            // unbekannte Area -> wird im Controller schon 404, hier nur Safety
             return ['code' => 'invalid_email'];
         }
         $area = $areaList[0];
 
-        // Suche letzte passende offene Anfrage (approved='')
         $res = Database::getInstance()
             ->prepare("
                 SELECT id, tstamp, requestedAreas, emailConfirmed, approved
@@ -280,13 +290,10 @@ class AccessRequestService
             break;
         }
 
-        // bestätigt
         if (null !== $matchId) {
-            // noch nicht freigegeben -> nicht erneut senden
             if ('' !== $matchConfirmed) {
                 return ['code' => 'pending_confirmed'];
             }
-            // unbestätigt -> Cooldown / Resend
 
             $age = time() - (int) $matchTstamp;
             $remaining = self::ADDITIONAL_REQUEST_COOLDOWN - $age;
@@ -295,17 +302,16 @@ class AccessRequestService
                 return ['code' => 'cooldown', 'retryAfterSeconds' => $remaining];
             }
 
-            // Resend: Token erneuern und Mail neu schicken
             $token = bin2hex(random_bytes(32));
             $tokenHash = hash('sha256', $token);
             $expiresAt = time() + (2 * 24 * 60 * 60);
 
             Database::getInstance()
                 ->prepare("
-                        UPDATE tl_co_access_request
-                        SET tstamp=?, token=?, tokenExpiresAt=?, emailConfirmed=''
-                        WHERE id=?
-                    ")
+                    UPDATE tl_co_access_request
+                    SET tstamp=?, token=?, tokenExpiresAt=?, emailConfirmed=''
+                    WHERE id=?
+                ")
                 ->execute(time(), $tokenHash, $expiresAt, $matchId)
             ;
 
@@ -324,7 +330,6 @@ class AccessRequestService
             return ['code' => 'ok'];
         }
 
-        // keine Anfrage vorhanden -> neue anlegen + DOI senden
         $token = bin2hex(random_bytes(32));
         $tokenHash = hash('sha256', $token);
         $expiresAt = time() + (2 * 24 * 60 * 60);
@@ -465,9 +470,6 @@ class AccessRequestService
         ));
     }
 
-    /**
-     * Contao\Database\Result has dynamic properties; PHPStan doesn't see them.
-     */
     private function resultField(Result $result, string $key): mixed
     {
         $row = $result->row();

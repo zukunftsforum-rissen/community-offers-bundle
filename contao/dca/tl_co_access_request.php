@@ -71,6 +71,10 @@ $GLOBALS['TL_DCA']['tl_co_access_request'] = [
             'sql' => "int(10) unsigned NOT NULL default 0"
         ],
 
+        'memberId' => [
+            'sql' => "int(10) unsigned NOT NULL default 0"
+        ],
+
         'firstname' => [
             'label' => ['Vorname'],
             'inputType' => 'text',
@@ -147,5 +151,17 @@ $GLOBALS['TL_DCA']['tl_co_access_request'] = [
             'inputType' => 'checkbox',
             'sql' => "char(1) NOT NULL default ''"
         ],
+
+        'passwordSetupToken' => [
+            'sql' => "varchar(64) NOT NULL default ''"
+        ],
+
+        'passwordSetupExpiresAt' => [
+            'sql' => "int(10) unsigned NOT NULL default 0"
+        ],
+
+        'passwordSetAt' => [
+            'sql' => "int(10) unsigned NOT NULL default 0"
+        ]
     ]
 ];

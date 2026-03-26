@@ -18,8 +18,8 @@ final class AppController extends AbstractController
         private readonly string $loginPath,
         #[Autowire('%community_offers.app.logout_path%')]
         private readonly string $logoutPath,
-        #[Autowire('%community_offers.app.logout_redirect_path%')]
-        private readonly string $logoutRedirectPath,
+        // #[Autowire('%community_offers.app.logout_redirect_path%')]
+        // private readonly string $logoutRedirectPath,
         #[Autowire('%community_offers.app.areas%')]
         private readonly array $areas,
     ) {
@@ -32,7 +32,7 @@ final class AppController extends AbstractController
             'appConfig' => [
                 'loginPath' => $this->loginPath,
                 'logoutPath' => $this->logoutPath,
-                'logoutRedirectPath' => $this->logoutRedirectPath,
+                // 'logoutRedirectPath' => $this->logoutRedirectPath,
                 'areas' => $this->areas,
             ],
         ]);

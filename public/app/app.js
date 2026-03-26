@@ -10,7 +10,8 @@ function buildLogoutUrl() {
     const logoutPath = APP_CONFIG.logoutPath || '/_contao/logout';
     const redirectPath = APP_CONFIG.logoutRedirectPath || '/app';
 
-    return logoutPath + '?redirect=' + encodeURIComponent(redirectPath);
+    // return logoutPath + '?redirect=' + encodeURIComponent(redirectPath);
+    return logoutPath;
 }
 
 const AREAS = [

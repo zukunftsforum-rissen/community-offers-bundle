@@ -9,12 +9,15 @@ use Contao\MemberModel;
 
 final class PasswordSetupService implements PasswordSetupServiceInterface
 {
-    private const TOKEN_TTL = 86400;
+    public function __construct(
+        private readonly int $passwordTtl,
+    ) {
+    }
 
     public function createSetupTokenForRequest(int $requestId): string
     {
         $token = bin2hex(random_bytes(32));
-        $expires = time() + self::TOKEN_TTL;
+        $expires = time() + $this->passwordTtl;
 
         Database::getInstance()
             ->prepare('

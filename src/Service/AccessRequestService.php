@@ -21,6 +21,7 @@ class AccessRequestService
         private readonly RouterInterface $router,
         private readonly MailerInterface $mailer,
         private readonly ContaoFramework $framework,
+        private readonly int $doiTtl,
     ) {
     }
 
@@ -59,7 +60,7 @@ class AccessRequestService
 
         $token = bin2hex(random_bytes(32));
         $tokenHash = hash('sha256', $token);
-        $expiresAt = time() + (2 * 24 * 60 * 60);
+        $expiresAt = time() + $this->doiTtl;
 
         Database::getInstance()
             ->prepare('
@@ -304,7 +305,7 @@ class AccessRequestService
 
             $token = bin2hex(random_bytes(32));
             $tokenHash = hash('sha256', $token);
-            $expiresAt = time() + (2 * 24 * 60 * 60);
+            $expiresAt = time() + $this->doiTtl;
 
             Database::getInstance()
                 ->prepare("
@@ -332,7 +333,7 @@ class AccessRequestService
 
         $token = bin2hex(random_bytes(32));
         $tokenHash = hash('sha256', $token);
-        $expiresAt = time() + (2 * 24 * 60 * 60);
+        $expiresAt = time() + $this->doiTtl;
 
         Database::getInstance()
             ->prepare('

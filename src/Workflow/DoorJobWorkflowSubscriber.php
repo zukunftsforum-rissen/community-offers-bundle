@@ -11,7 +11,7 @@ use Symfony\Component\Workflow\Event\TransitionEvent;
 final class DoorJobWorkflowSubscriber implements EventSubscriberInterface
 {
     public function __construct(
-        private readonly int $confirmWindowSeconds = 30,
+        private readonly int $confirmWindowSeconds,
     ) {
     }
 

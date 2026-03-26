@@ -16,7 +16,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(
     name: 'community-offers:emulator:create-device',
-    description: 'Creates or updates an emulator device and generates a token.'
+    description: 'Creates or updates an emulator device and generates a token.',
 )]
 final class CreateEmulatorDeviceCommand extends Command
 {
@@ -31,31 +31,10 @@ final class CreateEmulatorDeviceCommand extends Command
         $this
             ->addArgument('deviceId', InputArgument::OPTIONAL, 'Device ID', 'pi-emulator')
             ->addArgument('name', InputArgument::OPTIONAL, 'Device name', 'PI Emulator')
-            ->addOption(
-                'areas',
-                null,
-                InputOption::VALUE_REQUIRED,
-                'Comma-separated list of areas',
-                'workshop,sharing,depot,swap-house'
-            )
-            ->addOption(
-                'print-env-snippet',
-                null,
-                InputOption::VALUE_NONE,
-                'Print a .env.local snippet with the generated token'
-            )
-            ->addOption(
-                'write-token-file',
-                null,
-                InputOption::VALUE_REQUIRED,
-                'Write the plaintext token to the given file'
-            )
-            ->addOption(
-                'write-default-token-file',
-                null,
-                InputOption::VALUE_NONE,
-                'Write the plaintext token to var/device-tokens/<deviceId>.token'
-            )
+            ->addOption('areas', null, InputOption::VALUE_REQUIRED, 'Comma-separated list of areas', 'workshop,sharing,depot,swap-house')
+            ->addOption('print-env-snippet', null, InputOption::VALUE_NONE, 'Print a .env.local snippet with the generated token')
+            ->addOption('write-token-file', null, InputOption::VALUE_REQUIRED, 'Write the plaintext token to the given file')
+            ->addOption('write-default-token-file', null, InputOption::VALUE_NONE, 'Write the plaintext token to var/device-tokens/<deviceId>.token')
         ;
     }
 
@@ -83,15 +62,15 @@ final class CreateEmulatorDeviceCommand extends Command
         $allowedAreas = ['workshop', 'sharing', 'depot', 'swap-house'];
         $areas = array_values(array_filter(array_map(
             static fn (string $area): string => trim($area),
-            explode(',', $areasOption)
+            explode(',', $areasOption),
         )));
 
         foreach ($areas as $area) {
             if (!\in_array($area, $allowedAreas, true)) {
-                $io->error(sprintf(
+                $io->error(\sprintf(
                     'Invalid area "%s". Allowed areas: %s',
                     $area,
-                    implode(', ', $allowedAreas)
+                    implode(', ', $allowedAreas),
                 ));
 
                 return Command::FAILURE;
@@ -105,26 +84,27 @@ final class CreateEmulatorDeviceCommand extends Command
 
         $existing = $db
             ->prepare('SELECT id FROM tl_co_device WHERE deviceId=? LIMIT 1')
-            ->execute($deviceId);
+            ->execute($deviceId)
+        ;
 
         $serializedAreas = serialize($areas);
         $now = time();
 
         if ($existing->numRows > 0) {
-            /** @var array<string,mixed> $row */
+            /** @var array<string, mixed> $row */
             $row = $existing->row();
 
             $devicePk = (int) ($row['id'] ?? 0);
 
             if ($devicePk <= 0) {
-                $io->error(sprintf(
+                $io->error(\sprintf(
                     'Could not resolve primary key for device "%s".',
-                    $deviceId
+                    $deviceId,
                 ));
 
                 return Command::FAILURE;
             }
-            
+
             $db
                 ->prepare('
                     UPDATE tl_co_device
@@ -143,10 +123,11 @@ final class CreateEmulatorDeviceCommand extends Command
                     '1',
                     $tokenHash,
                     $serializedAreas,
-                    $devicePk
-                );
+                    $devicePk,
+                )
+            ;
 
-            $io->success(sprintf('Updated emulator device "%s".', $deviceId));
+            $io->success(\sprintf('Updated emulator device "%s".', $deviceId));
         } else {
             $db
                 ->prepare('
@@ -161,10 +142,11 @@ final class CreateEmulatorDeviceCommand extends Command
                     '1',
                     '1',
                     $tokenHash,
-                    $serializedAreas
-                );
+                    $serializedAreas,
+                )
+            ;
 
-            $io->success(sprintf('Created emulator device "%s".', $deviceId));
+            $io->success(\sprintf('Created emulator device "%s".', $deviceId));
         }
 
         $io->section('Generated token');
@@ -172,14 +154,14 @@ final class CreateEmulatorDeviceCommand extends Command
 
         if ((bool) $input->getOption('print-env-snippet')) {
             $io->section('.env.local snippet');
-            $io->writeln(sprintf('PI_EMULATOR_DEVICE_ID=%s', $deviceId));
-            $io->writeln(sprintf('PI_EMULATOR_DEVICE_TOKEN=%s', $plainToken));
+            $io->writeln(\sprintf('PI_EMULATOR_DEVICE_ID=%s', $deviceId));
+            $io->writeln(\sprintf('PI_EMULATOR_DEVICE_TOKEN=%s', $plainToken));
         }
 
         $tokenFile = null;
 
         if ((bool) $input->getOption('write-default-token-file')) {
-            $tokenFile = sprintf('var/device-tokens/%s.token', $deviceId);
+            $tokenFile = \sprintf('var/device-tokens/%s.token', $deviceId);
         }
 
         $explicitTokenFile = $input->getOption('write-token-file');
@@ -191,20 +173,20 @@ final class CreateEmulatorDeviceCommand extends Command
             $dir = \dirname($tokenFile);
 
             if (!is_dir($dir) && !mkdir($dir, 0750, true) && !is_dir($dir)) {
-                $io->error(sprintf('Could not create directory "%s".', $dir));
+                $io->error(\sprintf('Could not create directory "%s".', $dir));
 
                 return Command::FAILURE;
             }
 
             if (false === file_put_contents($tokenFile, $plainToken."\n")) {
-                $io->error(sprintf('Could not write token file "%s".', $tokenFile));
+                $io->error(\sprintf('Could not write token file "%s".', $tokenFile));
 
                 return Command::FAILURE;
             }
 
             @chmod($tokenFile, 0640);
 
-            $io->success(sprintf('Token file written to %s', $tokenFile));
+            $io->success(\sprintf('Token file written to %s', $tokenFile));
         }
 
         return Command::SUCCESS;

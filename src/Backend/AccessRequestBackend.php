@@ -73,7 +73,7 @@ class AccessRequestBackend extends Backend
         $this->addConfirmation(
             'Der Antrag wurde erfolgreich freigegeben. '
             .'Bereits eingeloggte Nutzer müssen sich neu anmelden, '
-            .'damit die neuen Bereiche in der App sichtbar werden.'
+            .'damit die neuen Bereiche in der App sichtbar werden.',
         );
 
         $areasHuman = $this->formatAreasHuman($areas);

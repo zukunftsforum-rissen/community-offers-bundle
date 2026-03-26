@@ -23,13 +23,8 @@ final class ApprovalMailer
     /**
      * @param list<string> $areasHuman
      */
-    public function sendApprovalMail(
-        string $email,
-        string $firstname,
-        string $lastname,
-        array $areasHuman,
-        string $username,
-    ): void {
+    public function sendApprovalMail(string $email, string $firstname, string $lastname, array $areasHuman, string $username): void
+    {
         $appUrl = $this->normalizeAbsoluteUrl($this->appUrl);
         $loginUrl = $this->buildLoginUrl($email);
         $resetPasswordUrl = $this->normalizeAbsoluteUrl($this->resetPasswordUrl);
@@ -37,40 +32,41 @@ final class ApprovalMailer
         $loginHint = 'Sie können sich mit Ihrer E-Mail-Adresse anmelden.';
 
         if ('username' === $this->loginIdentifier) {
-            $loginHint = sprintf('Ihr Benutzername lautet: %s', $username);
+            $loginHint = \sprintf('Ihr Benutzername lautet: %s', $username);
         }
 
         $text = <<<TXT
-Hallo {$firstname} {$lastname},
+            Hallo {$firstname} {$lastname},
 
-Ihre Zugangsanfrage wurde freigegeben.
+            Ihre Zugangsanfrage wurde freigegeben.
 
-Freigegebene Bereiche:
-- {$this->formatAreas($areasHuman)}
+            Freigegebene Bereiche:
+            - {$this->formatAreas($areasHuman)}
 
-{$loginHint}
+            {$loginHint}
 
-Falls Sie bereits eingeloggt sind, melden Sie sich bitte einmal ab und wieder an, damit die neuen Bereiche in der App sichtbar werden.
+            Falls Sie bereits eingeloggt sind, melden Sie sich bitte einmal ab und wieder an, damit die neuen Bereiche in der App sichtbar werden.
 
-Direkt zum Login:
-{$loginUrl}
+            Direkt zum Login:
+            {$loginUrl}
 
-Zur App:
-{$appUrl}
+            Zur App:
+            {$appUrl}
 
-Falls Sie Ihr Passwort zurücksetzen möchten:
-{$resetPasswordUrl}
+            Falls Sie Ihr Passwort zurücksetzen möchten:
+            {$resetPasswordUrl}
 
-Viele Grüße
-Zukunftwohnen / Zukunftsforum Rissen
-TXT;
+            Viele Grüße
+            Zukunftwohnen / Zukunftsforum Rissen
+            TXT;
 
         $mail = (new Email())
             ->from($this->from)
             ->replyTo($this->replyTo)
             ->to($email)
             ->subject('Ihre Zugangsanfrage wurde freigegeben')
-            ->text($text);
+            ->text($text)
+        ;
 
         $this->mailer->send($mail);
     }
@@ -105,7 +101,7 @@ TXT;
         $parts = parse_url($url);
 
         if (false === $parts || !isset($parts['scheme'], $parts['host'])) {
-            throw new \RuntimeException(sprintf('Invalid absolute URL "%s".', $absoluteUrl));
+            throw new \RuntimeException(\sprintf('Invalid absolute URL "%s".', $absoluteUrl));
         }
 
         $base = $parts['scheme'].'://'.$parts['host'];
@@ -128,7 +124,7 @@ TXT;
         $parts = parse_url($url);
 
         if (false === $parts || !isset($parts['scheme'], $parts['host'])) {
-            throw new \RuntimeException(sprintf('Invalid absolute URL "%s".', $url));
+            throw new \RuntimeException(\sprintf('Invalid absolute URL "%s".', $url));
         }
 
         $normalized = $parts['scheme'].'://'.$parts['host'];

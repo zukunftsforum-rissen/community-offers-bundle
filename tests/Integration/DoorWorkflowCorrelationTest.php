@@ -205,7 +205,7 @@ final class DoorWorkflowCorrelationTest extends KernelTestCase
             }
         }
 
-        return new DoorJobService($this->db, $cache, $workflow, $logging, $audit);
+        return new DoorJobService($this->db, $cache, $workflow, $logging, $audit, 30);
     }
 
     /**

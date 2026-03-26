@@ -74,6 +74,7 @@ services:
     ZukunftsforumRissen\CommunityOffersBundle\Service\DoorJobService:
         arguments:
             $doorJobStateMachine: "@state_machine.door_job"
+            $confirmWindowSeconds: "%community_offers.confirm_window%"
 
     ZukunftsforumRissen\CommunityOffersBundle\Workflow\DoorJobWorkflowSubscriber:
         arguments:

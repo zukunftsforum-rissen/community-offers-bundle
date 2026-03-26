@@ -297,6 +297,7 @@ class DoorJobServiceTest extends TestCase
             $this->createDoorJobStateMachine(),
             $this->createStub(LoggingService::class),
             $this->createStub(DoorAuditLogger::class),
+            30,
         );
     }
 

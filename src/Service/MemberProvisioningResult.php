@@ -6,7 +6,7 @@ namespace ZukunftsforumRissen\CommunityOffersBundle\Service;
 
 use Contao\MemberModel;
 
-final class MemberProvisioningResult
+class MemberProvisioningResult
 {
     public function __construct(
         public readonly MemberModel $member,

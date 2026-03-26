@@ -16,6 +16,8 @@ use Symfony\Component\Routing\RouterInterface;
 use ZukunftsforumRissen\CommunityOffersBundle\Controller\Frontend\AccessConfirmController;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\AccessRequestService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\InternalNotificationMailer;
+use Contao\MemberModel;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\MemberProvisioningResult;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\MemberProvisioningServiceInterface;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\PasswordSetupServiceInterface;
 
@@ -1118,6 +1120,7 @@ class AccessRequestServiceTest extends TestCase
         $memberProvisioningService = $this->createMock(MemberProvisioningServiceInterface::class);
         $memberProvisioningService->expects($this->once())
             ->method('createMemberFromConfirmedRequest')
+            ->willReturn(new MemberProvisioningResult($this->createStub(MemberModel::class), true))
         ;
         $passwordSetupService = $this->createMock(PasswordSetupServiceInterface::class);
         $passwordSetupService->expects($this->once())

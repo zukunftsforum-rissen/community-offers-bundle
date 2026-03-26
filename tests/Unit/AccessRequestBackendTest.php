@@ -112,7 +112,7 @@ class AccessRequestBackendTest extends TestCase
         $backend->handleActions();
 
         $this->assertSame(77, $backend->markedApprovedId);
-        $this->assertSame('Der Antrag wurde erfolgreich freigegeben.', $backend->confirmationMessage);
+        $this->assertSame('Der Antrag wurde erfolgreich freigegeben. Bereits eingeloggte Nutzer müssen sich neu anmelden, damit die neuen Bereiche in der App sichtbar werden.', $backend->confirmationMessage);
         $this->assertSame(1, $backend->redirectCalls);
         $this->assertSame(1, $member->saveCalls);
         $this->assertFalse((bool) $member->disable);

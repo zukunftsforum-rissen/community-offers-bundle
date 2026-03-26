@@ -111,8 +111,20 @@ final class CreateEmulatorDeviceCommand extends Command
         $now = time();
 
         if ($existing->numRows > 0) {
-            $devicePk = (int) $existing->id;
+            /** @var array<string,mixed> $row */
+            $row = $existing->row();
 
+            $devicePk = (int) ($row['id'] ?? 0);
+
+            if ($devicePk <= 0) {
+                $io->error(sprintf(
+                    'Could not resolve primary key for device "%s".',
+                    $deviceId
+                ));
+
+                return Command::FAILURE;
+            }
+            
             $db
                 ->prepare('
                     UPDATE tl_co_device

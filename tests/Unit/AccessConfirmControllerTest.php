@@ -8,6 +8,8 @@ use PHPUnit\Framework\TestCase;
 use ZukunftsforumRissen\CommunityOffersBundle\Controller\Frontend\AccessConfirmController;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\AccessRequestService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\InternalNotificationMailer;
+use Contao\MemberModel;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\MemberProvisioningResult;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\MemberProvisioningServiceInterface;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\PasswordSetupServiceInterface;
 use Symfony\Component\Mailer\MailerInterface;
@@ -69,6 +71,7 @@ class AccessConfirmControllerTest extends TestCase
         $memberProvisioningService->expects($this->once())
             ->method('createMemberFromConfirmedRequest')
             ->with(123)
+            ->willReturn(new MemberProvisioningResult($this->createStub(MemberModel::class), true))
         ;
         $passwordSetupService = $this->createMock(PasswordSetupServiceInterface::class);
         $passwordSetupService->expects($this->once())

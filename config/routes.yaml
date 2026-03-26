@@ -14,7 +14,7 @@ co_demo:
 
 co_device_monitor:
     path: /%contao.backend.route_prefix%/device-monitor
-    controller: ZukunftsforumRissen\CommunityOffersBundle\Controller\Frontend\DeviceMonitorController
+    controller: ZukunftsforumRissen\CommunityOffersBundle\Controller\Backend\DeviceMonitorController
     methods: [GET]
     defaults:
         _scope: backend

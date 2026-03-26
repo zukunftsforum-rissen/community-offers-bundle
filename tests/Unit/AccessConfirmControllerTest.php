@@ -7,6 +7,10 @@ namespace ZukunftsforumRissen\CommunityOffersBundle\Tests;
 use PHPUnit\Framework\TestCase;
 use ZukunftsforumRissen\CommunityOffersBundle\Controller\Frontend\AccessConfirmController;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\AccessRequestService;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\InternalNotificationMailer;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\MemberProvisioningServiceInterface;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\PasswordSetupServiceInterface;
+use Symfony\Component\Mailer\MailerInterface;
 
 class AccessConfirmControllerTest extends TestCase
 {
@@ -17,12 +21,18 @@ class AccessConfirmControllerTest extends TestCase
     {
         $service = $this->createMock(AccessRequestService::class);
         $service->expects($this->once())
-            ->method('confirmToken')
+            ->method('confirmTokenAndGetRequestId')
             ->with('bad-token')
-            ->willReturn(false)
+            ->willReturn(null)
         ;
 
-        $controller = new AccessConfirmController($service);
+        $memberProvisioningService = $this->createMock(MemberProvisioningServiceInterface::class);
+        $passwordSetupService = $this->createMock(PasswordSetupServiceInterface::class);
+        $internalMailerTransport = $this->createMock(MailerInterface::class);
+        $internalMailerTransport->expects($this->never())->method('send');
+        $internalNotificationMailer = new InternalNotificationMailer($internalMailerTransport, 'info@example.org', 'noreply@example.org');
+
+        $controller = new AccessConfirmController($service, $memberProvisioningService, $passwordSetupService, $internalNotificationMailer);
 
         $response = $controller->confirm('bad-token');
 
@@ -36,15 +46,44 @@ class AccessConfirmControllerTest extends TestCase
     {
         $service = $this->createMock(AccessRequestService::class);
         $service->expects($this->once())
-            ->method('confirmToken')
+            ->method('confirmTokenAndGetRequestId')
             ->with('good-token')
-            ->willReturn(true)
+            ->willReturn(123)
+        ;
+        $service->expects($this->once())
+            ->method('getRequestRow')
+            ->with(123)
+            ->willReturn([
+                'firstname' => 'Max',
+                'lastname' => 'Mustermann',
+                'street' => 'Musterweg 1',
+                'postal' => '22559',
+                'city' => 'Hamburg',
+                'mobile' => '040 12345',
+                'email' => 'max@example.org',
+                'requestedAreas' => serialize(['depot']),
+            ])
         ;
 
-        $controller = new AccessConfirmController($service);
+        $memberProvisioningService = $this->createMock(MemberProvisioningServiceInterface::class);
+        $memberProvisioningService->expects($this->once())
+            ->method('createMemberFromConfirmedRequest')
+            ->with(123)
+        ;
+        $passwordSetupService = $this->createMock(PasswordSetupServiceInterface::class);
+        $passwordSetupService->expects($this->once())
+            ->method('createSetupTokenForRequest')
+            ->with(123)
+            ->willReturn('setup-token-abc')
+        ;
+        $internalMailerTransport = $this->createMock(MailerInterface::class);
+        $internalMailerTransport->expects($this->once())->method('send');
+        $internalNotificationMailer = new InternalNotificationMailer($internalMailerTransport, 'info@example.org', 'noreply@example.org');
+
+        $controller = new AccessConfirmController($service, $memberProvisioningService, $passwordSetupService, $internalNotificationMailer);
 
         $response = $controller->confirm('good-token');
 
-        $this->assertSame('/zugangsanfrage-bestaetigt', $response->getTargetUrl());
+        $this->assertSame('/access/set-password/setup-token-abc', $response->getTargetUrl());
     }
 }

@@ -12,7 +12,11 @@ use ZukunftsforumRissen\CommunityOffersBundle\Workflow\DoorJob;
 
 final class DoorJobService
 {
-    private const CONFIRM_WINDOW_SECONDS = 30;
+    private const RATE_LIMIT_WINDOW_SECONDS = 60;
+
+    private const RATE_LIMIT_MAX_ATTEMPTS = 3;
+
+    private const LOCK_SECONDS = 5;
 
     public function __construct(
         private readonly Connection $db,
@@ -20,12 +24,13 @@ final class DoorJobService
         private readonly WorkflowInterface $doorJobStateMachine,
         private readonly LoggingService $logging,
         private readonly DoorAuditLogger $audit,
+        private readonly int $confirmWindowSeconds,
     ) {
     }
 
     public function getConfirmWindowSeconds(): int
     {
-        return self::CONFIRM_WINDOW_SECONDS;
+        return $this->confirmWindowSeconds;
     }
 
     /**
@@ -52,8 +57,8 @@ final class DoorJobService
             ['now' => $now],
         );
 
-        $limit = 3;
-        $windowSeconds = 60;
+        $limit = self::RATE_LIMIT_MAX_ATTEMPTS;
+        $windowSeconds = self::RATE_LIMIT_WINDOW_SECONDS;
 
         $rateKey = \sprintf('door_open_m%d_%s', $memberId, $area);
         $rateItem = $this->cache->getItem($rateKey);
@@ -100,7 +105,7 @@ final class DoorJobService
         $rateItem->expiresAfter(max(1, (int) $data['resetAt'] - $now));
         $this->cache->save($rateItem);
 
-        $lockSeconds = 5;
+        $lockSeconds = self::LOCK_SECONDS;
         $until = $now + $lockSeconds;
 
         $memberLockKey = \sprintf('door_lock_member_m%d_%s', $memberId, $area);
@@ -160,7 +165,7 @@ final class DoorJobService
                 'memberId' => $memberId,
                 'area' => $area,
                 'now' => $now,
-                'dispatchedCutoff' => $now - self::CONFIRM_WINDOW_SECONDS,
+                'dispatchedCutoff' => $now - $this->confirmWindowSeconds,
             ],
         );
 
@@ -258,7 +263,7 @@ final class DoorJobService
     public function expireOldJobs(): void
     {
         $now = time();
-        $dispatchedCutoff = $now - self::CONFIRM_WINDOW_SECONDS;
+        $dispatchedCutoff = $now - $this->confirmWindowSeconds;
 
         $this->db->executeStatement(
             "UPDATE tl_co_door_job
@@ -336,7 +341,7 @@ final class DoorJobService
 
                 $dtNow = (new \DateTimeImmutable())->setTimestamp($now);
                 $job->setDispatchedAt($dtNow);
-                $job->setConfirmExpiresAt($dtNow->modify('+'.self::CONFIRM_WINDOW_SECONDS.' seconds'));
+                $job->setConfirmExpiresAt($dtNow->modify('+'.$this->confirmWindowSeconds.' seconds'));
 
                 if (!$this->doorJobStateMachine->can($job, 'dispatch')) {
                     continue;
@@ -565,13 +570,13 @@ final class DoorJobService
         $now = time();
         $dispatchedAt = (int) ($job['dispatchedAt'] ?? 0);
 
-        if ($dispatchedAt > 0 && $dispatchedAt < $now - self::CONFIRM_WINDOW_SECONDS) {
+        if ($dispatchedAt > 0 && $dispatchedAt < $now - $this->confirmWindowSeconds) {
             $doorJob = new DoorJob(
                 (int) $job['id'],
                 '',
                 $status,
                 (new \DateTimeImmutable())->setTimestamp($dispatchedAt),
-                (new \DateTimeImmutable())->setTimestamp($dispatchedAt)->modify('+'.self::CONFIRM_WINDOW_SECONDS.' seconds'),
+                (new \DateTimeImmutable())->setTimestamp($dispatchedAt)->modify('+'.$this->confirmWindowSeconds.' seconds'),
             );
 
             if ($this->doorJobStateMachine->can($doorJob, 'expire_dispatched')) {
@@ -657,7 +662,7 @@ final class DoorJobService
             '',
             $status,
             (new \DateTimeImmutable())->setTimestamp($dispatchedAt),
-            (new \DateTimeImmutable())->setTimestamp($dispatchedAt)->modify('+'.self::CONFIRM_WINDOW_SECONDS.' seconds'),
+            (new \DateTimeImmutable())->setTimestamp($dispatchedAt)->modify('+'.$this->confirmWindowSeconds.' seconds'),
         );
 
         $transition = $ok ? 'execute' : 'fail';

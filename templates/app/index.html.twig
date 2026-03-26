@@ -22,16 +22,22 @@
 			<section id="actions" class="hidden"></section>
 
 			<section id="loginHint" class="hidden">
-				<p>Du bist nicht eingeloggt.</p>
-				<a class="btn" id="loginLink" href="{{ appConfig.loginPath }}">Login öffnen</a>
-				<br>
-				<a href="/zugang-anfragen">Noch kein Zugang? -&gt; Zugang anfragen</a>
+
+				<a class="btn login-main" id="loginLink" href="{{ appConfig.loginPath }}">
+					🔐 Bitte einloggen
+				</a>
+
+				<a class="request-link-login" href="/zugang-anfragen">
+					Noch kein Zugang? → Zugang anfragen
+				</a>
+
 			</section>
+
 			<footer class="app-legal">
 				<p>
 					Mit der Nutzung dieser Anwendung gelten die
 					<a href="/community-regeln" target="_blank" rel="noopener noreferrer">Regeln unserer Community</a>.
-										    Türöffnungen werden zu Sicherheits- und Betriebszwecken protokolliert.
+																    Türöffnungen werden zu Sicherheits- und Betriebszwecken protokolliert.
 					<a href="/datenschutz" target="_blank" rel="noopener noreferrer">Datenschutzerklärung</a>
 				</p>
 			</footer>

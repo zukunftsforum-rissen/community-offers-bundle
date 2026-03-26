@@ -177,14 +177,15 @@ async function initApp() {
             const me = await whoami();
 
             if (!me.authenticated) {
-                statusEl.textContent = 'Bitte einloggen 🔐';
+                statusEl.textContent = '';
+                statusEl.classList.add('hidden');
                 actionsEl.classList.add('hidden');
                 loginHintEl.classList.remove('hidden');
                 return;
             }
 
+            statusEl.classList.remove('hidden');
             statusEl.innerHTML = `<span class="status">Hallo <strong>${memberDisplayName(me)} 👋</strong></span>`;
-
             actionsEl.classList.remove('hidden');
             loginHintEl.classList.add('hidden');
 

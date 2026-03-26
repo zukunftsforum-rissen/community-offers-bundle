@@ -679,3 +679,37 @@ button.cooldown {
 .app-legal p {
     margin: 0;
 }
+
+/* ===== Login Button ===== */
+
+.login-main {
+    display: block;
+    width: 100%;
+    padding: 0.9em 1em;
+    margin-bottom: 1.2rem;
+    border: 1.5px solid var(--color-border);
+    border-radius: 10px;
+    background: var(--color-highlighted);
+    color: white;
+    text-align: center;
+    text-decoration: none;
+    font-size: 1.1em;
+    font-weight: 600;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.2s ease;
+}
+
+.login-main:hover,
+.login-main:focus {
+    background: var(--color-link-hover);
+    color: white;
+    text-decoration: none;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgb(0 0 0 / 15%);
+}
+
+.request-link-login {
+    display: block;
+    text-align: center;
+    margin-top: 0.2rem;
+    font-size: 1rem;
+}

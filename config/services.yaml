@@ -14,8 +14,7 @@ parameters:
     community_offers.app.login_path: "/login"
     community_offers.reset_password_url: "%env(COMMUNITY_OFFERS_RESET_PASSWORD_URL)%"
     community_offers.app.logout_path: "/_contao/logout"
-    community_offers.app.logout_redirect_path: "/app"
-
+    
     community_offers.app.areas: "%env(json:COMMUNITY_OFFERS_AREAS)%"
     community_offers.area_groups: "%env(json:COMMUNITY_OFFERS_AREA_GROUPS)%"
 

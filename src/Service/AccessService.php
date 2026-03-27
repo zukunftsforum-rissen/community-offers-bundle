@@ -40,7 +40,6 @@ class AccessService
         /** @var list<int|string> $groups */
         $groups = array_map('intval', $groups);
 
-        // Performance: schneller Lookup
         $groupsLookup = array_flip($groups);
 
         $areas = [];

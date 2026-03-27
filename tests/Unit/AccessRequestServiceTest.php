@@ -1419,7 +1419,7 @@ class AccessRequestServiceTest extends TestCase
         $router ??= $this->createStub(RouterInterface::class);
         $mailer ??= $this->createStub(MailerInterface::class);
 
-        return new AccessRequestService($router, $mailer, $framework, 2 * 24 * 60 * 60);
+        return new AccessRequestService($router, $mailer, $framework, 2 * 24 * 60 * 60, 'noreply@example.org');
     }
 
     private function setDatabaseSingleton(Database|null $database): void

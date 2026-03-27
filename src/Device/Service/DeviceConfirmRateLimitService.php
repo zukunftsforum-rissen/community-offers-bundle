@@ -13,7 +13,7 @@ final class DeviceConfirmRateLimitService
     ) {
     }
 
-    public function isAllowed(string $deviceId, int $limit = 10, int $windowSeconds = 300): bool
+    public function isAllowed(string $deviceId, int $limit = 10, int $rateLimitWindowSeconds = 300): bool
     {
         $now = time();
         $key = 'device_confirm_fail_'.$deviceId;
@@ -31,7 +31,7 @@ final class DeviceConfirmRateLimitService
         return (int) $data['count'] < $limit;
     }
 
-    public function registerFailure(string $deviceId, int $windowSeconds = 300): void
+    public function registerFailure(string $deviceId, int $rateLimitWindowSeconds = 300): void
     {
         $now = time();
         $key = 'device_confirm_fail_'.$deviceId;
@@ -41,7 +41,7 @@ final class DeviceConfirmRateLimitService
         if (!\is_array($data) || !isset($data['count'], $data['resetAt']) || $now >= (int) $data['resetAt']) {
             $data = [
                 'count' => 0,
-                'resetAt' => $now + $windowSeconds,
+                'resetAt' => $now + $rateLimitWindowSeconds,
             ];
         }
 

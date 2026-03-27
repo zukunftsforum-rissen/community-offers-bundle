@@ -57,25 +57,25 @@ final class DoorJobService
             ['now' => $now],
         );
 
-        $limit = self::RATE_LIMIT_MAX_ATTEMPTS;
-        $windowSeconds = self::RATE_LIMIT_WINDOW_SECONDS;
+        $rateLimitMaxAttempts = self::RATE_LIMIT_MAX_ATTEMPTS;
+        $rateLimitWindowSeconds = self::RATE_LIMIT_WINDOW_SECONDS;
 
         $rateKey = \sprintf('door_open_m%d_%s', $memberId, $area);
         $rateItem = $this->cache->getItem($rateKey);
         $data = $rateItem->isHit() ? $rateItem->get() : null;
 
         if (!\is_array($data) || !isset($data['count'], $data['resetAt'])) {
-            $data = ['count' => 0, 'resetAt' => $now + $windowSeconds];
+            $data = ['count' => 0, 'resetAt' => $now + $rateLimitWindowSeconds];
         }
 
         if ($now >= (int) $data['resetAt']) {
-            $data = ['count' => 0, 'resetAt' => $now + $windowSeconds];
+            $data = ['count' => 0, 'resetAt' => $now + $rateLimitWindowSeconds];
         }
 
-        if ((int) $data['count'] >= $limit) {
+        if ((int) $data['count'] >= $rateLimitMaxAttempts) {
             $retryAfterSeconds = max(1, (int) $data['resetAt'] - $now);
 
-            $this->logging->warning('door_job.rate_limited', [
+            $this->logging->warning('door_job.rate_rateLimitMaxAttemptsed', [
                 'cid' => $correlationId,
                 'memberId' => $memberId,
                 'area' => $area,
@@ -289,13 +289,13 @@ final class DoorJobService
      *
      * @return list<array{jobId:int, area:string, nonce:string, expiresInMs:int, correlationId:string}>
      */
-    public function dispatchJobs(string $deviceId, array $areas, int $limit = 3): array
+    public function dispatchJobs(string $deviceId, array $areas, int $rateLimitMaxAttempts = 3): array
     {
-        if ($limit < 1) {
-            $limit = 1;
+        if ($rateLimitMaxAttempts < 1) {
+            $rateLimitMaxAttempts = 1;
         }
-        if ($limit > 10) {
-            $limit = 10;
+        if ($rateLimitMaxAttempts > 10) {
+            $rateLimitMaxAttempts = 10;
         }
         if (!$areas) {
             return [];
@@ -313,7 +313,7 @@ final class DoorJobService
                    AND area IN (:areas)
                    AND (expiresAt >= :now)
                  ORDER BY createdAt ASC
-                 LIMIT $limit",
+                 LIMIT $rateLimitMaxAttempts",
                 ['areas' => $areas, 'now' => $now],
                 ['areas' => ArrayParameterType::STRING],
             );

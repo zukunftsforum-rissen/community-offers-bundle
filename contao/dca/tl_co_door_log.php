@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use Contao\DC_Table;
-use ZukunftsforumRissen\CommunityOffersBundle\DataContainer\DoorLogCallback;
+use ZukunftsforumRissen\CommunityOffersBundle\DataContainer\TlCoDoorLogCallback;
 
 $GLOBALS['TL_DCA']['tl_co_door_log'] = [
     'config' => [
@@ -29,7 +29,7 @@ $GLOBALS['TL_DCA']['tl_co_door_log'] = [
         ],
         'label' => [
             'fields' => ['tstamp', 'correlationId', 'memberId', 'deviceId', 'area', 'action', 'result'],
-            'label_callback' => [DoorLogCallback::class, 'labelCallback'],
+            'label_callback' => [TlCoDoorLogCallback::class, 'labelCallback'],
         ],
         'global_operations' => [
             'all' => [
@@ -52,7 +52,7 @@ $GLOBALS['TL_DCA']['tl_co_door_log'] = [
                 'label' => &$GLOBALS['TL_LANG']['tl_co_door_log']['workflow'],
                 'href' => '',
                 'icon' => 'bundles/communityoffers/icons/workflow-grey.svg',
-                'button_callback' => [\ZukunftsforumRissen\CommunityOffersBundle\DataContainer\DoorLogCallback::class, 'workflowButton'],
+                'button_callback' => [TlCoDoorLogCallback::class, 'workflowButton'],
             ],
         ],
     ],

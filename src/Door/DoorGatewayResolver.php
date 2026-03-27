@@ -16,12 +16,22 @@ final class DoorGatewayResolver
 
     public function resolve(string $mode): DoorGatewayInterface
     {
+        $matches = [];
+
         foreach ($this->gateways as $gateway) {
             if ($gateway->supports($mode)) {
-                return $gateway;
+                $matches[] = $gateway;
             }
         }
 
-        throw new \RuntimeException(\sprintf('No door gateway found for mode "%s".', $mode));
+        if ([] === $matches) {
+            throw new \RuntimeException(\sprintf('No door gateway found for mode "%s".', $mode));
+        }
+
+        if (1 !== \count($matches)) {
+            throw new \LogicException(\sprintf('Expected exactly one gateway for mode "%s", got %d (%s)', $mode, \count($matches), implode(', ', array_map(static fn ($gateway): string => $gateway::class, $matches))));
+        }
+
+        return $matches[0];
     }
 }

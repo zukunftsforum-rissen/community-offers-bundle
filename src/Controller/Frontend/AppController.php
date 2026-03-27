@@ -18,7 +18,7 @@ final class AppController extends AbstractController
         private readonly string $loginPath,
         #[Autowire('%community_offers.app.logout_path%')]
         private readonly string $logoutPath,
-        #[Autowire('%community_offers.app.areas%')]
+        #[Autowire('%community_offers.areas%')]
         private readonly array $areas,
     ) {
     }

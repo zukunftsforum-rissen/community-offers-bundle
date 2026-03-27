@@ -22,6 +22,7 @@ class AccessRequestService
         private readonly MailerInterface $mailer,
         private readonly ContaoFramework $framework,
         private readonly int $doiTtl,
+        private readonly string $mailFrom,
     ) {
     }
 
@@ -423,7 +424,7 @@ class AccessRequestService
             TXT;
 
         $mail = (new Email())
-            ->from('admin@zukunftwohnen.zukunftsforum-rissen.de')
+            ->from($this->mailFrom)
             ->to($email)
             ->subject('Bitte bestätigen Sie Ihre E-Mail-Adresse')
             ->text($text)

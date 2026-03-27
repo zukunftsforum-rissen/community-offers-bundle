@@ -17,6 +17,9 @@ class AccessService
         private readonly ContaoFramework $framework,
         private readonly array $areaGroups,
     ) {
+        if (!$this->areaGroups) {
+            throw new \LogicException('community_offers.area_groups must not be empty');
+        }
     }
 
     /**
@@ -27,17 +30,22 @@ class AccessService
         $this->framework->initialize();
 
         $member = MemberModel::findById($memberId);
+
         if (null === $member) {
             return [];
         }
 
-        $groups = StringUtil::deserialize($member->groups, true); // list<int|string>
+        $groups = StringUtil::deserialize($member->groups, true);
+
+        /** @var list<int|string> $groups */
         $groups = array_map('intval', $groups);
+
+        $groupsLookup = array_flip($groups);
 
         $areas = [];
 
         foreach ($this->areaGroups as $area => $groupId) {
-            if (\in_array((int) $groupId, $groups, true)) {
+            if (isset($groupsLookup[(int) $groupId])) {
                 $areas[] = (string) $area;
             }
         }
@@ -63,12 +71,15 @@ class AccessService
         $ids = [];
 
         foreach ($areas as $area) {
-            if (isset($this->areaGroups[$area])) {
-                $ids[] = (int) $this->areaGroups[$area];
+            if (!isset($this->areaGroups[$area])) {
+                throw new \InvalidArgumentException(\sprintf('Unknown area "%s"', $area));
             }
+
+            $ids[] = (int) $this->areaGroups[$area];
         }
 
         $ids = array_values(array_unique($ids));
+
         sort($ids);
 
         return $ids;

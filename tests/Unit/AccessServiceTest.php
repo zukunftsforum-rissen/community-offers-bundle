@@ -40,22 +40,25 @@ class AccessServiceTest extends TestCase
             'swap-house' => 7,
         ]);
 
-        $result = $service->getGroupIdsForAreas(['swap-house', 'unknown', 'sharing', 'workshop', 'depot']);
+        $result = $service->getGroupIdsForAreas(['swap-house', 'sharing', 'workshop', 'depot']);
 
         $this->assertSame([2, 4, 7], $result);
     }
 
     /**
-     * Verifies unknown areas map to an empty group ID list.
+     * Verifies unknown areas throw an InvalidArgumentException.
      */
-    public function testGetGroupIdsForAreasReturnsEmptyListForUnknownAreas(): void
+    public function testGetGroupIdsForAreasThrowsForUnknownArea(): void
     {
         $service = $this->createService([
             'workshop' => 1,
             'sharing' => 2,
         ]);
 
-        $this->assertSame([], $service->getGroupIdsForAreas(['not-found']));
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Unknown area "not-found"');
+
+        $service->getGroupIdsForAreas(['not-found']);
     }
 
     /**
@@ -69,7 +72,7 @@ class AccessServiceTest extends TestCase
 
         Registry::getInstance()->reset();
 
-        $member = new class($memberId, serialize(['11', 12])) extends Model {
+        $member = new class ($memberId, serialize(['11', 12])) extends Model {
             protected static $strTable = 'tl_member';
 
             public function __construct(int $id, string $groups)
@@ -124,7 +127,7 @@ class AccessServiceTest extends TestCase
 
         Registry::getInstance()->reset();
 
-        $member = new class($memberId, serialize(['2', 7, '999'])) extends Model {
+        $member = new class ($memberId, serialize(['2', 7, '999'])) extends Model {
             protected static $strTable = 'tl_member';
 
             public function __construct(int $id, string $groups)

@@ -112,29 +112,73 @@ final class DoorWorkflowCorrelationTest extends KernelTestCase
 
         $cache = $this->firstService($container, ['cache.app', CacheItemPoolInterface::class]);
         if (!$cache instanceof CacheItemPoolInterface) {
-            $cache = new class() implements CacheItemPoolInterface {
+            $cache = new class () implements CacheItemPoolInterface {
                 public function getItem(string $key): \Psr\Cache\CacheItemInterface
                 {
-                    return new class($key) implements \Psr\Cache\CacheItemInterface {
-                        public function __construct(private readonly string $key) {}
-                        public function getKey(): string { return $this->key; }
-                        public function get(): mixed { return null; }
-                        public function isHit(): bool { return false; }
-                        public function set(mixed $value): static { return $this; }
-                        public function expiresAt(?\DateTimeInterface $expiration): static { return $this; }
-                        public function expiresAfter(int|\DateInterval|null $time): static { return $this; }
+                    return new class ($key) implements \Psr\Cache\CacheItemInterface {
+                        public function __construct(private readonly string $key)
+                        {
+                        }
+                        public function getKey(): string
+                        {
+                            return $this->key;
+                        }
+                        public function get(): mixed
+                        {
+                            return null;
+                        }
+                        public function isHit(): bool
+                        {
+                            return false;
+                        }
+                        public function set(mixed $value): static
+                        {
+                            return $this;
+                        }
+                        public function expiresAt(?\DateTimeInterface $expiration): static
+                        {
+                            return $this;
+                        }
+                        public function expiresAfter(int|\DateInterval|null $time): static
+                        {
+                            return $this;
+                        }
                     };
                 }
 
                 /** @return iterable<string, \Psr\Cache\CacheItemInterface> */
-                public function getItems(array $keys = []): iterable { return []; }
-                public function hasItem(string $key): bool { return false; }
-                public function clear(): bool { return true; }
-                public function deleteItem(string $key): bool { return true; }
-                public function deleteItems(array $keys): bool { return true; }
-                public function save(\Psr\Cache\CacheItemInterface $item): bool { return true; }
-                public function saveDeferred(\Psr\Cache\CacheItemInterface $item): bool { return true; }
-                public function commit(): bool { return true; }
+                public function getItems(array $keys = []): iterable
+                {
+                    return [];
+                }
+                public function hasItem(string $key): bool
+                {
+                    return false;
+                }
+                public function clear(): bool
+                {
+                    return true;
+                }
+                public function deleteItem(string $key): bool
+                {
+                    return true;
+                }
+                public function deleteItems(array $keys): bool
+                {
+                    return true;
+                }
+                public function save(\Psr\Cache\CacheItemInterface $item): bool
+                {
+                    return true;
+                }
+                public function saveDeferred(\Psr\Cache\CacheItemInterface $item): bool
+                {
+                    return true;
+                }
+                public function commit(): bool
+                {
+                    return true;
+                }
             };
         }
 
@@ -179,8 +223,10 @@ final class DoorWorkflowCorrelationTest extends KernelTestCase
             if ($framework instanceof ContaoFramework && $security instanceof Security) {
                 $audit = new DoorAuditLogger($framework, $security);
             } else {
-                $audit = new class($this->db) extends DoorAuditLogger {
-                    public function __construct(private readonly Connection $db) {}
+                $audit = new class ($this->db) extends DoorAuditLogger {
+                    public function __construct(private readonly Connection $db)
+                    {
+                    }
 
                     public function audit(string $action, string $area, string $result, string $message = '', array $context = [], string $correlationId = '', int|null $memberId = null): void
                     {
@@ -290,7 +336,7 @@ final class DoorWorkflowCorrelationTest extends KernelTestCase
         $claimed = $this->service->dispatchJobs(
             deviceId: 'phpunit-device',
             areas: ['workshop'],
-            limit: 1,
+            rateLimitMaxAttempts: 1,
         );
 
         self::assertCount(1, $claimed);

@@ -60,3 +60,7 @@ additional_text.txt
 
 # git
 git/
+
+# Formatters
+*.php-cs-fixer.cache
+*.php-cs-fixer.php

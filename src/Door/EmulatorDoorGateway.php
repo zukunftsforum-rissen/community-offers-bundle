@@ -7,10 +7,8 @@ namespace ZukunftsforumRissen\CommunityOffersBundle\Door;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorJobService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService;
 
-final class WorkflowDoorGateway implements DoorGatewayInterface
+final class EmulatorDoorGateway implements DoorGatewayInterface
 {
-    public const MODE_LIVE = 'live';
-
     public const MODE_EMULATOR = 'emulator';
 
     public function __construct(
@@ -24,7 +22,6 @@ final class WorkflowDoorGateway implements DoorGatewayInterface
         return \in_array(
             $mode,
             [
-                self::MODE_LIVE,
                 self::MODE_EMULATOR,
             ],
             true,
@@ -36,9 +33,8 @@ final class WorkflowDoorGateway implements DoorGatewayInterface
      */
     public function open(string $area, int $memberId, array $context = []): DoorGatewayResult
     {
-        $mode = isset($context['mode']) ? (string) $context['mode'] : self::MODE_LIVE;
+        $mode = isset($context['mode']) ? (string) $context['mode'] : self::MODE_EMULATOR;
         $channel = match ($mode) {
-            self::MODE_LIVE => 'physical',
             self::MODE_EMULATOR => 'emulator',
             default => throw new \RuntimeException(\sprintf('Unsupported mode "%s"', $mode)),
         };
@@ -48,7 +44,7 @@ final class WorkflowDoorGateway implements DoorGatewayInterface
         $correlationId = isset($context['correlationId']) ? (string) $context['correlationId'] : '';
 
         $this->logging->initiateLogging('door', 'community-offers');
-        $this->logging->info('door.gateway.workflow_open_requested', [
+        $this->logging->info('door.gateway.emulator_open_requested', [
             'area' => $area,
             'memberId' => $memberId,
             'ip' => $ip,

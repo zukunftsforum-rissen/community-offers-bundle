@@ -1,7 +1,7 @@
 <?php
 
 use Contao\DC_Table;
-use ZukunftsforumRissen\CommunityOffersBundle\DataContainer\TlCoDevice;
+use ZukunftsforumRissen\CommunityOffersBundle\DataContainer\TlCoDeviceDataContainer;
 
 $GLOBALS['TL_DCA']['tl_co_device'] = [
 
@@ -32,7 +32,7 @@ $GLOBALS['TL_DCA']['tl_co_device'] = [
         'label' => [
             'fields' => ['name', 'deviceId', 'areas', 'enabled'],
             'showColumns' => true,
-            'label_callback' => [TlCoDevice::class, 'formatLabel'],
+            'label_callback' => [TlCoDeviceDataContainer::class, 'formatLabel'],
         ],
         'operations' => [
             'edit' => [

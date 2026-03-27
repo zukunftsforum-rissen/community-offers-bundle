@@ -15,7 +15,7 @@ parameters:
     community_offers.reset_password_url: "%env(COMMUNITY_OFFERS_RESET_PASSWORD_URL)%"
     community_offers.app.logout_path: "/_contao/logout"
     
-    community_offers.app.areas: "%env(json:COMMUNITY_OFFERS_AREAS)%"
+    community_offers.areas: "%env(json:COMMUNITY_OFFERS_AREAS)%"
     community_offers.area_groups: "%env(json:COMMUNITY_OFFERS_AREA_GROUPS)%"
 
     community_offers.doi_ttl: "%env(int:COMMUNITY_OFFERS_DOI_TTL)%"
@@ -107,6 +107,7 @@ services:
     ZukunftsforumRissen\CommunityOffersBundle\Service\AccessRequestService:
         arguments:
             $doiTtl: "%community_offers.doi_ttl%"
+            $mailFrom: "%community_offers.mail_from%"
 
     ZukunftsforumRissen\CommunityOffersBundle\Service\PasswordSetupService:
         arguments:

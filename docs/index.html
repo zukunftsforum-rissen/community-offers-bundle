@@ -473,28 +473,39 @@ label: "Test Map"
 }, {
 title: "Diagrams",
 items: [
+
+{
+href: "diagrams/generated/architecture.png",
+label: "Architecture Diagram (PNG)"
+},
+
+{
+href: "diagrams/generated/architecture.pdf",
+label: "Architecture Diagram (PDF)"
+},
+
+{
+href: "diagrams/generated/architecture.svg",
+label: "Architecture Diagram (SVG)"
+},
+
+{
+href: "diagrams/generated/data-model.generated.png",
+label: "Data Model"
+},
+
 {
 href: "diagrams/generated/data-model.generated.pdf",
 label: "Data Model PDF"
 },
+
 {
 href: "diagrams/generated/data-model.generated.puml",
-label: "Data Model PUML"
-},
-{
-href: "diagrams/architecture.puml",
-label: "Architecture PUML"
-},
-{
-href: "diagrams/workflow.puml",
-label: "Workflow PUML"
-}, {
-href: "diagrams/source/architecture.mmd",
-label: "Architecture Mermaid Source"
+label: "Data Model Diagram"
 }
+
 ]
-}
-];
+};
 const $ = (id) => document.getElementById(id);
 async function renderMermaidDiagrams(root) {
 if (!window.__mermaid) 

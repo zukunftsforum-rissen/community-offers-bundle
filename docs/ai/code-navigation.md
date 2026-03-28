@@ -1,14 +1,17 @@
-
 # Code Navigation Guide (AI)
 
-This document helps an AI quickly locate the most important parts of the
-Community Offers Bundle codebase.
+This document helps an AI quickly locate the most important parts
+of the Community Offers Bundle codebase.
 
-The goal is **fast orientation**: which files to read first and where the
-main logic lives.
+Goal:
 
-⚠️ The codebase is the canonical source of truth.
-This document is a navigation aid.
+Fast orientation and correct entry points.
+
+Important:
+
+The codebase itself is always the canonical source of truth.
+
+This file only defines navigation hints.
 
 ---
 
@@ -16,20 +19,51 @@ This document is a navigation aid.
 
 When analysing the project, start with:
 
-1. DeviceController
-2. DoorController
-3. DoorJobService
-4. DoorAuditLogger
-5. DeviceMonitorService
-6. Tests describing workflows
+1. AccessController
+2. DeviceController
+3. OpenDoorService
+4. DoorJobService
+5. DoorAuditLogger
+6. SystemMode
+7. DoorGatewayResolver
+8. Relevant workflow tests
+
+Important correction:
+
+There is no DoorController class.
+
+Member requests are handled by:
+
+AccessController
 
 ---
 
 # Controllers
 
+## AccessController
+
+Handles member door requests.
+
+Important endpoint:
+
+POST /api/door/open/{area}
+
+Responsibilities:
+
+- verify member authentication
+- verify access rights
+- call OpenDoorService
+- return jobId
+- handle rate limiting
+
+This is the primary entry point
+for member-triggered workflows.
+
+---
+
 ## DeviceController
 
-Handles device interactions.
+Handles device-side interactions.
 
 Typical endpoints:
 
@@ -39,43 +73,80 @@ Typical endpoints:
 
 Responsibilities:
 
-- authenticate device user
-- dispatch door jobs
-- validate nonce on confirm
-- rate limiting
-
----
-
-## DoorController
-
-Handles member requests.
-
-Important endpoint:
-
-POST /api/door/open/{area}
-
-Responsibilities:
-
-- verify member permissions
-- create DoorJob
-- initiate workflow
+- authenticate device
+- dispatch jobs
+- validate nonce
+- confirm execution result
+- update heartbeat
 
 ---
 
 # Core Services
 
+## OpenDoorService
+
+Primary orchestration service
+for member-triggered door actions.
+
+Responsibilities:
+
+- verify permissions
+- create DoorJob
+- select DoorGateway
+- trigger workflow logic
+
+Important:
+
+This is the orchestration layer
+between controller and workflow.
+
+---
+
 ## DoorJobService
 
-Central service managing door jobs.
+Central workflow state service.
 
-Typical responsibilities:
+Responsibilities:
 
-- create job
-- dispatch job
-- confirm job
+- create jobs
+- dispatch jobs
+- confirm jobs
 - expire jobs
+- enforce state transitions
 
-This service represents the **workflow state machine**.
+Important:
+
+This service represents the
+workflow state machine.
+
+---
+
+## DoorGatewayResolver
+
+Selects the correct gateway
+based on runtime mode.
+
+Responsibilities:
+
+- resolve live vs emulator gateway
+- enforce single gateway match
+- provide gateway instance
+
+---
+
+## SystemMode
+
+Defines runtime mode.
+
+Typical modes:
+
+- live
+- emulator
+
+Responsibilities:
+
+- expose runtime mode
+- enable mode-aware logic
 
 ---
 
@@ -85,47 +156,44 @@ Writes audit events to:
 
 tl_co_door_log
 
-Typical actions:
+Typical events:
 
 - door_open
 - door_dispatch
 - door_confirm
-- request_access
+- door_failed
+- door_expired
+
+Important:
+
+Audit logging is critical
+for debugging workflows.
 
 ---
 
 ## DeviceMonitorService
 
-Builds device status information from log events.
+Builds device status information
+from logs and heartbeat timestamps.
 
 Used for:
 
 - device monitor UI
-- health tracking
-
-Derives:
-
-- lastPollAt
-- lastConfirmAt
-- device status
+- online/offline detection
 
 ---
 
 ## DeviceHeartbeatService
 
-Tracks device activity through poll events.
+Tracks device activity.
 
-Used to determine online/offline state.
+Triggered by:
 
----
+device poll events.
 
-## DemoDeviceService
+Used to determine:
 
-Used for the browser-based demo.
-
-Important:
-
-Demo endpoints differ from production device endpoints.
+device availability.
 
 ---
 
@@ -140,9 +208,11 @@ Represents queued door jobs.
 Key concepts:
 
 - job lifecycle
-- dispatch to device
+- dispatch
 - nonce validation
 - expiration
+
+---
 
 ## tl_co_door_log
 
@@ -151,39 +221,60 @@ Audit log for all workflow events.
 Used for:
 
 - observability
-- monitoring
 - debugging
+- monitoring
+
+---
+
+## tl_co_device
+
+Stores registered devices.
+
+Key fields:
+
+- deviceId
+- areas
+- apiTokenHash
+- enabled
+- isEmulator
+- lastSeen
 
 ---
 
 # Tests
 
-Tests are one of the best sources for understanding behaviour.
+Tests are one of the best sources
+for understanding real behaviour.
 
 Important tests:
 
-DeviceControllerTest
-DoorWorkflowCorrelationTest
+- DeviceControllerTest
+- DoorWorkflowCorrelationTest
+- DoorJobServiceTest
+- AccessServiceTest
 
 They describe:
 
 - expected API behaviour
-- job lifecycle
+- workflow lifecycle
 - error handling
 
 ---
 
 # Workflow Entry Points
 
-Most workflows begin in one of these locations:
+Most workflows begin in:
 
-Member access request:
+Member flow:
 
-DoorController → DoorJobService
+AccessController
+→ OpenDoorService
+→ DoorJobService
 
-Device workflow:
+Device flow:
 
-DeviceController → DoorJobService
+DeviceController
+→ DoorJobService
 
 Logging:
 
@@ -191,31 +282,43 @@ DoorAuditLogger
 
 ---
 
-# When Investigating a Problem
+# Debugging Workflow
 
 Typical debugging order:
 
-1. Check tl_co_door_log
-2. Locate correlationId
-3. Inspect DoorJobService workflow
-4. Inspect DeviceController poll/confirm handling
-5. Review tests for expected behaviour
+1. Inspect tl_co_door_log
+2. Find correlationId
+3. Inspect DoorJobService state
+4. Inspect DeviceController
+5. Review workflow tests
+
+Important:
+
+Logs are usually the fastest
+source of truth.
 
 ---
 
 # Key Concept Summary
 
 DoorJob
-: queued door action
+
+Queued door action.
 
 Dispatch
-: assigning job to device
+
+Assigning job to device.
 
 Confirm
-: device confirms execution
+
+Device reports execution result.
 
 CorrelationId
-: trace identifier across logs
+
+Trace identifier across logs.
 
 Device
-: Raspberry Pi controlling door hardware
+
+Hardware controller
+executing door actions.
+

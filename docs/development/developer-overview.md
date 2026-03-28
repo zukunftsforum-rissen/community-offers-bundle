@@ -1,255 +1,357 @@
+
 # Zukunftwohnen – Zugangssystem: Technischer Überblick für Entwickler
 
-Diese Datei ist als **Gedächtnisstütze** gedacht: Wo ist was im Code, wie läuft der Job-Flow, wie debuggt man, und wie sieht das Datenmodell aus.
+Diese Datei dient als **Gedächtnisstütze für Entwickler**:
+Wo liegt welche Logik, wie läuft der Door-Workflow,
+und wie debuggt man typische Probleme.
 
-> Hinweis: Dateipfade können je nach Bundle-Struktur leicht abweichen. Die Klassennamen/Methoden sind so dokumentiert, dass du sie per IDE-Suche schnell findest.
-
----
-
-## 1) Architektur in einem Satz
-
-**PWA (Mitglied) → Contao/Symfony API (Door Jobs in DB) → Raspberry Pi (Pull/Poll) → Relais → Confirm zurück**
-
-- Keine eingehenden Verbindungen am Pi (Pull-Modell).
-- Zustandsmaschine über DB-Tabelle `tl_co_door_job`.
-- `confirmWindow = 30s` (dispatched TTL über `dispatchedAt`).
+Hinweis:
+Dateipfade können je nach Bundle-Struktur leicht abweichen.
+Die Klassennamen sind so dokumentiert,
+dass sie per IDE-Suche schnell gefunden werden können.
 
 ---
 
-## 2) Code-Landkarte (wo finde ich was?)
+# 1) Architektur in einem Satz
 
-### Controller (HTTP API)
-
-#### `AccessController`
-**Datei:** `.../Controller/Api/AccessController.php`  
-**Zweck:** Frontend-Mitglied fordert Türöffnung an.
-
-**Wichtige Methoden**
-- `open(string $area, Request $request): JsonResponse`
-  - prüft FE-Login (Session/Cookie)
-  - validiert `area` (Whitelist)
-  - (optional) Rechtecheck über Access/Policy Service
-  - ruft `DoorJobService->expireOldJobs()` (best effort)
-  - ruft `DoorJobService->createOpenJob(...)`
-  - gibt **202** mit `jobId/status/expiresAt` oder **429** mit `retryAfterSeconds` zurück
-
-- (optional / aus Backup übernommen)
-  - `whoami()` – Debug/Info: aktueller Member, Areas, Auth-Status
-  - `request()` – DOI/Access-Request Flow (siehe `AccessRequestService`)
-
-**Typische Fehlerbilder**
-- 401 bei CLI/curl → fehlende Contao-Session-Cookies (in der PWA ok).
-- 404 invalid_area → falscher slug / nicht in Whitelist.
+PWA (Mitglied)  
+→ Contao/Symfony API  
+→ OpenDoorService  
+→ Door Jobs in Datenbank  
+→ Device pollt regelmäßig  
+→ Relais wird ausgelöst  
+→ Confirm zurück an Server  
 
 ---
 
-#### `DeviceController`
-**Datei:** `.../Controller/Api/DeviceController.php`  
-**Zweck:** Raspberry Pi Poll & Confirm (Pull-Modell).
+# Core Domain Rule (KRITISCH)
 
-**Wichtige Methoden**
-- `poll(string $deviceId, Request $request): JsonResponse`
-  - authentifiziert Device (deviceId + Secret/Hash)
-  - liest `areas` (CSV)
-  - ruft `DoorJobService->dispatchJobs($deviceId, $areas, $limit)`
-  - Antwort: `{ jobs: [{jobId, area, nonce, expiresInMs}], nextPollInMs }`
+Das System unterstützt **zwei strikt getrennte Access-Workflows**:
 
-- `confirm(string $deviceId, Request $request): JsonResponse`
-  - Body: `jobId`, `nonce`, `ok`, optional `meta`
-  - ruft `DoorJobService->confirmJobDetailed(...)` (oder äquivalent)
-  - **Empfohlener Contract**
-    - 200: bestätigt oder idempotent final (nonce+device passt)
-    - 410: confirm_timeout (zu spät, Job expired)
-    - 403: forbidden (device/nonce mismatch)
-    - 404: not_found (jobId unbekannt)
-    - 409: not_dispatchable (Job nicht in `dispatched`)
+1. Initial Access Request  
+   → erstellt einen neuen Member
 
-**Typische Fehlerbilder**
-- confirm kommt als 200/accepted=false → sollte künftig 410/409/… sein (Contract klar halten).
-- poll liefert job, confirm zu spät → DB `expired / TIMEOUT / Confirm timeout`.
+2. Additional Access Request  
+   → erweitert Rechte eines bestehenden Members
+
+Diese Workflows dürfen **niemals vermischt werden**.
+
+Kritische Invariante:
+
+Additional Requests dürfen **niemals** neue Member erzeugen.
+
+Diese Regel ist eine **harte Domain-Regel** und darf durch Refactoring
+oder Erweiterungen nicht verletzt werden.
 
 ---
 
-### Services (Business Logic)
+Wichtige Prinzipien:
 
-#### `DoorJobService`
-**Datei:** `.../Service/DoorJobService.php`  
-**Zweck:** Zentrale Business-Logik für Door-Jobs: anlegen, dispatchen, confirm, timeouts.
+- Pull-Modell (keine eingehenden Verbindungen zum Device)
+- Zustandsmaschine über `tl_co_door_job`
+- confirmWindow konfigurierbar über:
 
-**Wichtige Konstanten**
-- `CONFIRM_WINDOW_SECONDS = 30`
+    community_offers.confirm_window
 
-**Wichtige Methoden**
-- `createOpenJob(int $memberId, string $area, string $ip = '', string $userAgent = ''): array`
-  - **muss** am Anfang: `expireOldJobs()` (Housekeeping, Idempotenz)
-  - Rate Limit (Member+Area, z.B. 3/min)
-  - Locks (Member+Area + Area global)
-  - Idempotenz: existierenden aktiven Job wiederverwenden
-    - `pending` ist aktiv solange `expiresAt >= now`
-    - `dispatched` ist aktiv solange `dispatchedAt >= now-30`
-  - legt neuen `pending` Job an (setzt `expiresAt`)
-  - Rückgabe u.a.: `httpStatus`, `jobId`, `status`, `expiresAt`, `retryAfterSeconds`
-
-- `dispatchJobs(string $deviceId, array $areas, int $limit = 3): array`
-  - (empfohlen) `expireOldJobs()` am Anfang
-  - claimed Jobs: `pending` → `dispatched`
-  - setzt: `dispatchToDeviceId`, `dispatchedAt`, `nonce`, `attempts++`
-  - liefert Liste für poll: `{id, area, nonce, expiresAt}` (expiresAt nur pending-bezogen, UI nutzt `expiresInMs`)
-
-- `confirmJob(...)` / `confirmJobDetailed(...)`
-  - validiert: status, deviceId, nonce
-  - timeout check: `dispatchedAt < now-30` → expired + confirm_timeout
-  - setzt final: `executed` oder `failed` und `executedAt`, `resultCode`, `resultMessage`
-  - idempotent: wenn bereits final und device+nonce passt → ok
-
-- `expireOldJobs(): void`
-  - `pending` mit `expiresAt < now` → `expired` (pending timeout)
-  - `dispatched` mit `dispatchedAt < now-30` → `expired` (confirm timeout)
+- Poll erfolgt regelmäßig (typisch: ca. 2 Sekunden)
 
 ---
 
-#### `AccessRequestService` (DOI/Access-Requests)
-**Datei:** `.../Service/AccessRequestService.php`  
-**Zweck:** Double-Opt-In / Zugangsanfrage-Flows (z.B. Area-Zugriff anfordern).
+# 2) Code-Landkarte (wo finde ich was?)
 
-**Wichtige Methoden**
-- `sendOrResendDoiForArea(...)`
-  - verschickt DOI-Mail oder resend (abhängig von Status)
-- (weitere Methoden je nach Implementierung: verify token, activate rights, etc.)
-
-**Typische Fehlerbilder**
-- Controller ruft falsche Methode (z.B. `requestAccess`) → existiert nicht.
-  - Richtiger Name war: `sendOrResendDoiForArea(...)`.
+## Controller (HTTP API)
 
 ---
 
-## 3) Datenmodell
+## AccessController
 
-### Tabelle `tl_co_door_job` (Kern der Zustandsmaschine)
+Datei:
 
-**Empfohlene/typische Felder**
-- Identität/Meta
-  - `id` (PK)
-  - `tstamp`
-  - `createdAt`
-  - `area` (string)
-  - `status` (`pending|dispatched|executed|failed|expired`)
+Controller/Api/AccessController.php
 
-- Request-Quelle (PWA)
-  - `requestedByMemberId` (int)
-  - `requestIp` (string)
-  - `userAgent` (string)
+Zweck:
 
-- Pending TTL
-  - `expiresAt` (int unix) **nur relevant für `pending`**
-    - bei `dispatched` kann `0`/leer sein
+Frontend-Mitglied fordert Türöffnung an.
 
-- Dispatch (Pi)
-  - `dispatchToDeviceId` (string)
-  - `dispatchedAt` (int unix)
-  - `nonce` (string, zufällig, hex)
-  - `attempts` (int)
+### Wichtige Methode
 
-- Ergebnis (Confirm)
-  - `executedAt` (int unix)
-  - `resultCode` (`OK|ERR|TIMEOUT|...`)
-  - `resultMessage` (kurzer Text, optional JSON-suffix gekürzt)
+open(string $area, Request $request)
 
-**Timeout-Regeln**
-- pending: `expiresAt < now` → expired + `Pending timeout`
-- dispatched: `dispatchedAt < now-30` → expired + `Confirm timeout`
+Typischer Ablauf:
+
+- prüft Frontend-Login (Contao Session)
+- validiert `area`
+- prüft Zugriffsrechte
+- ruft `OpenDoorService::openDoor()`
+- OpenDoorService orchestriert DoorJobService
+- liefert HTTP 202 bei Erfolg
+- liefert HTTP 429 bei Rate-Limit
+
+Antwort enthält typischerweise:
+
+- jobId
+- status
+- expiresAt
 
 ---
 
-## 4) Contao Backend-Module (Admin/Redaktion)
+## DeviceController
 
-Je nach Bundle-Konfiguration liegen diese meist unter:
-- `.../Resources/contao/dca/*.php` (DCA Definition)
-- `.../Resources/contao/languages/*/*.php` (Labels/Übersetzungen)
-- `.../Resources/contao/templates/*` (BE/FE Templates)
-- `.../ContaoManager/Plugin.php` oder `.../DependencyInjection/*` (Registrierung)
+Datei:
 
-**Typische Backend-Bereiche in diesem Projekt**
-1. **Areas/Türen** (Konfiguration)
-   - Slugs: `depot`, `swap-house`, `workshop`, `sharing`
-   - ggf. Zuordnung device ↔ areas
+Controller/Api/DeviceController.php
 
-2. **Door Jobs / Protokoll**
-   - Liste der Jobs (Filter: area, status, Zeitraum, Member)
-   - Detailansicht: `dispatchToDeviceId`, `resultMessage`, Zeiten
-   - nützlich für Fehlersuche (timeout, forbidden, rate limit)
+Zweck:
 
-3. **Access Requests / DOI**
-   - offene DOI-Anfragen
-   - resend DOI
-   - (optional) Freischalten/Berechtigungen
+Device Poll & Confirm.
 
-> Wenn du mir eure DCA-Dateien/Tabellen schickst, ergänze ich hier die exakten Table-Namen, List-Operationen und Felder 1:1.
+Polling erfolgt per:
+
+POST /api/device/poll
+
+(confirm ebenfalls POST)
+
+Keine deviceId im URL-Pfad erforderlich,
+da Authentifizierung über Token erfolgt.
 
 ---
 
-## 5) Troubleshooting / Fehlersuche (Quick Playbook)
+### poll(Request $request)
 
-### A) „PWA ok, curl 401“
-- Ursache: curl hat keine Contao-Frontend-Session-Cookies.
-- Lösung: über Browser-Request Cookies übernehmen oder in der PWA testen.
+Typischer Ablauf:
 
-### B) Job wird gepollt, confirm kommt zu spät
-- Symptom: DB `expired`, `TIMEOUT`, `Confirm timeout`
-- Prüfen:
-  - confirmDelay (e2e) > 30s?
-  - Pi-Uhrzeit (NTP) korrekt?
-  - Poll-Intervall zu groß?
-- Lösung:
-  - Poll häufiger / Confirm schneller / confirmWindow ggf. bewusst erhöhen (aber Sicherheitsabwägung).
-
-### C) Doppelrequests / „Tür ist gerade in Benutzung“
-- Ursache: Locks (Member+Area oder Area global)
-- Prüfen:
-  - Cache backend (PSR-6) funktioniert? TTL korrekt?
-  - retryAfterSeconds im Response
-
-### D) Device forbidden / nonce mismatch
-- Ursache:
-  - falsches deviceId/secret
-  - nonce falsch oder bereits „verbraucht“
-- Prüfen:
-  - poll-response nonce
-  - confirm-body exakt
-  - DB: `dispatchToDeviceId`, `nonce`
-
-### E) „Job bereits aktiv“ aber eigentlich abgelaufen
-- Ursache: Housekeeping nicht gelaufen
-- Prüfen:
-  - `expireOldJobs()` wird in `createOpenJob()` am Anfang aufgerufen?
+- authentifiziert Device
+- liest erlaubte Areas
+- ruft `dispatchJobs()`
+- liefert Liste offener Jobs
 
 ---
 
-## 6) Logging & Nachvollziehbarkeit
+### confirm(Request $request)
 
-Empfehlung:
-- Logge auf API-Seite (info-level):
-  - memberId, area, jobId, status transitions
-  - deviceId, confirm outcome
-- Für Audit:
-  - Door Jobs Tabelle ist die primäre Quelle
-  - optional separate Audit-Tabelle für „Tür tatsächlich geöffnet“ (falls Hardware Rückmeldung)
+Body enthält:
+
+- jobId
+- nonce
+- ok
+- optional meta
+
+Typische Antworten:
+
+200 → erfolgreich bestätigt  
+410 → expired  
+403 → forbidden  
+404 → jobId unbekannt  
+409 → falscher Status  
+
+Status:
+
+expired ist ein **terminaler Zustand**.
+
+Expired Jobs dürfen niemals wieder in:
+
+- executed
+- failed
+
+übergehen.
 
 ---
 
-## 7) Quick Links (Dateien/Eintrittspunkte)
+# Access Request Workflows
 
-- `AccessController::open()` → PWA Entry
-- `DeviceController::poll()` → Pi Pull
-- `DeviceController::confirm()` → Pi Confirm
-- `DoorJobService::*` → Business Logic + State Machine
-- `AccessRequestService::sendOrResendDoiForArea()` → DOI Flow
-- `tl_co_door_job` → Hauptprotokoll / Debugging
+Diese Workflows repräsentieren unterschiedliche Domain-Konzepte
+und dürfen **nicht zusammengeführt werden**.
 
 ---
 
-## 8) Offene TODOs (falls relevant)
+## Workflow A — Initial Access Request
 
-- E2E Script an neue Confirm-Statuscodes (410/409/…) anpassen
-- Admin-UI: Job-Log Filter/Export
-- Monitoring/Alerting bei auffälligen Fehlversuchen
+Zweck:
+
+Erstellen eines neuen Member-Accounts.
+
+Erzeugt:
+
+- tl_co_access_request
+- tl_member
+
+Statusfolge:
+
+requested  
+→ email_confirmed  
+→ member_created  
+→ password_set  
+→ admin_approved  
+
+---
+
+## Workflow B — Additional Access Request
+
+Zweck:
+
+Zusätzliche Rechte für bestehenden Member vergeben.
+
+Aktualisiert:
+
+- member group assignments
+
+Erzeugt **keinen neuen Member**.
+
+Statusfolge:
+
+requested  
+→ email_confirmed  
+→ admin_approved  
+→ permissions_updated  
+
+---
+
+# 3) Services (Business Logic)
+
+## OpenDoorService
+
+Zentrale Orchestrierungsschicht zwischen:
+
+- Controller
+- DoorJobService
+- Gateway
+
+---
+
+## DoorJobService
+
+Zentrale Logik für:
+
+- Job-Erstellung
+- Dispatch
+- Confirm
+- Expiry
+
+---
+
+## AccessRequestService
+
+Verarbeitet:
+
+- Initial Requests
+- Additional Requests
+
+Implementiert:
+
+- DOI Logik
+- Workflow-Steuerung
+
+---
+
+# 4) Datenmodell
+
+## tl_co_door_job
+
+Zentrale Tabelle der Zustandsmaschine.
+
+Status:
+
+- pending
+- dispatched
+- executed
+- failed
+- expired
+
+---
+
+## tl_co_device
+
+Speichert registrierte Geräte.
+
+Wichtige Felder:
+
+- deviceId
+- areas
+- apiTokenHash
+- enabled
+- isEmulator
+- lastSeen
+
+Diese Tabelle ist entscheidend für:
+
+- Device Authentifizierung
+- Device Monitoring
+- Poll-Zuordnung
+
+---
+
+# 5) Troubleshooting
+
+## Confirm kommt zu spät
+
+Status:
+
+expired
+
+Prüfen:
+
+- Poll-Intervall
+- Netzwerk
+- Device-Zeit (NTP)
+- confirmWindow
+
+---
+
+## forbidden
+
+Prüfen:
+
+- deviceId
+- nonce
+
+---
+
+## Job bleibt aktiv
+
+Prüfen:
+
+expireOldJobs()
+
+---
+
+# 6) Logging
+
+Primäre Quelle:
+
+tl_co_door_log
+
+Loggt:
+
+- memberId
+- area
+- jobId
+- status transitions
+- deviceId
+- confirm outcome
+
+---
+
+# 7) Einstiegspunkte im Code
+
+Wichtige Methoden:
+
+AccessController::open()
+
+OpenDoorService::openDoor()
+
+DeviceController::poll()
+
+DeviceController::confirm()
+
+DoorJobService::*
+
+AccessRequestService::*
+
+---
+
+# 8) Typische Weiterentwicklungen
+
+- Monitoring
+- Alarmierung
+- Analyse ungewöhnlicher Fehlversuche
+- Erweiterte Admin-Tools

@@ -1,158 +1,275 @@
-# Tracing & Observability -- Zukunftwohnen Zugangssystem
+# Tracing & Observability — Zukunftwohnen Zugangssystem
 
-Dieses Dokument beschreibt, wie du nach Monaten schnell
-nachvollziehst: - **Was ist passiert?** - **Warum ist es passiert?** -
-**Wo ist es kaputt gegangen (PWA / API / Pi / Hardware)?**
+Dieses Dokument beschreibt, wie Fehlersuche strukturiert
+und reproduzierbar durchgeführt werden kann.
 
-Ziel: reproduzierbare Fehlersuche + aussagekräftige Logs + einfache
-Metriken.
+Ziel:
 
-------------------------------------------------------------------------
+- nachvollziehen: Was ist passiert?
+- verstehen: Warum ist es passiert?
+- lokalisieren: Wo ist es kaputt gegangen?
 
-## 1) Grundprinzip: Korrelation (Correlation-ID / Trace-ID)
+(PWA / API / Device / Hardware)
 
-**Jeder Öffnungsvorgang** erhält eine **Correlation-ID**, die sich
-durchzieht: - PWA Request (open) - API Logs / DB (jobId) - Pi Logs
-(poll/confirm) - optional Audit-Log Tabelle
+---
 
-### Empfohlene ID
+# 1) Grundprinzip: Korrelation (Correlation-ID)
 
--   `X-Correlation-Id`: UUID v4 oder ULID
--   Wenn Client keine liefert, erzeugt die API eine und gibt sie zurück.
+Jeder Öffnungsvorgang erhält eine **Correlation-ID**.
 
-**Response-Feld**
+Diese wird durchgängig verwendet in:
 
-``` json
-{ "correlationId": "01J...ULID", "jobId": 123, ... }
+- API Requests
+- Audit Logs (`tl_co_door_log`)
+- Workflow Timeline
+- Device Logs (optional)
+
+---
+
+## ID-Verwendung
+
+Empfohlen:
+
+Header:
+
+X-Correlation-Id
+
+Format:
+
+UUID v4 oder ULID
+
+Wenn kein Header vorhanden ist:
+
+Die API erzeugt automatisch eine neue Correlation-ID.
+
+Diese wird:
+
+- intern gespeichert
+- in Responses zurückgegeben
+- in Logs geschrieben
+
+---
+
+## Response-Beispiel
+
+```json
+{
+  "correlationId": "01J...ULID",
+  "jobId": 123
+}
 ```
 
-**DB** - optional Feld `correlationId` in `tl_co_door_job` - oder nur im
-Audit-Log speichern
+---
 
-------------------------------------------------------------------------
+## Speicherung
 
-## 2) Logging -- Minimalformat (Server)
+Correlation-ID wird gespeichert in:
 
-### Format (empfohlen: JSON lines)
+- `tl_co_door_log`
 
-Pro Log-Event ein JSON-Objekt (leicht grepbar + ingest in Loki/ELK).
+Optional möglich:
 
-**Felder** - `ts` (timestamp) - `level` (info/warn/error) - `event`
-(z.B. `door.open.accepted`, `door.dispatch.claimed`,
-`door.confirm.timeout`) - `correlationId` - `jobId` - `area` -
-`memberId` - `deviceId` - `httpStatus` - `errorCode` (z.B.
-`confirm_timeout`, `forbidden`, `rate_limited`) - `elapsedMs`
-(Request-Latenz) - `meta` (kleines JSON; keine PII)
+- zusätzliches Feld in `tl_co_door_job`
 
-### Beispiel
+Hinweis:
 
-``` json
+Ein separates Feld in `tl_co_door_job`
+ist **nicht zwingend erforderlich**, da
+`tl_co_door_log` bereits ausreichend ist.
+
+---
+
+# 2) Server Logging — Minimalformat
+
+Empfohlenes Format:
+
+JSON Lines (eine Zeile pro Event)
+
+Typische Felder:
+
+- ts (timestamp)
+- level (info/warn/error)
+- event
+- correlationId
+- jobId
+- area
+- memberId
+- deviceId
+- httpStatus
+- errorCode
+- elapsedMs
+- meta (kein PII)
+
+---
+
+## Beispiel
+
+```json
 {"ts":"2026-02-28T18:05:13Z","level":"info","event":"door.open.accepted","correlationId":"01J...","jobId":123,"area":"workshop","memberId":42,"httpStatus":202,"elapsedMs":18}
 ```
 
-------------------------------------------------------------------------
+---
 
-## 3) Logging -- Minimalformat (Raspberry Pi)
+# 3) Device Logging — Minimalformat
 
-**Pro Poll-Zyklus** - `poll.start`, `poll.end` - `jobs.count`
+Pro Poll-Zyklus:
 
-**Pro Job** - `job.received` (jobId, area, nonceHash) -
-`job.action.start` / `job.action.end` (duration) - `job.confirm.sent` /
-`job.confirm.result` (status, error)
+- poll.start
+- poll.end
+- jobs.count
 
-> Nonce nicht im Klartext loggen, sondern z.B. SHA-256(Nonce) oder kurz
-> gekürzt.
+Pro Job:
 
-------------------------------------------------------------------------
+- job.received
+- job.action.start
+- job.action.end
+- job.confirm.sent
+- job.confirm.result
 
-## 4) Metriken (auch ohne Prometheus nützlich)
+Wichtig:
 
-Selbst ohne Metrics-Stack kannst du die wichtigsten Kennzahlen per
-DB/Logs gewinnen.
+Nonce darf nicht im Klartext geloggt werden.
 
-### 4.1 Server-KPIs (pro Tag/Stunde)
+Empfohlen:
 
--   `door.open.accepted.count`
--   `door.open.rate_limited.count` (429)
--   `door.dispatch.claimed.count`
--   `door.confirm.ok.count`
--   `door.confirm.forbidden.count` (403)
--   `door.confirm.timeout.count` (410)
--   `door.jobs.expired.count`
+- SHA-256 Hash
+- oder gekürzte Darstellung
 
-### 4.2 Pi-KPIs
+---
 
--   Poll-Frequenz (Durchschnitt)
--   Confirm-Latenz (poll→confirm)
--   Hardware-Fehlerquote (Relay failures)
--   Connectivity errors (DNS/TLS/timeout)
+# 4) Metriken
 
-------------------------------------------------------------------------
+Auch ohne Metrics-System sinnvoll.
 
-## 5) Alerts (minimal sinnvoll)
+---
 
-Wenn du Alerts willst, starte klein:
+## 4.1 Server-KPIs
 
--   **Confirm timeout spike**
-    -   `410 confirm_timeout` über Schwellwert → Pi offline/zu langsam
--   **Forbidden spike**
-    -   viele `403 forbidden` → Secret falsch/Attacke/Clock skew/Nonce
-        mismatch
--   **Rate limit spike**
-    -   viele `429` → UI-Spam oder Bedienproblem
+Beispiele:
 
-------------------------------------------------------------------------
+- door.open.accepted.count
+- door.open.rate_limited.count
+- door.dispatch.claimed.count
+- door.confirm.ok.count
+- door.confirm.forbidden.count
+- door.jobs.expired.count
 
-## 6) Debugging-Leitfaden (mit Correlation-ID)
+Wichtig:
 
-1.  User meldet Problem + Zeitpunkt + Area
-2.  Suche in Server-Logs nach `area` + Zeitfenster → finde
-    `correlationId`/`jobId`
-3.  DB: `SELECT * FROM tl_co_door_job WHERE id=?`
-4.  Pi-Logs: suche `jobId` oder `correlationId`
-5.  Prüfe Kante:
-    -   open ok?
-    -   dispatch erfolgt?
-    -   confirm gesendet?
-    -   confirm akzeptiert?
-    -   Hardware hat geschaltet?
+Begriff:
 
-------------------------------------------------------------------------
+expired
 
-## 7) Praktische Implementationshinweise
+(nicht timeout)
 
-### 7.1 Correlation-ID in Symfony
+---
 
--   Middleware/EventSubscriber, der:
-    -   eingehenden Header liest oder neu erzeugt
-    -   in `Request` Attribute und Logger Context legt
-    -   in Responses zurückschreibt
+## 4.2 Device-KPIs
 
-### 7.2 DB-Erweiterung (optional)
+Typische Kennzahlen:
 
--   ALTER TABLE tl_co_door_job
-    ADD correlationId CHAR(36) NOT NULL DEFAULT '';
--   Index auf correlationId (optional)
+- Poll-Frequenz
+- Confirm-Latenz
+- Hardware-Fehlerquote
+- Netzwerkfehler (DNS/TLS)
 
-### 7.3 Audit Table (optional)
+---
 
--   Schreibe Events in `tl_co_audit_log` (eventType + payload)
--   Retention getrennt von DoorJobs
+# 5) Alerts (optional)
 
-------------------------------------------------------------------------
+Minimal sinnvolle Alerts:
 
-## 8) Datenschutz / PII
+Confirm-Probleme:
 
--   Keine vollständigen E-Mails/IPs in Logs (oder nur gekürzt/hashed)
--   User-Agent ggf. gekürzt
--   Audit-Log bewusst gestalten (Transparenz vs. Datenminimierung)
+Viele fehlgeschlagene Confirm-Vorgänge
+→ Device möglicherweise offline
 
-------------------------------------------------------------------------
+Forbidden-Spikes:
 
-## 9) Checkliste „bereit für Betrieb"
+Viele 403-Antworten
+→ falsches Token oder Sicherheitsproblem
 
--   [ ] Correlation-ID durchgehend (PWA→API→Pi)
--   [ ] Confirm liefert eindeutige HTTP-Codes (200/403/404/409/410)
--   [ ] Server+Pi Logs sind konsistent & grepbar
--   [ ] DB-Queries für Debug dokumentiert
--   [ ] Retention & Cleanup definiert
+Rate-Limit-Spikes:
+
+Viele 429-Antworten
+→ möglicherweise Fehlbedienung oder Angriff
+
+---
+
+# 6) Debugging-Leitfaden
+
+Standard-Ablauf:
+
+1. Zeitpunkt und Area ermitteln
+2. Server-Logs durchsuchen
+3. correlationId identifizieren
+4. Audit-Logs prüfen
+5. Device-Logs prüfen
+
+Typische Prüfpunkte:
+
+- Open erfolgreich?
+- Dispatch erfolgt?
+- Confirm gesendet?
+- Confirm akzeptiert?
+- Hardware ausgelöst?
+
+---
+
+# 7) Implementationshinweise
+
+## 7.1 Symfony Integration
+
+Empfohlen:
+
+EventSubscriber oder Middleware:
+
+Aufgaben:
+
+- Header lesen oder erzeugen
+- Correlation-ID speichern
+- Logger-Kontext erweitern
+- Response-Header setzen
+
+---
+
+## 7.2 Audit Logging
+
+Alle Workflow-Ereignisse sollten:
+
+- timestamped
+- correlation-aware
+- nachvollziehbar
+
+sein.
+
+Retention:
+
+Sollte konfiguriert werden.
+
+Beispiel:
+
+30–90 Tage je nach Nutzung.
+
+---
+
+# 8) Datenschutz
+
+Wichtige Regeln:
+
+- Keine vollständigen E-Mail-Adressen loggen
+- Keine vollständigen IP-Adressen speichern
+- User-Agent ggf. kürzen
+- Minimierung personenbezogener Daten
+
+---
+
+# 9) Betriebs-Checkliste
+
+Empfohlen vor Produktionsstart:
+
+[ ] Correlation-ID durchgehend aktiv  
+[ ] Confirm liefert korrekte HTTP-Codes  
+[ ] Logs sind konsistent und auswertbar  
+[ ] Debug-Queries dokumentiert  
+[ ] Retention-Regeln definiert  

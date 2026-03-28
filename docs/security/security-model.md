@@ -1,11 +1,14 @@
-# Security Model -- Door Access System
+# Security Model — Door Access System
 
 ## Ziel
 
-Dieses System steuert physische Zugänge zu Gemeinschaftsräumen über eine bewusst asynchrone Architektur.  
-Es vermeidet direkte Türöffnungsbefehle aus dem Frontend und reduziert dadurch die Angriffsfläche.
+Dieses System steuert physische Zugänge zu Gemeinschaftsräumen
+über eine bewusst asynchrone Architektur.
 
-Der Ablauf ist:
+Es vermeidet direkte Türöffnungsbefehle aus dem Frontend
+und reduziert dadurch die Angriffsfläche.
+
+Ablauf:
 
 member request  
 → door job created (`pending`)  
@@ -14,117 +17,236 @@ member request
 → device confirm  
 → `executed` / `failed` / `expired`
 
-## Authentifizierung
+---
 
-### Frontend
+# Authentifizierung
 
-- Contao-Frontend-Session
+## Frontend
+
+- Contao Frontend Session
 - Zugriff nur für eingeloggte Mitglieder
-- Türöffnung nur für Mitglieder mit passender Berechtigung für die angeforderte Area
+- Türöffnung nur für Mitglieder mit passender Area-Berechtigung
+- Zugriff basiert auf Gruppen-Zuordnung zu Areas
 
-### Device
+---
+
+## Device
 
 - Geräte authentifizieren sich als eigene API-User
 - jedes Device besitzt eine eindeutige `deviceId`
+- Geräte authentifizieren sich per Token (Hash gespeichert)
 - Devices dürfen nur ihre zugewiesenen Areas pollen
-- Confirm ist zusätzlich an die `deviceId` des Dispatch gebunden
+- Confirm ist an die `dispatchToDeviceId` gebunden
 
-## Schutzmechanismen
+Wichtig:
 
-- Rate Limiting für Mitglieder bei Türöffnungen
+Polling erfolgt **immer aktiv durch das Device**
+(im festen Intervall, typischerweise 2 Sekunden).
+
+Es existieren **keine eingehenden Verbindungen**
+zum Device.
+
+---
+
+# Schutzmechanismen
+
+Das System verwendet mehrere Schutzschichten:
+
+- Rate Limiting für Mitglieder
 - Area Lock
 - Member+Area Lock
 - Poll-Throttle für Devices
-- Confirm Timeout (30s)
-- Pending TTL / Expiry veralteter Jobs
-- Workflow State Machine mit expliziten Endzuständen
+- Confirm Window (z. B. 30 Sekunden)
+- Pending TTL / Job Expiry
+- Workflow State Machine mit Endzuständen
 
-## Dispatch-Sicherheit
+Terminologie:
+
+Status bei Zeitüberschreitung:
+
+expired
+
+(nicht timeout)
+
+---
+
+# Dispatch-Sicherheit
 
 Ein Job wird nur dann an ein Device übergeben, wenn:
 
-- der Status `pending` ist
-- die Area zum Device passt
-- der Job noch nicht abgelaufen ist
+- Status = `pending`
+- Area gehört zum Device
+- Job ist noch gültig (nicht expired)
 
-Der Dispatch erfolgt atomar auf Datenbankebene.  
-Dadurch können mehrere pollende Devices denselben Job nicht gleichzeitig übernehmen.
+Der Dispatch erfolgt:
 
-## Confirm-Sicherheit
+- atomar auf Datenbankebene
+- mit eindeutiger Zuweisung (`dispatchToDeviceId`)
+
+Dadurch können mehrere pollende Devices
+denselben Job nicht gleichzeitig übernehmen.
+
+---
+
+# Confirm-Sicherheit
 
 Ein Confirm wird nur akzeptiert, wenn:
 
-- der Job im Status `dispatched` ist
-- die Nonce exakt passt
-- die Nonce im constant-time compare geprüft wird
-- das bestätigende Device der `dispatchToDeviceId` des Jobs entspricht
-- das Confirm innerhalb des gültigen Zeitfensters eingeht
+- Status = `dispatched`
+- Nonce exakt passt
+- Nonce wird mit constant-time compare geprüft
+- Device entspricht `dispatchToDeviceId`
+- Confirm erfolgt innerhalb des confirmWindow
 
-Abgelaufene oder bereits abgeschlossene Jobs werden nicht erneut bestätigt.
+Abgelaufene Jobs liefern:
 
-## Replay- und Manipulationsschutz
+HTTP 410  
+Status:
 
-- pro Dispatch wird eine neue kryptographisch sichere Nonce erzeugt
-- Nonce-Länge: 64 Hex-Zeichen
-- Confirm nur mit korrekter `deviceId` + Nonce
-- idempotente Bestätigung für bereits abgeschlossene Zustände wird kontrolliert behandelt
-- ein Job kann nicht mehrfach erfolgreich bestätigt werden
+expired
 
-## Logging & Audit
+Nicht:
 
-Das System protokolliert sicherheitsrelevante Ereignisse, insbesondere:
+confirm_timeout
 
-- Zeitpunkt der Anfrage
-- Mitglied
-- Area
-- `dispatchToDeviceId`
-- Statuswechsel
-- `executedAt`
-- Ergebniscode / Ergebnisnachricht
+---
 
-Alle Vorgänge tragen eine Correlation ID, damit der komplette Ablauf über Open, Poll, Dispatch und Confirm nachvollzogen werden kann.
+# Replay- und Manipulationsschutz
 
-## Datenminimierung und Aufbewahrung
+Pro Dispatch:
 
-Protokolldaten werden ausschließlich für:
+- neue kryptographisch sichere Nonce
+- Nonce Länge: 64 Hex-Zeichen
+- Bindung an deviceId
+- Bindung an Job-Zustand
+
+Zusätzlich:
+
+- Confirm ist zustandsabhängig
+- doppelte Confirms werden kontrolliert behandelt
+- mehrfaches erfolgreiches Confirm ist nicht möglich
+
+---
+
+# Logging & Audit
+
+Sicherheitsrelevante Ereignisse werden protokolliert.
+
+Typische Audit-Felder:
+
+- timestamp
+- memberId
+- area
+- deviceId
+- jobId
+- status transition
+- executedAt
+- resultCode
+- resultMessage
+- correlationId
+
+Correlation-ID:
+
+Verbindet:
+
+open → poll → dispatch → confirm
+
+Damit ist der vollständige Ablauf nachvollziehbar.
+
+Primäre Speicherung:
+
+`tl_co_door_log`
+
+---
+
+# Datenminimierung und Aufbewahrung
+
+Logs werden gespeichert für:
 
 - Betrieb
 - Fehleranalyse
 - Missbrauchserkennung
-- Nachvollziehbarkeit sicherheitsrelevanter Vorgänge
+- Nachvollziehbarkeit
 
-gespeichert.
-
-Empfohlene Aufbewahrung:
+Empfohlene Retention:
 
 - Tür-Logs: 90 Tage
-- erfolgreiche / abgelaufene Jobs: 30 Tage
+- erfolgreiche Jobs: 30 Tage
 - fehlgeschlagene Jobs: 180 Tage
+- expired Jobs: 30–90 Tage
 
-## Produktionssicherheit
+Personenbezogene Daten:
 
-- Geräte sollten in einem getrennten Netz betrieben werden (z. B. VLAN / Gast-LAN)
-- Secrets müssen regelmäßig rotieren
-- Fehlversuche und ungewöhnliches Polling sollen überwacht werden
-- in Produktion muss ein echtes `DoorGatewayInterface` gesetzt sein
-- Mock-Gateways sind nur für Entwicklung und Tests vorgesehen
+Sollten minimiert werden.
 
-## Sicherheitsannahmen
+Beispiele:
 
-Das System geht davon aus, dass:
+- keine vollständigen IP-Adressen
+- keine Klartext-Secrets
+- reduzierte User-Agent-Daten
 
-- Frontend-Mitgliedskonten geschützt sind
-- Device-Secrets nicht öffentlich werden
-- der Raspberry Pi und das Türnetz logisch vom restlichen Netz getrennt sind
-- TLS / HTTPS für den Zugriff auf die API verwendet wird
+---
 
-## Restrisiken
+# Produktionssicherheit
 
-Wie bei jedem physischen Zugangssystem bleiben Restrisiken bestehen, insbesondere:
+Empfehlungen:
+
+- Geräte in getrenntem Netz betreiben
+  (z. B. VLAN oder Gast-LAN)
+
+- HTTPS zwingend verwenden
+
+- Secrets regelmäßig rotieren
+
+- ungewöhnliches Polling überwachen
+
+- Emulator-Gateways nicht produktiv verwenden
+
+In Produktion muss:
+
+Ein echtes Hardware-Gateway aktiv sein.
+
+---
+
+# Sicherheitsannahmen
+
+Dieses Modell setzt voraus:
+
+- Frontend-Mitgliedskonten sind geschützt
+- Device-Secrets bleiben geheim
+- Device-Netz ist logisch getrennt
+- TLS/HTTPS ist korrekt konfiguriert
+- Server-Zeit ist korrekt synchronisiert (NTP)
+
+Zeitabweichungen können:
+
+- Confirm fehlschlagen lassen
+- Jobs fälschlich expirieren lassen
+
+---
+
+# Restrisiken
+
+Wie bei jedem physischen Zugangssystem:
+
+Es bleiben Risiken bestehen.
+
+Beispiele:
 
 - kompromittierte Mitgliedskonten
-- kompromittierte Geräte-Secrets
+- kompromittierte Device-Secrets
 - physischer Zugriff auf Hardware
-- Fehlkonfiguration der Produktionsumgebung
+- Fehlkonfiguration im Netzwerk
+- falsche Zeitsynchronisation
 
-Diese Risiken werden durch Netztrennung, Logging, Rate Limits, Expiry und Device-Bindung reduziert, aber nicht vollständig eliminiert.
+Diese Risiken werden reduziert durch:
+
+- Netztrennung
+- Logging
+- Expiry
+- Rate Limits
+- Device-Bindung
+
+Aber:
+
+Sie können nicht vollständig eliminiert werden.

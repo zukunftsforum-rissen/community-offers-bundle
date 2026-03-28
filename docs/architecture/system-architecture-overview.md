@@ -4,11 +4,10 @@ Community Offers Bundle – Door Control System Overview
 Dieses Dokument beschreibt die zentrale Systemarchitektur des Door-Control-Bereichs
 im Community Offers Bundle.
 
-Es zeigt die wichtigsten Bausteine und deren Zusammenspiel in den Modi:
+Es zeigt die wichtigsten Bausteile und deren Zusammenspiel in den Modi:
 
 - live
-- emulation
-- 
+- emulator
 
 ---
 
@@ -26,8 +25,8 @@ Dadurch werden folgende Ziele erreicht:
 
 - sicherer Produktivbetrieb
 - nachvollziehbare Fehleranalyse
-- Demo- und Präsentationsfähigkeit
-- klare Trennung von realer Hardware und nicht-physischer Ausführung
+- reproduzierbare Workflow-Tests
+- klare Trennung von realer Hardware und Emulator-Ausführung
 
 ---
 
@@ -40,8 +39,8 @@ Die App ist der Einstiegspunkt für Nutzerinnen und Nutzer.
 Aufgaben:
 
 - Türöffnung anstoßen
-- Responses anzeigen
-- im -Modus direkte Demo-Rückmeldung anzeigen
+- Status anzeigen
+- Workflow-Ergebnisse darstellen
 
 ---
 
@@ -52,7 +51,7 @@ HTTP-Einstieg für Türöffnungsanfragen.
 Aufgaben:
 
 - Request annehmen
-- User-Kontext prüfen
+- Benutzer authentifizieren
 - OpenDoorService aufrufen
 - JSON-Response zurückgeben
 
@@ -60,126 +59,151 @@ Aufgaben:
 
 ## OpenDoorService
 
-Fachlicher Einstieg für die Türöffnung.
+Fachlicher Einstiegspunkt für die Türöffnung.
 
 Aufgaben:
 
-- Berechtigung prüfen
-- Mode berücksichtigen
-- passendes Gateway wählen
-- Logging und Audit anstoßen
-- einheitliche Rückgabestruktur liefern
+- Zugriffsrechte prüfen
+- aktuellen Mode berücksichtigen
+- passendes Gateway auswählen
+- Logging und Audit auslösen
+- standardisierte Antwort erzeugen
+
+Dieser Service enthält **keine Hardware-Logik**.
 
 ---
 
 ## DoorGatewayResolver
 
-Wählt den technischen Ausführungspfad abhängig vom aktuellen Mode.
+Wählt das passende Gateway basierend auf dem aktuellen Mode.
 
 Zuordnung:
 
-- live → RaspberryDoorGateway
-- emulation → RaspberryDoorGateway / Workflow-Gateway
--  → DemoDoorGateway
+live → RaspberryDoorGateway
+emulator → EmulatorDoorGateway
+
+Genau **ein Gateway muss den Mode unterstützen**.
+
+Mehrere passende Gateways führen zu einer Exception.
 
 ---
 
 ## RaspberryDoorGateway
 
-Technischer Einstieg für workflowbasierte Ausführung.
+Gateway für reale Hardware-Ausführung.
+
+Verwendung:
+
+mode = live
+channel = physical
 
 Aufgaben:
 
-- DoorJobService verwenden
-- DoorJob erzeugen
-- Kontext an Workflow weitergeben
+- DoorJob über DoorJobService erzeugen
+- Workflow starten
+- Jobdaten bereitstellen
 
-Der Name steht für den physischen bzw. workflowbasierten Ausführungspfad.
-In `emulation` wird derselbe Workflowpfad verwendet, aber nur Emulator-Devices dürfen teilnehmen.
+Die reale Türöffnung erfolgt indirekt
+über das Device (z. B. Raspberry Pi).
 
 ---
 
-## DemoDoorGateway
+## EmulatorDoorGateway
 
-Direkter Simulationspfad ohne Device-Workflow.
+Gateway für Emulator-Ausführung.
+
+Verwendung:
+
+mode = emulator
+channel = emulator
 
 Aufgaben:
 
-- sofortigen Erfolg liefern
-- keinen Job erzeugen
-- kein Polling / Confirm verwenden
+- DoorJob erzeugen
+- vollständigen Workflow simulieren
+- keine reale Hardware auslösen
+
+Der Emulator arbeitet über denselben Workflow,
+aber ohne physische Türöffnung.
 
 ---
 
 ## DoorJobService
 
-Interne Workflow-Engine für workflowbasierte Modi.
+Zentrale Workflow-Engine.
 
 Aufgaben:
 
-- Jobs anlegen
-- alte Jobs bereinigen
+- DoorJobs erzeugen
 - Dispatch vorbereiten
 - Confirm verarbeiten
-- Status/Felder aktualisieren
+- Status aktualisieren
+- Expiry behandeln
 
-Dieser Service ist die zentrale Engine für:
+Dieser Service ist verantwortlich für:
 
-- live
-- emulation
+- Job Lifecycle
+- Workflow-Zustände
+- Zeitfenster (confirm_window)
+
+DoorJobs entstehen nur in:
+
+live
+emulator
 
 ---
 
 ## Device API
 
-Die Device API ist der Einstiegspunkt für Devices.
+HTTP-Endpunkte für Devices.
 
 Typische Endpunkte:
 
-- poll
-- confirm
-- heartbeat
+/api/device/poll
+/api/device/confirm
+/api/device/heartbeat
 
-Hier muss geprüft werden:
+Hier werden geprüft:
 
 - aktueller Mode
 - Device-Typ (`isEmulator`)
+- Berechtigung zur Teilnahme
 
 ---
 
 ## Reale Devices
 
-Reale Raspberry-Pi-Geräte.
+Physische Geräte (z. B. Raspberry Pi).
 
 Merkmal:
 
-- `isEmulator = false`
+isEmulator = false
 
 Erlaubt in:
 
-- live
+live
 
-Verboten in:
+Nicht erlaubt in:
 
-- emulation
+emulator
 
 ---
 
 ## Emulator Devices
 
-Nicht-physische Devices für Workflow-Tests.
+Virtuelle Geräte zur Workflow-Simulation.
 
 Merkmal:
 
-- `isEmulator = true`
+isEmulator = true
 
 Erlaubt in:
 
-- emulation
+emulator
 
-Verboten in:
+Nicht erlaubt in:
 
-- live
+live
 
 ---
 
@@ -192,12 +216,12 @@ Wichtige Querschnittskomponenten:
 - DoorWorkflowTimelineService
 - DoorWorkflowDiagramService
 
-Diese Komponenten dienen der Nachvollziehbarkeit von:
+Diese Komponenten ermöglichen:
 
-- Öffnungsanfragen
-- Workflow-Übergängen
-- Fehlern
-- Diagnosefällen
+- vollständige Nachvollziehbarkeit
+- Fehleranalyse
+- Diagnose
+- Workflow-Visualisierung
 
 ---
 
@@ -223,104 +247,45 @@ DoorGatewayResolver
  │   ↓
  │   Device API
  │   ↓
- │   Physical Device / Emulator Device
+ │   Physical Device
  │
- └─ DemoDoorGateway
+ └─ EmulatorDoorGateway
      ↓
-     Direkter Erfolg
+     DoorJobService
+     ↓
+     Database (door jobs)
+     ↓
+     Device API
+     ↓
+     Emulator Device
 ```
-
----
-
-# Modusbezogenes Verhalten
-
-## live
-
-Pfad:
-
-App
-→ AccessController
-→ OpenDoorService
-→ DoorGatewayResolver
-→ RaspberryDoorGateway
-→ DoorJobService
-→ Device API
-→ reales Device
-
-Merkmale:
-
-- Job wird erzeugt
-- reale Hardware nimmt teil
-- Emulatoren sind ausgeschlossen
-
----
-
-## emulation
-
-Pfad:
-
-App
-→ AccessController
-→ OpenDoorService
-→ DoorGatewayResolver
-→ RaspberryDoorGateway
-→ DoorJobService
-→ Device API
-→ Emulator Device
-
-Merkmale:
-
-- Job wird erzeugt
-- voller Workflow
-- keine reale Türöffnung
-- reale Devices sind ausgeschlossen
-
----
-
-## 
-
-Pfad:
-
-App
-→ AccessController
-→ OpenDoorService
-→ DoorGatewayResolver
-→ DemoDoorGateway
-
-Merkmale:
-
-- kein Job
-- kein Polling
-- kein Confirm
-- direkter Erfolg
 
 ---
 
 # Mode und Channel
 
-Zur sauberen Trennung werden zwei Dinge gespeichert:
+Zur sauberen Trennung werden zwei Eigenschaften gespeichert.
 
 ## mode
 
 Fachlicher Betriebsmodus:
 
-- live
-- emulation
-- 
+live
+emulator
+
+---
 
 ## channel
 
 Technischer Ausführungspfad:
 
-- physical
-- emulator
-- demo
+physical
+emulator
 
 Beispiele:
 
-- live + physical
-- emulation + emulator
--  + demo
+live + physical
+emulator + emulator
 
 ---
 
@@ -330,15 +295,22 @@ Beispiele:
 
 Door Jobs entstehen nur in:
 
-- live
-- emulation
+live
+emulator
 
 Empfohlene Felder:
 
-- mode
-- channel
+mode
+channel
+area
+correlationId
+expiresAt
 
- erzeugt keinen Job.
+Diese Felder ermöglichen:
+
+- vollständige Nachverfolgung
+- Debugging
+- Diagnose
 
 ---
 
@@ -346,11 +318,14 @@ Empfohlene Felder:
 
 Die wichtigste Schutzregel lautet:
 
-- im Live-Modus dürfen keine Emulator-Devices teilnehmen
-- im Emulation-Modus dürfen keine realen Devices teilnehmen
-- im -Modus gibt es keine Device-Kommunikation
+Live-Modus:
+    Emulator-Devices verboten
 
-Diese Regeln müssen serverseitig in Poll/Confirm geprüft werden.
+Emulator-Modus:
+    reale Devices verboten
+
+Diese Regeln müssen serverseitig geprüft werden
+(z. B. im DeviceAuthService oder DeviceAccessPolicy).
 
 ---
 
@@ -360,6 +335,6 @@ Die Architektur ermöglicht gleichzeitig:
 
 - sicheren Echtbetrieb
 - reproduzierbare Workflow-Tests
-- Demo-/Präsentationsbetrieb
-- klare Trennung von Verantwortlichkeiten
-- einfache Analyse über Logs und Workflow-Daten
+- klare Trennung von Hardware und Emulator
+- vollständige Auditierbarkeit
+- einfache Diagnose

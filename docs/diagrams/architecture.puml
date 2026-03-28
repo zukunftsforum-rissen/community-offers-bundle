@@ -1,16 +1,51 @@
 @startuml
 
-actor Member
-participant "Contao Backend" as Backend
-participant "DoorJobService"
-participant "Device API"
-participant "Raspberry Pi Device"
+title Door Control Architecture (Polling Model)
 
-Member -> Backend : open door request
-Backend -> DoorJobService : create job
-DoorJobService -> Device API : job available
-Raspberry Pi Device -> Device API : poll
-Device API -> Raspberry Pi Device : dispatch job
-Raspberry Pi Device -> Device API : confirm execution
+actor Member
+participant "Frontend / App" as App
+participant "AccessController" as Access
+participant "OpenDoorService" as OpenDoor
+participant "DoorJobService" as Jobs
+database "Database" as DB
+participant "DeviceController (API)" as DeviceAPI
+participant "Raspberry Pi Device" as Device
+
+== Member opens door ==
+
+Member -> App : click "open door"
+App -> Access : POST /api/door/open/{area}
+
+Access -> OpenDoor : openDoor(area, memberId)
+OpenDoor -> Jobs : createJob(area, memberId)
+Jobs -> DB : insert job (pending)
+
+Access --> App : HTTP 202 (job accepted)
+
+== Device polling loop ==
+
+loop every ~2 seconds
+
+Device -> DeviceAPI : POST /api/device/poll
+DeviceAPI -> Jobs : dispatchJobs(deviceId, areas)
+Jobs -> DB : find pending jobs
+
+alt job available
+Jobs --> DeviceAPI : job (dispatched)
+DeviceAPI --> Device : jobId + nonce + area
+else no job
+Jobs --> DeviceAPI : []
+DeviceAPI --> Device : no jobs
+end
+
+end
+
+== Device confirms execution ==
+
+Device -> DeviceAPI : POST /api/device/confirm
+DeviceAPI -> Jobs : confirmJob(jobId, nonce)
+Jobs -> DB : update job status
+
+DeviceAPI --> Device : HTTP 200
 
 @enduml

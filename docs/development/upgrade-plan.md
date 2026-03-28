@@ -2,104 +2,226 @@
 
 Stand: 2026-03-01
 
-## Ziel
+Dieses Dokument beschreibt eine konservative Upgrade-Strategie
+für Test- und Lint-Tools, mit Fokus auf Stabilität und
+kontrollierte Major-Upgrades.
 
-Stabil bleiben (bewusst PHPUnit 9.6), gleichzeitig den späteren Major-Upgrade vorbereiten, ohne unnötiges Risiko.
+---
 
-## Phase 1 – Stabilisieren (jetzt)
+# Ziel
 
-### PHPUnit (bei 9.6 bleiben)
+Das System soll stabil bleiben,
+während zukünftige Major-Upgrades vorbereitet werden.
 
-- Konfiguration auf 9.6-Schema halten (`phpunit.xml.dist` ist bereits angepasst).
-- Nur Patch-/Minor-Updates innerhalb 9.6 zulassen.
+Strategie:
+
+- PHPUnit bewusst stabil halten
+- Stylelint kontrolliert weiterentwickeln
+- Risiken durch isolierte Branches minimieren
+- Keine unnötigen Änderungen im Hauptbranch
+
+---
+
+# Phase 1 — Stabilisieren (aktuell)
+
+## PHPUnit (bei Version 9.6 bleiben)
+
+Empfehlung:
+
+- Konfiguration im PHPUnit-9.6-Schema halten
+- Nur Patch- und Minor-Updates zulassen
+- Keine Major-Upgrades im laufenden Betrieb
 
 Commands:
 
-```bash
 composer update phpunit/phpunit --with-all-dependencies
+
 ./vendor/bin/phpunit -c phpunit.xml.dist tests
-```
 
-### Stylelint (Status einfrieren)
+Ziel:
 
-- Aktuellen Lint-Status grün halten.
-- Keine Regel- oder Config-Migration im Hauptbranch mischen.
+- Tests bleiben stabil
+- CI bleibt zuverlässig
+- Keine neuen Deprecation-Risiken
+
+---
+
+## Stylelint (Status einfrieren)
+
+Empfehlung:
+
+- Aktuellen Lint-Status grün halten
+- Keine Regelmigration im Hauptbranch durchführen
 
 Command:
 
-```bash
 npm run lint:css
-```
+
+Wichtig:
+
+Lint-Regeln nicht neben funktionalen Änderungen verändern.
 
 ---
 
-## Phase 2 – Vorbereiten (kurzfristig, separater Branch)
+# Phase 2 — Vorbereiten (separater Branch)
 
-### Deprecation-Transparenz
+## Deprecation-Transparenz
 
-- PHPUnit-Run regelmäßig in CI ausführen.
-- Outdated-Report nur informativ (nicht failen).
+Regelmäßig prüfen:
+
+- veraltete Pakete
+- mögliche zukünftige Konflikte
 
 Commands:
 
-```bash
 composer outdated --direct
+
 npm outdated --depth=0
-```
 
-### Stylelint-Major-Probe (isoliert)
+Hinweis:
 
-- In Feature-Branch `stylelint` + `stylelint-config-standard` gemeinsam anheben.
-- Nur Regelanpassungen in CSS vornehmen, keine fachlichen Refactorings.
+Outdated-Reports sollen informativ sein,
+nicht blockierend.
+
+---
+
+## Stylelint Major-Probe (isoliert)
+
+Vorgehen:
+
+- Feature-Branch erstellen
+- Stylelint-Version erhöhen
+- Konfigurationsanpassungen durchführen
 
 Beispiel:
 
-```bash
 npm install --save-dev stylelint@latest stylelint-config-standard@latest
+
 npm run lint:css
-```
+
+Wichtig:
+
+Nur Formatierungsänderungen,
+keine funktionalen Änderungen.
 
 ---
 
-## Phase 3 – Gezielte Major-Upgrades (wenn Zeitfenster da ist)
+# Phase 3 — Gezielte Major-Upgrades
 
-### PHPUnit 10+/13 (später)
+Diese Phase erfolgt nur:
 
-- Erst wenn ausreichend Tests vorhanden und Deprecations abgearbeitet sind.
-- Upgrade in dediziertem Branch mit klarer Test-Matrix.
-
-### Stylelint dauerhaft aktualisieren
-
-- Nach erfolgreicher Probe aus Phase 2 in den Hauptbranch übernehmen.
+- bei ausreichender Testabdeckung
+- mit definiertem Zeitfenster
+- in isolierten Branches
 
 ---
 
-## Minimal-CI-Empfehlung
+## PHPUnit Major-Upgrade (z. B. 10+ oder höher)
 
-1. Job: PHPUnit
+Voraussetzungen:
 
-```bash
+- Deprecations bereinigt
+- Tests vollständig grün
+- CI stabil
+
+Empfehlung:
+
+Upgrade immer in:
+
+separatem Branch
+
+mit:
+
+klarer Testmatrix.
+
+---
+
+## Stylelint dauerhaft aktualisieren
+
+Nach erfolgreicher Probe:
+
+- Änderungen in Hauptbranch übernehmen
+- CI erneut prüfen
+
+---
+
+# Minimal-CI-Empfehlung
+
+Empfohlene CI-Jobs:
+
+---
+
+## Job 1 — PHPUnit
+
 ./vendor/bin/phpunit -c phpunit.xml.dist tests
-```
 
-2. Job: CSS-Lint
+Ziel:
 
-```bash
-npm run lint:css
-```
-
-3. Optional monatlich: Outdated-Report
-
-```bash
-composer outdated --direct
-npm outdated --depth=0
-```
+- Testlauf muss dauerhaft stabil bleiben
 
 ---
 
-## Done-Kriterien
+## Job 2 — CSS Lint
 
-- PHPUnit-Job dauerhaft grün auf 9.6.
-- Keine Schema-Warnungen mehr aus `phpunit.xml.dist`.
-- Stylelint-Status grün und reproduzierbar.
-- Major-Upgrades nur in separaten, reviewbaren Branches.
+npm run lint:css
+
+Ziel:
+
+- CSS-Regeln bleiben konsistent
+
+---
+
+## Job 3 — Outdated-Report (optional, z. B. monatlich)
+
+composer outdated --direct
+
+npm outdated --depth=0
+
+Ziel:
+
+- Upgradebedarf frühzeitig erkennen
+
+---
+
+# Done-Kriterien
+
+Die Upgrade-Phase gilt als erfolgreich, wenn:
+
+- PHPUnit-Job dauerhaft grün bleibt
+- Keine Schema-Warnungen in phpunit.xml.dist auftreten
+- Stylelint reproduzierbar grün ist
+- Major-Upgrades isoliert durchgeführt wurden
+- CI weiterhin stabil bleibt
+
+---
+
+# Erweiterungsempfehlung (optional)
+
+Optional sinnvoll:
+
+## Sicherheitsabhängigkeiten prüfen
+
+Empfohlen:
+
+composer audit
+
+Ziel:
+
+Bekannte Sicherheitslücken früh erkennen.
+
+---
+
+## Versionsstrategie dokumentieren
+
+Empfohlen:
+
+Semantic Versioning verwenden:
+
+MAJOR.MINOR.PATCH
+
+Beispiel:
+
+v1.0.0  
+v1.1.0  
+v1.1.1  
+

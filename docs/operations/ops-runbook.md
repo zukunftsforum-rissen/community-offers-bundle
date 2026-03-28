@@ -1,164 +1,330 @@
-# Ops Runbook -- Zukunftwohnen Zugangssystem (Technik)
+# Ops Runbook — Zukunftwohnen Zugangssystem (Technik)
 
-Diese Runbook-Datei beschreibt Betrieb, Fehlersuche und Wartung des
-Zugangssystems (Contao API + Raspberry Pi Pull-Modell).
+Diese Runbook-Datei beschreibt Betrieb, Fehlersuche und Wartung
+des Zugangssystems (Contao API + Device Pull-Modell).
 
-------------------------------------------------------------------------
+---
 
-## 1) Systemzustand schnell prüfen (5-Minuten-Check)
+# 1) Systemzustand schnell prüfen (5‑Minuten‑Check)
 
-### Server (Contao/Symfony)
+## Server (Contao/Symfony)
 
--   **API erreichbar**: `/api/door/open/{area}` liefert als eingeloggter
-    FE-User `202`.
--   **Device API erreichbar**: `/api/device/poll/{deviceId}` liefert
-    `200` (mit/ohne Jobs).
--   **DB erreichbar**: `tl_co_door_job` wächst bei Requests und zeigt
-    frische `createdAt`/`tstamp`.
+Prüfen:
 
-### Raspberry Pi
+- API erreichbar:
+  POST /api/door/open/{area}
+  → liefert als eingeloggter FE‑User HTTP 202
 
--   Uhrzeit stimmt (NTP aktiv).
--   Netzwerk: Pi hat Internetzugang (HTTPS zu Server).
--   Poll-Loop läuft (Service/Timer oder Cron).
--   GPIO/Relais steuerbar (lokaler Hardwaretest).
+- Device API erreichbar:
+  POST /api/device/poll
+  → liefert HTTP 200 (mit oder ohne Jobs)
 
-------------------------------------------------------------------------
+- Datenbank erreichbar:
+  Tabelle tl_co_door_job zeigt neue Einträge
+  bei Türanforderungen.
 
-## 2) Door-Flow -- Beobachtbare Punkte
+---
 
-### A) PWA → Server (open)
+## Device (Raspberry Pi oder Emulator)
 
-**Erwartung** - HTTP `202` mit `jobId` und `status`.
+Prüfen:
 
-**Wenn 401** - User nicht eingeloggt oder Cookies fehlen (curl ohne
-Session).
+- Uhrzeit stimmt (NTP aktiv)
+- Netzwerk vorhanden (HTTPS erreichbar)
+- Poll‑Loop läuft kontinuierlich
+- Poll‑Intervall: 2 Sekunden (fest definiert)
+- Hardware lokal testbar (Relais/GPIO)
 
-**Wenn 429** - RateLimit oder Locks greifen: `retryAfterSeconds`
-beachten.
+---
 
-### B) Pi → Server (poll)
+# 2) Door‑Flow — Beobachtbare Punkte
 
-**Erwartung** - `jobs[]` mit `jobId`, `area`, `nonce`, `expiresInMs` (≈
-30000).
+## A) PWA → Server (open)
 
-**Wenn keine Jobs** - Prüfe: Gibt es `pending` Jobs in DB? - Prüfe:
-Pollen die richtigen `areas`?
+Erwartung:
 
-### C) Pi → Server (confirm)
+HTTP 202 mit:
 
-**Erwartung** - 200 `executed`/`failed` (oder idempotent 200). -
-Timeout: 410 `confirm_timeout`.
+- jobId
+- status=pending
 
-------------------------------------------------------------------------
+Typische Fehler:
 
-## 3) Standard-Fehlerbilder & Fixes
+401  
+→ User nicht eingeloggt
 
-### 3.1 Confirm Timeout (Job wird `expired`)
+429  
+→ RateLimit aktiv  
+→ retryAfterSeconds beachten
 
-**Symptom** - DB: `status=expired`, `resultCode=TIMEOUT`,
-`Confirm timeout` - API: 410 `confirm_timeout`
+---
 
-**Checkliste** - confirmDelay (Log) \< 30s? - Poll-Intervall zu hoch? -
-Pi CPU/IO blockiert? - Pi-Uhrzeit korrekt? (NTP)
+## B) Device → Server (poll)
 
-**Fix** - Poll häufiger; Confirm sofort nach Aktion. - Optional:
-confirmWindow erhöhen (Sicherheitsabwägung!).
+Erwartung:
 
-### 3.2 Nonce/Device mismatch (403)
+jobs[] mit:
 
-**Ursachen** - falsches deviceId/secret - falscher nonce (Copy/Paste,
-stale data) - Job bereits neu dispatched (neuer nonce)
+- jobId
+- area
+- nonce
+- expiresInMs (~ confirmWindow)
 
-**Fix** - Poll-Ergebnis als Quelle der Wahrheit. - Confirm unmittelbar
-nach Aktion, keine Zwischenspeicherung.
+Wenn keine Jobs vorhanden:
 
-### 3.3 Jobs bleiben „aktiv", obwohl abgelaufen
+Prüfen:
 
-**Ursache** - `expireOldJobs()` wird nicht regelmäßig aufgerufen.
+- Existiert pending Job in DB?
+- Stimmen die Device‑Areas?
+- Ist Device korrekt authentifiziert?
 
-**Fix** - Sicherstellen: `expireOldJobs()` am Anfang von
-`createOpenJob()` und `dispatchJobs()`.
+---
 
-### 3.4 Tür „in Benutzung" (Locks)
+## C) Device → Server (confirm)
 
-**Ursache** - Member+Area Lock oder Area Lock aktiv (Cache TTL).
+Erwartung:
 
-**Fix** - `retryAfterSeconds` respektieren. - Cache-Backend prüfen
-(PSR-6) und Uhrzeit/TTL.
+HTTP 200:
 
-------------------------------------------------------------------------
+- executed
+oder
+- failed
 
-## 4) Datenbank -- wichtigste Queries (Debug)
+Bei abgelaufenem Job:
 
-> Tabellen-/Feldnamen können abweichen; Kern ist `tl_co_door_job`.
+HTTP 410:
 
-### Letzte Jobs
+expired
 
-``` sql
-SELECT id, area, status, createdAt, expiresAt, dispatchedAt, executedAt, resultCode, resultMessage
+Nicht:
+
+confirm_timeout
+
+(aktuelle Terminologie ist expired)
+
+---
+
+# 3) Standard‑Fehlerbilder & Fixes
+
+## 3.1 Job läuft ab (status=expired)
+
+Symptom:
+
+DB:
+
+status=expired
+
+Typische Ursachen:
+
+- confirm zu spät gesendet
+- Device blockiert
+- Netzwerkproblem
+- Poll läuft, aber Aktion dauert zu lange
+
+Checkliste:
+
+- confirmDelay < confirmWindow?
+- CPU‑Last prüfen
+- Netzwerk prüfen
+- NTP aktiv?
+
+Fix:
+
+- confirm sofort senden
+- Hardware‑Verzögerung reduzieren
+- optional confirmWindow erhöhen
+  (nur nach Sicherheitsabwägung)
+
+---
+
+## 3.2 Nonce / Device mismatch (403)
+
+Ursachen:
+
+- falsches deviceId
+- falscher Token
+- veralteter nonce
+- Job bereits ersetzt
+
+Fix:
+
+- Poll‑Ergebnis immer direkt verwenden
+- confirm sofort senden
+- keine Zwischenspeicherung
+
+---
+
+## 3.3 Jobs bleiben aktiv
+
+Mögliche Ursache:
+
+expireOldJobs() wird nicht regelmäßig ausgeführt.
+
+Sollte erfolgen in:
+
+- createOpenJob()
+- dispatchJobs()
+
+---
+
+## 3.4 Tür „in Benutzung" (Locks)
+
+Ursache:
+
+Member‑ oder Area‑Lock aktiv.
+
+Fix:
+
+- retryAfterSeconds beachten
+- Cache prüfen
+- TTL prüfen
+- Server‑Zeit prüfen
+
+---
+
+# 4) Datenbank — wichtigste Queries
+
+## Letzte Jobs
+
+```sql
+SELECT id,
+       area,
+       status,
+       createdAt,
+       expiresAt,
+       dispatchedAt,
+       executedAt,
+       resultCode,
+       resultMessage
 FROM tl_co_door_job
 ORDER BY id DESC
 LIMIT 50;
 ```
 
-### Aktive pending Jobs
+---
 
-``` sql
-SELECT id, area, createdAt, expiresAt
+## Aktive pending Jobs
+
+```sql
+SELECT id,
+       area,
+       createdAt,
+       expiresAt
 FROM tl_co_door_job
-WHERE status='pending' AND expiresAt >= UNIX_TIMESTAMP()
+WHERE status='pending'
+  AND expiresAt >= UNIX_TIMESTAMP()
 ORDER BY createdAt ASC;
 ```
 
-### Aktive dispatched Jobs (innerhalb confirmWindow)
+---
 
-``` sql
-SELECT id, area, dispatchedAt, dispatchToDeviceId
+## Aktive dispatched Jobs
+
+```sql
+SELECT id,
+       area,
+       dispatchedAt,
+       dispatchToDeviceId
 FROM tl_co_door_job
-WHERE status='dispatched' AND dispatchedAt >= UNIX_TIMESTAMP()-30
+WHERE status='dispatched'
+  AND dispatchedAt >= UNIX_TIMESTAMP() - 30
 ORDER BY dispatchedAt DESC;
 ```
 
-------------------------------------------------------------------------
+Hinweis:
 
-## 5) Logging (Empfehlung)
+30 Sekunden entspricht typischerweise:
 
-### Server
+confirmWindow
 
-Logge pro Request mindestens: - `memberId`, `area`, `jobId`,
-Statuswechsel - `deviceId`, `jobId`, confirm outcome, error codes -
-RateLimit/Lock Ereignisse
+---
 
-### Pi
+# 5) Logging (Empfehlung)
 
-Logge pro Loop: - Poll start/end, Anzahl Jobs - Für jeden Job: jobId,
-area, action start/end, confirm result - Hardwarefehler (GPIO/Relais)
+## Server
 
-------------------------------------------------------------------------
+Loggen:
 
-## 6) Wartung
+- memberId
+- area
+- jobId
+- status transitions
+- deviceId
+- confirm outcome
+- error codes
+- rate limit events
 
-### Secret Rotation (Device)
+---
 
--   Device Secret/Hash regelmäßig wechseln (z.B. 3--6 Monate).
--   Rollout: Server akzeptiert kurzzeitig alt+neu (Grace Period).
+## Device
 
-### Housekeeping / DB Growth
+Pro Loop:
 
--   Periodischer Cleanup alter Jobs (z.B. \> 90 Tage) per Cron/Command.
+- poll.start
+- poll.end
+- job count
 
-------------------------------------------------------------------------
+Pro Job:
 
-## 7) Incident Playbook (wenn „Tür geht nicht")
+- jobId
+- area
+- action start/end
+- confirm result
+- hardware errors
 
-1.  PWA open: kommt `202`?
-2.  DB: existiert `pending` Job?
-3.  Pi poll: sieht Pi den Job (richtiges area)?
-4.  Pi confirm: kommt `200` oder `410/403/409`?
-5.  Hardwaretest: Relais lokal schaltet?
-6.  Netzwerk: Pi DNS/HTTPS ok?
+---
 
-Wenn Schritt 2 ok aber 3 nicht: - Device Auth, areas, Poll-URL prüfen.
-Wenn Schritt 3 ok aber 4 fail: - confirmWindow, nonce/device mismatch,
-Pi delay prüfen.
+# 6) Wartung
+
+## Token Rotation (Device)
+
+Empfehlung:
+
+- Token regelmäßig erneuern
+- z. B. alle 3–6 Monate
+
+Vorgehen:
+
+- neuen Token generieren
+- Hash aktualisieren
+- Device neu starten
+
+---
+
+## Housekeeping / DB Growth
+
+Empfehlung:
+
+- alte Jobs entfernen
+- z. B. > 90 Tage
+
+Implementierung:
+
+- Cronjob oder Command
+
+---
+
+# 7) Incident Playbook („Tür geht nicht")
+
+Schritte:
+
+1. open → HTTP 202?
+2. DB → pending Job vorhanden?
+3. Device → sieht Job?
+4. confirm → HTTP 200?
+5. Hardware → Relais schaltet?
+6. Netzwerk → DNS / HTTPS ok?
+
+Analyse:
+
+Wenn Schritt 2 ok, aber 3 nicht:
+
+→ Device Auth prüfen  
+→ Areas prüfen  
+→ Poll prüfen  
+
+Wenn Schritt 3 ok, aber 4 fehlschlägt:
+
+→ confirmWindow prüfen  
+→ nonce prüfen  
+→ Device‑Delay prüfen

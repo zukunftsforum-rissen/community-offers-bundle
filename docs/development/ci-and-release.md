@@ -1,66 +1,257 @@
-# CI & Release -- Zukunftwohnen Zugangssystem (Technik)
+# CI & Release — Zukunftwohnen Zugangssystem (Technik)
 
 Diese Datei beschreibt eine schlanke Strategie, um das Zugangssystem
-reproduzierbar zu testen und auszurollen.
+reproduzierbar zu testen, zu prüfen und sicher auszurollen.
 
-------------------------------------------------------------------------
+---
 
-## 1) Test-Pyramide
+# 1) Test-Pyramide
 
-### Unit/Service Tests (PHPUnit)
+## Unit / Service Tests (PHPUnit)
 
--   DoorJobService:
-    -   `createOpenJob()` Idempotenz (pending/dispatched)
-    -   RateLimit & Locks
-    -   `expireOldJobs()` (pending + dispatched)
-    -   `confirmJob*()` Codes: 200/403/404/409/410
+Kernbereiche:
 
-### Integration Tests (Kernel / DB)
+DoorJobService:
 
--   Real DB (sqlite/mysql) mit Fixture für `tl_co_door_job`.
--   Controller Response Contracts.
+- createOpenJob()
+  - Idempotenz (pending/dispatched)
+  - RateLimit-Verhalten
+  - Lock-Logik
+- expireOldJobs()
+  - pending → expired
+  - dispatched → expired
+- confirmJob()
+  - Statuscodes korrekt:
+    - 200 executed / failed
+    - 403 forbidden
+    - 404 not_found
+    - 409 invalid_state
+    - 410 expired
 
-### E2E Smoke Test (Shell Script)
+Wichtig:
 
--   `e2e_device_test_all.sh`:
-    -   open → poll → confirm
-    -   Timeout confirm (delay \> 30)
-    -   Bad token → 401
-    -   Cleanup
+Status:
 
-------------------------------------------------------------------------
+expired
 
-## 2) DDEV / Local Pipeline (Empfehlung)
+(nicht timeout)
 
-### Make Targets (Beispiel)
+---
 
--   `make test` → Unit + Integration
--   `make e2e` → DDEV up + e2e script
--   `make lint` → php-cs-fixer / phpstan
+## Integration Tests (Kernel / DB)
 
-------------------------------------------------------------------------
+Ziel:
 
-## 3) Release Checklist (Prod)
+Reales Zusammenspiel testen.
 
-1.  Deploy Code (Bundle/Composer)
-2.  Cache warmup / clear (Contao)
-3.  DB migrations / schema update (falls vorhanden)
-4.  Sanity:
-    -   open endpoint (PWA)
-    -   device poll
-    -   confirm
-5.  Monitoring:
-    -   Fehlerquote confirm (403/410) beobachten
-    -   429 spikes (RateLimit) prüfen
+Empfohlen:
 
-------------------------------------------------------------------------
+- SQLite oder MySQL Testdatenbank
+- Fixture für tl_co_door_job
+- Controller Response Contracts prüfen
 
-## 4) Observability (Minimum)
+Typische Tests:
 
--   Server logs: structured (JSON) oder klar parsebar
--   Job table als Audit Trail
--   Optional:
-    -   Metrics: count by status/error (executed/failed/expired,
-        410/403/429)
-    -   Alert wenn `expired` stark ansteigt (Pi offline oder
-        Timing-Problem)
+- POST /api/door/open/{area}
+- POST /api/device/poll
+- POST /api/device/confirm
+
+---
+
+## E2E Smoke Test (Shell Script)
+
+Beispiel:
+
+e2e_device_test_all.sh
+
+Typische Abläufe:
+
+1. open → Job erstellt
+2. poll → Job erhalten
+3. confirm → executed
+4. verspätetes confirm → expired (410)
+5. falscher Token → 401
+6. Cleanup
+
+Wichtig:
+
+Poll erfolgt aktiv durch Device.
+
+---
+
+# 2) Lokale Pipeline (z. B. DDEV)
+
+Empfohlene Make Targets:
+
+make test  
+→ Unit + Integration Tests
+
+make e2e  
+→ DDEV starten  
+→ E2E Script ausführen
+
+make lint  
+→ php-cs-fixer  
+→ phpstan
+
+Optional:
+
+make qa  
+→ vollständige Qualitätsprüfung
+
+---
+
+# 3) CI Pipeline (Empfehlung)
+
+Typisch:
+
+GitHub Actions oder vergleichbar.
+
+Minimaler Workflow:
+
+1. Composer install
+2. PHPStan
+3. PHPUnit
+4. Coding Style Check
+5. Optional: Security Scan
+
+Beispiel-Jobs:
+
+- php-8.4-test
+- static-analysis
+- coding-style
+
+Wichtig:
+
+CI muss vor jedem Merge erfolgreich sein.
+
+---
+
+# 4) Release Checklist (Produktion)
+
+Vor jedem Release:
+
+1. Version taggen  
+   Beispiel:
+
+   v1.2.0
+
+2. Code deployen  
+   (Composer Update oder Bundle Deployment)
+
+3. Cache aktualisieren
+
+   contao-console cache:clear
+
+4. Datenbank prüfen
+
+   Schema Update falls nötig.
+
+5. Sanity Checks:
+
+   - open funktioniert
+   - poll funktioniert
+   - confirm funktioniert
+
+---
+
+# 5) Post-Release Monitoring
+
+Nach Deployment:
+
+Überwachen:
+
+- confirm Fehler (403 / 410)
+- expired Jobs
+- RateLimit Events (429)
+
+Warnsignal:
+
+Viele expired Jobs können bedeuten:
+
+- Device offline
+- Netzwerkproblem
+- Zeitabweichung
+
+---
+
+# 6) Observability (Minimum)
+
+Empfohlen:
+
+Server Logs:
+
+- strukturiert (JSON)
+- oder klar parsebar
+
+Primäre Datenquelle:
+
+tl_co_door_job  
+tl_co_door_log
+
+Optional:
+
+Metrics:
+
+- count by status:
+  - executed
+  - failed
+  - expired
+
+Alerts:
+
+- expired steigt stark an
+- 403-Spikes
+- 429-Spikes
+
+---
+
+# 7) Rollback-Strategie
+
+Empfohlen:
+
+Rollback muss jederzeit möglich sein.
+
+Typischer Ablauf:
+
+1. Vorherige Version erneut deployen
+2. Cache neu aufbauen
+3. System erneut testen
+
+Wichtig:
+
+- Releases immer versionieren
+- keine ungeprüften Änderungen direkt deployen
+
+---
+
+# 8) Versionierung
+
+Empfohlen:
+
+Semantic Versioning
+
+Schema:
+
+MAJOR.MINOR.PATCH
+
+Beispiele:
+
+v1.0.0  
+v1.1.0  
+v1.1.1
+
+Regeln:
+
+PATCH:
+
+Bugfix
+
+MINOR:
+
+Neue Features ohne Breaking Changes
+
+MAJOR:
+
+Breaking Changes
+

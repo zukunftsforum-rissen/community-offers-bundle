@@ -1,101 +1,104 @@
-docs/architecture/device-policy.md
 # Device Policy
 Community Offers Bundle – Device Participation Rules
-
-## Ziel
 
 Dieses Dokument definiert, welche Devices in welchem Betriebsmodus
 (`community_offers.mode`) am Door-Workflow teilnehmen dürfen.
 
-Ziel ist es, sicherzustellen, dass:
+Diese Regeln sind sicherheitskritisch.
 
-- reale Hardware nur im Live-Modus aktiv ist
-- Emulatoren niemals reale Türen öffnen können
-- Tests und Fehleranalysen in Produktion sicher möglich sind
+---
+
+# Ziel
+
+Die Device Policy stellt sicher:
+
+- reale Hardware wird nur im Live-Modus verwendet
+- Emulatoren können niemals reale Türen öffnen
+- Fehlkonfigurationen bleiben ungefährlich
+- Workflow-Tests sind sicher möglich
 
 ---
 
 # Device Types
 
-Devices besitzen ein Merkmal:
+Devices besitzen ein zentrales Merkmal:
 
 isEmulator (bool)
 
 Bedeutung:
 
-| Device | Beschreibung |
-|------|-------------|
-| isEmulator = false | reales Device (Raspberry Pi) |
-| isEmulator = true | Emulator-Device für Workflow-Tests |
+| Device-Typ | Beschreibung |
+|------------|--------------|
+| isEmulator = false | reales Device (z. B. Raspberry Pi) |
+| isEmulator = true  | Emulator-Device |
+
+Dieses Flag wird beim Authentifizieren eines Devices geprüft.
 
 ---
 
 # Betriebsmodi
 
-Das System kennt drei Betriebsmodi:
+Das System kennt aktuell zwei Betriebsmodi:
 
 live
-emulation
+emulator
+
+Der aktive Modus wird konfiguriert über:
+
+community_offers.mode
 
 ---
 
 # Device Participation Matrix
 
-| Mode | Poll erlaubt | Confirm erlaubt | Device Typ |
-|-----|-------------|----------------|------------|
-| live | ja | ja | isEmulator = false |
-| emulation | ja | ja | isEmulator = true |
-|  | nein | nein | kein Device |
+Diese Matrix beschreibt, welche Devices teilnehmen dürfen.
+
+| Mode     | Poll erlaubt | Confirm erlaubt | Erlaubter Device-Typ |
+|----------|--------------|-----------------|----------------------|
+| live     | ja           | ja              | isEmulator = false   |
+| emulator | ja           | ja              | isEmulator = true    |
+
+Alle anderen Kombinationen sind verboten.
 
 ---
 
 # Sicherheitsregeln
 
-## Live-Modus
+## Regel 1: Live-Modus schützt reale Hardware
 
-Im Live-Modus dürfen nur reale Geräte teilnehmen.
+Im Live-Modus dürfen ausschließlich reale Devices teilnehmen.
 
-Regel:
+Pseudo-Code:
 
+```php
 if ($mode === 'live' && $device->isEmulator()) {
-deny();
+    deny();
 }
+```
 
 Ziel:
 
-- Emulator kann niemals reale Tür öffnen
+- Emulator darf niemals reale Hardware steuern
 - Produktionsbetrieb bleibt geschützt
 
 ---
 
-## Emulation-Modus
+## Regel 2: Emulator-Modus schützt reale Hardware
 
-Im Emulation-Modus dürfen ausschließlich Emulator-Devices teilnehmen.
+Im Emulator-Modus dürfen ausschließlich Emulator-Devices teilnehmen.
 
-Regel:
+Pseudo-Code:
 
-if ($mode === 'emulation' && !$device->isEmulator()) {
-deny();
+```php
+if ($mode === 'emulator' && !$device->isEmulator()) {
+    deny();
 }
+```
 
 Ziel:
 
-- reale Hardware wird nicht ausgelöst
+- reale Hardware bleibt vollständig deaktiviert
 - vollständiger Workflow kann trotzdem getestet werden
-
----
-
-## -Modus
-
-Im -Modus existiert kein Device-Workflow.
-
-Eigenschaften:
-
-- kein Job
-- kein Poll
-- kein Confirm
-
-Der Erfolg wird direkt simuliert.
 
 ---
 
@@ -111,14 +114,170 @@ Diese Endpunkte müssen jeweils prüfen:
 
 - aktuellen Systemmodus
 - Device-Typ (`isEmulator`)
+- Teilnahmeberechtigung
+
+Diese Prüfung erfolgt typischerweise in:
+
+DeviceAuthService
+DeviceAccessPolicy
 
 ---
 
-# Vorteile dieser Architektur
+# Verhalten bei Regelverletzung
 
-Die klare Trennung ermöglicht:
+Wenn ein Device nicht teilnehmen darf:
 
-- sicheren Produktivbetrieb
-- vollständige Workflow-Tests ohne Hardware
-- reproduzierbare Fehlersituationen in Produktion
-- klare Analyse im Logging
+Typische Maßnahmen:
+
+- Zugriff verweigern
+- HTTP Fehler zurückgeben
+- Event loggen
+
+Beispiel:
+
+HTTP 403 Forbidden
+
+Optional:
+
+- Audit-Log schreiben
+- Diagnoseinformationen speichern
+
+---
+
+# Sicherheitsprinzipien
+
+Die Device Policy basiert auf folgenden Prinzipien.
+
+## Prinzip 1: Fail Safe Default
+
+Wenn ein Zustand unklar ist:
+
+deny access
+
+Nicht:
+
+allow access
+
+---
+
+## Prinzip 2: Mode-Isolation
+
+Modes dürfen sich gegenseitig nicht beeinflussen.
+
+Beispiele:
+
+Live-Mode:
+keine Emulator-Devices
+
+Emulator-Mode:
+keine realen Devices
+
+---
+
+## Prinzip 3: Server-seitige Kontrolle
+
+Alle Prüfungen müssen serverseitig erfolgen.
+
+Nicht:
+
+- im Frontend
+- im Device
+- im Emulator
+
+Nur:
+
+Server entscheidet
+
+---
+
+# Typische Fehlerfälle
+
+## Falscher Device-Typ
+
+Beispiel:
+
+mode = live
+device.isEmulator = true
+
+Erwartetes Verhalten:
+
+deny access
+
+---
+
+## Falscher Mode
+
+Beispiel:
+
+mode falsch gesetzt
+
+Erwartetes Verhalten:
+
+keine Teilnahme erlauben
+
+---
+
+## Device deaktiviert
+
+Wenn:
+
+enabled = false
+
+Dann:
+
+deny access
+
+---
+
+# Logging und Audit
+
+Bei Policy-Verletzungen sollten folgende Daten geloggt werden:
+
+- deviceId
+- mode
+- isEmulator
+- timestamp
+- reason
+
+Beispiel:
+
+device_denied
+
+Dies unterstützt:
+
+- Diagnose
+- Sicherheit
+- Nachvollziehbarkeit
+
+---
+
+# Zusammenhang mit Workflow
+
+Die Device Policy beeinflusst:
+
+/api/device/poll
+/api/device/confirm
+
+Wenn ein Device blockiert wird:
+
+- kein Job wird ausgeliefert
+- kein Confirm akzeptiert
+- Workflow bleibt geschützt
+
+---
+
+# Zusammenfassung
+
+Die Device Policy stellt sicher:
+
+- reale Hardware bleibt geschützt
+- Emulator bleibt isoliert
+- Fehlkonfigurationen sind ungefährlich
+- Workflow bleibt kontrollierbar
+
+Diese Regeln sind zentral für:
+
+- Sicherheit
+- Stabilität
+- Wartbarkeit
+- Testbarkeit

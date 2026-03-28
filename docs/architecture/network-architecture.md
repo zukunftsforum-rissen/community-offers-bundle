@@ -1,41 +1,133 @@
-# Architektur & Netzwerk -- Zukunftwohnen Zugangssystem
+# Netzwerk- und Systemarchitektur
 
-## Systemübersicht
+Dieses Dokument beschreibt die Netzwerk- und Systemarchitektur
+des Zugangssystems im Projekt Zukunftwohnen.
 
-Das Zugangssystem basiert auf einem Pull-Modell ohne eingehende
-Verbindungen am Raspberry Pi.
+Das System basiert konsequent auf einem **Pull-Modell**
+ohne eingehende Verbindungen zu den Geräten.
 
-### Komponenten
+---
 
--   Internet
--   FritzBox (Hauptstandort)
--   Contao Server (API)
--   Raspberry Pi (Device im Schuppen)
--   Relais / Türöffner
+# Systemübersicht
 
-## Netzwerkprinzip
+Die Hauptkomponenten des Systems sind:
 
--   Keine eingehenden Ports am Pi
--   Pi pollt regelmäßig die API
--   Kommunikation ausschließlich outbound (HTTPS)
--   Gast-LAN oder separates VLAN empfohlen
+- Internet
+- Router (z. B. FritzBox am Hauptstandort)
+- Contao Server (API und Workflow-Logik)
+- Raspberry Pi (physisches Device)
+- Emulator-Device (für Test- und Diagnosezwecke)
+- Relais / Türöffner-Hardware
 
-## Datenfluss
+Ziel der Architektur:
 
-1.  PWA sendet Open-Request
-2.  Server speichert Door-Job
-3.  Pi pollt API
-4.  Server dispatcht Job
-5.  Pi öffnet Relais
-6.  Pi sendet Confirm
+- minimale Angriffsfläche
+- keine offenen Ports auf Devices
+- robuste Kommunikation über HTTPS
+- klare Trennung zwischen Backend und Hardware
 
-## Sicherheitsaspekte
+---
 
--   HTTPS Pflicht
--   Kein Portforwarding notwendig
--   Device Auth über Secret
--   Logging aller Türöffnungen
+# Netzwerkprinzip
 
-# Netzwerk / Architektur
+Grundprinzipien:
 
-![Architekturübersicht](diagrams/generated/architecture.svg)
+- **Keine eingehenden Ports am Raspberry Pi**
+- Geräte kommunizieren ausschließlich outbound
+- Kommunikation erfolgt ausschließlich über HTTPS
+- Geräte authentifizieren sich mit einem Device-Token
+- Betrieb in Gast-LAN oder separatem VLAN empfohlen
+
+## Poll-Mechanismus
+
+Das Device arbeitet mit einem festen Poll-Intervall:
+
+**Poll-Intervall: 2 Sekunden (hart im Code definiert)**
+
+Eigenschaften:
+
+- Poll erfolgt **kontinuierlich**
+- Kein Backoff bei Idle-Zustand
+- Poll erfolgt auch, wenn keine Jobs vorhanden sind
+- Intervall ist aktuell **nicht konfigurierbar**
+
+Lastabschätzung:
+
+- 1 Device  → 30 Requests / Minute  
+- 5 Devices → 150 Requests / Minute  
+- 10 Devices → 300 Requests / Minute  
+
+Dieses Modell verhindert:
+
+- direkte Zugriffe auf Geräte
+- Portforwarding-Risiken
+- unnötige Netzwerkfreigaben
+
+---
+
+# Datenfluss
+
+Der typische Ablauf eines Türöffnungsprozesses:
+
+1. PWA sendet Open-Request an API  
+2. Server erstellt Door-Job  
+3. Device pollt API  
+4. Server dispatcht passenden Job  
+5. Device aktiviert Relais  
+6. Device sendet Confirm  
+
+Wichtige Eigenschaften:
+
+- Kommunikation ist zustandsbasiert
+- Jobs werden nur an passende Devices ausgeliefert
+- Jeder Schritt wird protokolliert
+
+---
+
+# Sicherheitsaspekte
+
+Wichtige Sicherheitsmaßnahmen:
+
+- HTTPS ist verpflichtend
+- Kein Portforwarding erforderlich
+- Device-Authentifizierung über Token
+- Speicherung des Tokens nur als Hash (z. B. SHA-256)
+- Nonce-basierte Bestätigung bei Job-Ausführung
+- Logging aller relevanten Ereignisse
+- Rate-Limiting für Device-Kommunikation empfohlen
+
+Zusätzliche empfohlene Maßnahmen:
+
+- separates Netzwerksegment für Devices
+- eingeschränkter Internetzugriff für Devices
+- Monitoring von Device-Aktivität
+
+---
+
+# Netzwerksegmentierung (empfohlen)
+
+Empfohlenes Setup:
+
+- Hauptnetz: Server und Backend
+- Separates VLAN oder Gastnetz: Devices
+- Zugriff vom Device-Netz nur nach außen erlaubt
+- Kein direkter Zugriff aus dem Internet auf Devices
+
+Dies reduziert das Risiko bei kompromittierten Geräten.
+
+---
+
+# Architekturdiagramm
+
+Die visuelle Darstellung der Architektur befindet sich in:
+
+diagrams/generated/architecture.svg
+
+Dieses Diagramm zeigt:
+
+- Netzwerkgrenzen
+- Kommunikationspfade
+- Rollen der einzelnen Komponenten
+
+Das Diagramm sollte regelmäßig aktualisiert werden,
+wenn sich die Systemarchitektur ändert.

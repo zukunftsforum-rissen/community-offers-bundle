@@ -1,29 +1,52 @@
 flowchart LR
 
+%% Title
+%% Door Access System Architecture (Polling Model)
+
 PWA[PWA / Browser\nMember UI]
 
-API[Symfony API\n\nAccessController\nDeviceController\nAccessConfirmController\n\nServices:\nDoorJobService\nAccessRequestService\nAccessService]
+API[Symfony API\n\nControllers:\nAccessController\nDeviceController\nAccessConfirmController\n\nServices:\nOpenDoorService\nDoorJobService\nAccessRequestService\nAccessService]
 
 DB[(Database\n\nContao Core:\ntl_member\ntl_member_group\n\nCommunity Offers:\ntl_co_access_request\ntl_co_device\ntl_co_door_job\ntl_co_door_log)]
 
 DEVICE[Raspberry Pi\n\nPull-Client\nToken Auth\n\nPoll + Confirm]
-GATEWAY[Shelly / Relais\nDoor Actuator]
 
-PWA -->|POST /api/door/open/AREA| API
+GATEWAY[Shelly / Relay\nDoor Actuator]
+
+%% Door opening flow
+
+PWA -->|POST /api/door/open/:area| API
+
 API -->|create job\nstatus=pending| DB
 
-DEVICE -->|GET /api/device/poll| API
+%% Device polling loop
+
+DEVICE -->|POST /api/device/poll| API
+
 API -->|dispatch job\nstatus=dispatched| DEVICE
 
-DEVICE -->|execute| GATEWAY
+DEVICE -->|execute door action| GATEWAY
+
 DEVICE -->|POST /api/device/confirm| API
-API -.->|status=executed/expired| DB
+
+API -->|update status\nexecuted/failed/expired| DB
+
+%% Access request flow
 
 PWA -->|Access Request Form| API
-API -->|create request\nemail token| DB
-API -->|DOI Mail| PWA
-PWA -->|Confirm Token| API
-API -->|assign groups| DB
+
+API -->|create access request| DB
+
+API -->|send DOI mail| PWA
+
+PWA -->|Confirm DOI Token| API
+
+API -->|assign member groups| DB
+
+%% Architecture constraints
 
 DEVICE -.->|No inbound connections\nPull only| API
-API -.->|confirmWindow = 30s| DEVICE
+
+API -.->|confirmWindow configured| DEVICE
+
+API -.->|poll interval ~2s| DEVICE

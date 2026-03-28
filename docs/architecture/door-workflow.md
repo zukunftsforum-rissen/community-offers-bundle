@@ -1,4 +1,3 @@
-
 # Door Workflow
 
 This document describes the lifecycle of a door access request in the
@@ -9,7 +8,7 @@ The workflow coordinates interactions between:
 - members
 - the Contao backend
 - the door job queue
-- Raspberry Pi devices
+- devices (Raspberry Pi or Emulator)
 - audit logging
 
 ---
@@ -24,6 +23,8 @@ that polls the server.
 Workflow:
 
 member open request
+        ↓
+gateway resolved
         ↓
 door job created (pending)
         ↓
@@ -47,7 +48,8 @@ The backend:
 
 1. verifies member authentication
 2. checks permission for the requested area
-3. creates a new **door job**
+3. resolves the correct gateway
+4. creates a new **door job**
 
 Important fields created:
 
@@ -76,7 +78,8 @@ The backend:
 
 1. authenticates the device user
 2. determines the deviceId
-3. searches for a pending job assigned to the device
+3. determines device areas
+4. searches for pending jobs matching the device areas
 
 If a job exists:
 
@@ -97,10 +100,15 @@ The device performs the physical action.
 
 Typical hardware chain:
 
-Raspberry Pi
-→ GPIO / HTTP
-→ Shelly / relay
-→ electric door strike
+Raspberry Pi  
+→ GPIO / HTTP  
+→ Shelly / relay  
+→ electric door strike  
+
+In emulator mode:
+
+Emulator  
+→ simulated execution  
 
 ---
 
@@ -136,8 +144,8 @@ status → failed
 
 # Step 5 – Expiration
 
-Jobs that are not confirmed within the confirm window
-may transition to:
+Jobs that are not confirmed within the configured
+`confirm_window` may transition to:
 
 expired
 
@@ -149,18 +157,19 @@ This prevents stale jobs from executing later.
 
 Possible job states:
 
-pending
-dispatched
-executed
-failed
-expired
+pending  
+dispatched  
+executed  
+failed  
+expired  
 
 State transitions:
 
-pending → dispatched
-dispatched → executed
-dispatched → failed
-pending → expired
+pending → dispatched  
+dispatched → executed  
+dispatched → failed  
+pending → expired  
+dispatched → expired  
 
 ---
 
@@ -172,10 +181,9 @@ tl_co_door_log
 
 Typical actions:
 
-door_open
-door_dispatch
-door_confirm
-request_access
+door_open  
+door_dispatch  
+door_confirm  
 
 Each entry contains:
 
@@ -201,7 +209,8 @@ Typical indicators:
 - lastArea
 - device status
 
-Demo devices are excluded from production monitoring.
+Emulator devices can optionally be excluded from
+production monitoring views.
 
 ---
 
@@ -209,10 +218,10 @@ Demo devices are excluded from production monitoring.
 
 Key security mechanisms:
 
-Device authentication
-Nonce validation
-Rate limiting
-Audit logging
-Correlation ID tracing
+- Device authentication
+- Nonce validation
+- Rate limiting
+- Audit logging
+- Correlation ID tracing
 
 These ensure that door access cannot be replayed or forged.

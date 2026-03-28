@@ -6,9 +6,7 @@ Dieses Dokument beschreibt die Zustandsmaschine (State Machine) eines DoorJobs.
 Sie gilt für die Modi:
 
 - live
-- emulation
-
-Im Modus **** wird kein DoorJob erzeugt.
+- emulator
 
 ---
 
@@ -16,12 +14,12 @@ Im Modus **** wird kein DoorJob erzeugt.
 
 Ein DoorJob durchläuft typischerweise folgende Zustände:
 
-created → dispatched → executed
+pending → dispatched → executed
 
 Optional können zusätzliche Zustände auftreten:
 
-created → expired  
-created → dispatched → expired
+pending → expired  
+pending → dispatched → expired
 
 ---
 
@@ -29,10 +27,10 @@ created → dispatched → expired
 
 ```plantuml
 @startuml
-[*] --> created
+[*] --> pending
 
-created --> dispatched : device poll + job dispatch
-created --> expired : confirm timeout
+pending --> dispatched : device poll + job dispatch
+pending --> expired : confirm timeout
 
 dispatched --> executed : device confirm
 dispatched --> expired : confirm timeout
@@ -46,7 +44,7 @@ expired --> [*]
 
 # Zustände
 
-## created
+## pending
 
 Der Job wurde erzeugt.
 
@@ -93,7 +91,7 @@ Im Live-Modus bedeutet das:
 
 Die reale Tür wurde geöffnet.
 
-Im Emulation-Modus bedeutet das:
+Im Emulator-Modus bedeutet das:
 
 Der Emulator hat den Workflow bestätigt.
 
@@ -113,6 +111,11 @@ Typische Ursache:
 - Device offline
 - Netzwerkproblem
 - Emulator nicht aktiv
+- confirm nicht rechtzeitig erfolgt
+
+Die Timeout-Dauer wird über
+community_offers.confirm_window
+konfiguriert.
 
 ---
 
@@ -121,7 +124,7 @@ Typische Ursache:
 | Mode | Job | Device |
 |-----|-----|------|
 | live | ja | Raspberry Pi |
-| emulation | ja | Emulator |
+| emulator | ja | Emulator |
 |  | nein | kein Device |
 
 ---
@@ -134,7 +137,6 @@ Der Channel beschreibt den technischen Ausführungspfad.
 |-------|-------------|
 | physical | reale Hardware |
 | emulator | Emulator Device |
-| demo | direkte  (kein Job) |
 
 ---
 
@@ -149,7 +151,7 @@ Der Channel beschreibt den technischen Ausführungspfad.
 
 ---
 
-# Typischer Emulation Ablauf
+# Typischer Emulator Ablauf
 
 1. App sendet open request
 2. DoorJob wird erzeugt

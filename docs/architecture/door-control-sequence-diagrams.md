@@ -2,11 +2,10 @@
 Community Offers Bundle – Door Control Runtime Sequences
 
 Dieses Dokument beschreibt den exakten Ablauf der Türöffnung
-für alle drei Betriebsmodi:
+für alle unterstützten Betriebsmodi:
 
 - live
-- emulation
-- 
+- emulator
 
 Die Diagramme sind in **PlantUML** dargestellt.
 
@@ -31,6 +30,8 @@ Eigenschaften:
 actor User
 participant App
 participant OpenDoorService
+participant DoorGatewayResolver
+participant RaspberryDoorGateway
 participant DoorJobService
 participant Database
 participant RaspberryPi
@@ -39,7 +40,10 @@ participant DeviceAPI
 User -> App : Tür öffnen
 App -> OpenDoorService : open(area)
 
-OpenDoorService -> DoorJobService : createJob()
+OpenDoorService -> DoorGatewayResolver : resolve(mode=live)
+DoorGatewayResolver -> RaspberryDoorGateway : gateway
+
+RaspberryDoorGateway -> DoorJobService : createJob()
 DoorJobService -> Database : INSERT door_job
 Database --> DoorJobService : jobId
 
@@ -58,7 +62,7 @@ DoorJobService -> Database : update executedAt
 
 ---
 
-# Emulation Mode
+# Emulator Mode
 
 Workflow-Testmodus ohne reale Hardware.
 
@@ -75,6 +79,8 @@ Eigenschaften:
 actor User
 participant App
 participant OpenDoorService
+participant DoorGatewayResolver
+participant EmulatorDoorGateway
 participant DoorJobService
 participant Database
 participant EmulatorDevice
@@ -83,7 +89,10 @@ participant DeviceAPI
 User -> App : Tür öffnen
 App -> OpenDoorService : open(area)
 
-OpenDoorService -> DoorJobService : createJob()
+OpenDoorService -> DoorGatewayResolver : resolve(mode=emulator)
+DoorGatewayResolver -> EmulatorDoorGateway : gateway
+
+EmulatorDoorGateway -> DoorJobService : createJob()
 DoorJobService -> Database : INSERT door_job
 Database --> DoorJobService : jobId
 
@@ -102,48 +111,15 @@ DoorJobService -> Database : update executedAt
 
 ---
 
-#  Mode
+# Architekturhinweis
 
-Demo-Modus ohne Workflow.
+Die beiden Modi unterscheiden sich ausschließlich im verwendeten Gateway
+und im Device-Typ.
 
-Eigenschaften:
-
-- kein Job
-- kein Polling
-- kein Confirm
-- direkter Erfolg
-
-## Sequence
-
-```plantuml
-@startuml
-actor User
-participant App
-participant OpenDoorService
-participant DemoDoorGateway
-
-User -> App : Tür öffnen
-App -> OpenDoorService : open(area)
-
-OpenDoorService -> DemoDoorGateway : simulateOpen()
-
-DemoDoorGateway --> OpenDoorService : success
-
-OpenDoorService --> App :  success
-@enduml
-```
-
----
-
-# Architekturübersicht
-
-Die drei Modi unterscheiden sich hauptsächlich im **Workflow-Verhalten**.
-
-| Mode | Job | Polling | Confirm | Device |
-|-----|-----|--------|--------|-------|
-| live | ja | ja | ja | Raspberry Pi |
-| emulation | ja | ja | ja | Emulator |
-|  | nein | nein | nein | keiner |
+| Mode     | Gateway                | Device Type        |
+|----------|------------------------|--------------------|
+| live     | RaspberryDoorGateway   | Raspberry Pi       |
+| emulator | EmulatorDoorGateway    | Emulator Device    |
 
 ---
 
@@ -151,20 +127,27 @@ Die drei Modi unterscheiden sich hauptsächlich im **Workflow-Verhalten**.
 
 Zusätzlich wird der Ausführungspfad gespeichert.
 
-| Channel | Beschreibung |
-|-------|-------------|
-| physical | reale Hardware |
-| emulator | Emulator-Device |
-| demo | direkte  |
+| Channel   | Beschreibung        |
+|-----------|--------------------|
+| physical  | reale Hardware      |
+| emulator  | Emulator-Device     |
+
+Zuordnung:
+
+live → physical  
+emulator → emulator  
 
 ---
 
 # Datenmodell
 
-Jobs speichern:
+DoorJobs speichern mindestens:
 
 mode  
 channel  
+area  
+correlationId  
+expiresAt  
 
 Beispiele:
 
@@ -173,9 +156,7 @@ Live:
 mode = live  
 channel = physical  
 
-Emulation:
+Emulator:
 
-mode = emulation  
+mode = emulator  
 channel = emulator  
-
- erzeugt keinen Job.

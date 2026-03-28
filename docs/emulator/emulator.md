@@ -1,10 +1,12 @@
-# PI Emulator Setup
+# Emulator Setup
 
 ## Overview
 
-The PI Emulator simulates a hardware device such as a Raspberry Pi and is used in **emulation mode** to test the full door workflow without real hardware.
+The **Device Emulator** simulates a hardware device such as a Raspberry Pi.
+It is used in **emulator mode** to test the complete door workflow
+without requiring physical hardware.
 
-It behaves like a real device:
+The emulator behaves like a real device:
 
 1. calls `/api/device/whoami`
 2. polls `/api/device/poll`
@@ -12,38 +14,52 @@ It behaves like a real device:
 
 ---
 
-## Modes
+# Modes
 
 | Mode | Behavior |
 |------|----------|
 | `live` | Real hardware devices only |
-| `emulation` | Emulator devices are allowed and can poll/confirm jobs |
+| `emulator` | Emulator devices are allowed and can poll/confirm jobs |
+
+Note:
+
+Earlier documentation referenced `emulation`.
+The correct mode name is:
+
+`emulator`
 
 ---
 
-## Architecture
+# Architecture
 
-The emulator consists of two parts:
+The emulator consists of two layers.
 
-### Bundle
+## Bundle Layer
+
 The bundle provides:
 
-- the emulator device command
-- the emulator core script
-- this documentation
+- emulator device creation command  
+- emulator core script  
+- runtime integration  
+- documentation  
 
-### Project
-The project provides:
+## Project Layer
+
+The project provides operational wrapper scripts:
 
 - `tools/emulator/start.sh`
 - `tools/emulator/run.sh`
 - `tools/emulator/stop.sh`
 
-These project scripts are thin operational wrappers for starting, stopping, logging, and supervising the emulator process.
+These scripts handle:
+
+- process lifecycle  
+- logging  
+- supervision  
 
 ---
 
-## Environment
+# Environment Configuration
 
 Typical `.env.local` values:
 
@@ -52,26 +68,26 @@ CO_EMULATOR_BASE_URL=https://example.org
 CO_EMULATOR_DEVICE_ID=pi-emulator
 CO_EMULATOR_POLL_INTERVAL_SECONDS=2
 
-COMMUNITY_OFFERS_MODE=emulation
+COMMUNITY_OFFERS_MODE=emulator
 ```
 
-Optional:
+Important:
 
-```dotenv
-CO_EMULATOR_TOKEN=your-token
-CO_EMULATOR_TOKEN_FILE=var/device-tokens/pi-emulator.token
-CO_EMULATOR_SCRIPT=vendor/zukunftsforum-rissen/community-offers-bundle/resources/emulator/pi_emulator.sh
-```
+`COMMUNITY_OFFERS_MODE` must be:
+
+emulator
+
+(not `emulation`)
 
 ---
 
-## Token handling
+# Token Handling
 
-The emulator supports two token sources:
+The emulator supports two token sources.
 
-### Preferred: token file
+## Preferred: Token File
 
-The emulator first looks for a token file:
+The emulator first checks for:
 
 ```text
 var/device-tokens/<deviceId>.token
@@ -83,7 +99,15 @@ Example:
 var/device-tokens/pi-emulator.token
 ```
 
-### Fallback: environment variable
+This approach:
+
+- avoids storing tokens in environment files  
+- improves security  
+- supports rotation  
+
+---
+
+## Fallback: Environment Variable
 
 If no token file exists, the emulator falls back to:
 
@@ -93,9 +117,9 @@ CO_EMULATOR_TOKEN=...
 
 ---
 
-## Create or update emulator device
+# Create or Update Emulator Device
 
-Use the existing command:
+Use the command:
 
 ```bash
 php vendor/bin/contao-console community-offers:emulator:create-device
@@ -103,13 +127,15 @@ php vendor/bin/contao-console community-offers:emulator:create-device
 
 Useful options:
 
-### Print `.env.local` snippet
+## Print `.env.local` snippet
 
 ```bash
 php vendor/bin/contao-console community-offers:emulator:create-device --print-env-snippet
 ```
 
-### Write token file automatically
+---
+
+## Write token file automatically
 
 ```bash
 php vendor/bin/contao-console community-offers:emulator:create-device --write-default-token-file
@@ -117,16 +143,18 @@ php vendor/bin/contao-console community-offers:emulator:create-device --write-de
 
 This will:
 
-- create or update the emulator device
-- generate a new plaintext token
-- store the SHA-256 hash in `tl_co_device.apiTokenHash`
+- create or update the emulator device  
+- generate a new plaintext token  
+- store the SHA-256 hash in `tl_co_device.apiTokenHash`  
 - write the plaintext token to:
 
 ```text
 var/device-tokens/pi-emulator.token
 ```
 
-You can also write to a custom file:
+---
+
+## Write token to custom file
 
 ```bash
 php vendor/bin/contao-console community-offers:emulator:create-device --write-token-file=var/device-tokens/pi-emulator.token
@@ -134,7 +162,7 @@ php vendor/bin/contao-console community-offers:emulator:create-device --write-to
 
 ---
 
-## Start emulator
+# Start Emulator
 
 ```bash
 tools/emulator/start.sh
@@ -142,15 +170,17 @@ tools/emulator/start.sh
 
 ---
 
-## Stop emulator
+# Stop Emulator
 
 ```bash
-tools/emulator/stop.sh`
+tools/emulator/stop.sh
 ```
+
+(Note: removed stray backtick from original documentation.)
 
 ---
 
-## Logs
+# Logs
 
 ```bash
 tail -f var/logs/pi-emulator.log
@@ -158,22 +188,55 @@ tail -f var/logs/pi-emulator.log
 
 ---
 
-## API flow
+# API Flow
 
-The emulator acts as an external client and performs:
+The emulator acts as an external client.
+
+Sequence:
 
 1. `GET /api/device/whoami`
 2. `POST /api/device/poll`
 3. `POST /api/device/confirm`
 
+Important:
+
+Polling interval is currently:
+
+2 seconds (continuous, no idle backoff)
+
 ---
 
-## Security notes
+# Security Notes
+
+Recommended:
 
 - Do not commit `.env.local`
 - Do not commit plaintext device token files
-- Add this to `.gitignore`:
+- Store tokens only in secure locations
+
+Add to `.gitignore`:
 
 ```text
 var/device-tokens/
 ```
+
+---
+
+# Operational Notes
+
+If the emulator fails to authenticate:
+
+Check:
+
+- token file exists
+- token matches database hash
+- device is enabled
+- mode is set to `emulator`
+
+If polling fails:
+
+Check:
+
+- API URL
+- network connectivity
+- HTTPS certificates

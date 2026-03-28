@@ -1,148 +1,262 @@
 # Workflow Runtime Matrix
 Community Offers Bundle – Runtime Behaviour Overview
 
-Dieses Dokument zeigt das Laufzeitverhalten der Door-Control-Architektur
-für alle Betriebsmodi.
+Dieses Dokument beschreibt das Laufzeitverhalten des Door-Control-Workflows
+für alle unterstützten Betriebsmodi.
+
+Aktuell unterstützte Modi:
+
+- live
+- emulator
 
 ---
 
-# Betriebsmodi
+# Überblick
 
-Das System kennt drei Modi:
+Die Runtime-Matrix zeigt:
 
-live
-emulation
+- ob ein DoorJob erzeugt wird
+- ob Polling stattfindet
+- ob Confirm verwendet wird
+- welche Device-Typen teilnehmen dürfen
+- welcher Channel verwendet wird
 
 ---
 
 # Workflow Matrix
 
-| Mode | Job erstellt | Polling | Confirm | Device Typ | Channel |
-|-----|-------------|--------|--------|------------|--------|
-| live | ja | ja | ja | physical | physical |
-| emulation | ja | ja | ja | emulator | emulator |
-|  | nein | nein | nein | – | demo |
+| Mode     | Job erstellt | Polling | Confirm | Device Typ      | Channel   |
+|----------|--------------|---------|---------|-----------------|-----------|
+| live     | ja           | ja      | ja      | physical device | physical  |
+| emulator | ja           | ja      | ja      | emulator device | emulator  |
 
 ---
 
 # Mode: live
 
-Produktiver Betrieb.
+Produktiver Betrieb mit realer Hardware.
 
 Eigenschaften:
 
-- echte Hardware
+- echte physische Türöffnung
 - vollständiger Workflow
-- physische Türöffnung
+- reale Devices poll(en) und confirm(en)
+- Emulator-Devices sind ausgeschlossen
 
-Ablauf:
+Typischer Ablauf:
 
-App  
-↓  
-OpenDoorService  
-↓  
-DoorJobService  
-↓  
-Job in DB  
-↓  
-Raspberry Pi pollt  
-↓  
-Dispatch  
-↓  
-Confirm  
-↓  
-Workflow abgeschlossen
+App
+↓
+OpenDoorService
+↓
+RaspberryDoorGateway
+↓
+DoorJobService
+↓
+Job in Datenbank
+↓
+Raspberry Pi pollt
+↓
+Dispatch
+↓
+Confirm
+↓
+Status: executed
 
 ---
 
-# Mode: emulation
+# Mode: emulator
 
 Workflow-Testmodus ohne reale Hardware.
 
 Eigenschaften:
 
-- identischer Workflow wie live
+- identischer Workflow wie im Live-Modus
 - Emulator-Device pollt
 - keine physische Türöffnung
+- reale Devices sind ausgeschlossen
 
-Ablauf:
+Typischer Ablauf:
 
-App  
-↓  
-OpenDoorService  
-↓  
-DoorJobService  
-↓  
-Job in DB  
-↓  
-Emulator pollt  
-↓  
-Dispatch  
-↓  
-Confirm  
-↓  
-Workflow abgeschlossen
+App
+↓
+OpenDoorService
+↓
+EmulatorDoorGateway
+↓
+DoorJobService
+↓
+Job in Datenbank
+↓
+Emulator pollt
+↓
+Dispatch
+↓
+Confirm
+↓
+Status: executed
 
 ---
 
-# Mode: 
+# Polling-Verhalten
 
-Demo- und Präsentationsmodus.
+Polling erfolgt über:
 
-Eigenschaften:
+/api/device/poll
 
-- kein Workflow
-- kein Job
-- keine Device-Kommunikation
-- direkter Erfolg
+Das Device:
 
-Ablauf:
+- meldet sich regelmäßig
+- fragt nach offenen Jobs
+- erhält ggf. einen Job
 
-App  
-↓  
-OpenDoorService  
-↓  
-DemoDoorGateway  
-↓  
-Direkter Erfolg
+Polling ist aktiv in:
+
+live
+emulator
+
+---
+
+# Confirm-Verhalten
+
+Confirm erfolgt über:
+
+/api/device/confirm
+
+Confirm bedeutet:
+
+- Job wurde erfolgreich ausgeführt
+- Workflow wird abgeschlossen
+- Status wird auf `executed` gesetzt
+
+Confirm muss innerhalb eines Zeitfensters erfolgen.
+
+Dieses Zeitfenster wird konfiguriert über:
+
+community_offers.confirm_window
+
+Wenn Confirm nicht rechtzeitig erfolgt:
+
+Status → expired
 
 ---
 
 # Channel
 
-Der Channel beschreibt den technischen Ausführungsweg.
+Der Channel beschreibt den technischen Ausführungspfad.
 
-| Channel | Bedeutung |
-|-------|-----------|
-| physical | reale Hardware |
-| emulator | Emulator-Device |
-| demo | direkte  |
+| Channel  | Bedeutung           |
+|----------|---------------------|
+| physical | reale Hardware      |
+| emulator | Emulator-Ausführung |
+
+Zuordnung:
+
+live → physical
+emulator → emulator
+
+Der Channel wird beim Dispatch festgelegt.
 
 ---
 
-# Datenmodell
+# Device-Typ Verhalten
 
-Jobs speichern:
+Devices besitzen:
 
-mode
-channel
+isEmulator (bool)
 
-Beispiele:
+Verhalten:
 
-Live:
+| Mode     | isEmulator=false | isEmulator=true |
+|----------|------------------|-----------------|
+| live     | erlaubt          | verboten        |
+| emulator | verboten         | erlaubt         |
 
-mode = live
-channel = physical
+Diese Regeln müssen serverseitig geprüft werden.
 
-Emulation:
+---
 
-mode = emulation
-channel = emulator
+# DoorJob Lifecycle im Betrieb
 
- erzeugt keinen Job.
-Empfohlene Ordnerstruktur
-docs/
- └ architecture/
-     runtime-modes.md
-     device-policy.md
-     workflow-runtime-matrix.md
+Ein Job durchläuft typischerweise:
+
+pending
+↓
+dispatched
+↓
+executed
+
+Oder:
+
+pending
+↓
+expired
+
+Oder:
+
+pending
+↓
+dispatched
+↓
+expired
+
+---
+
+# Timeout-Verhalten
+
+Ein Job läuft ab, wenn:
+
+- kein Device pollt
+- kein Confirm erfolgt
+- Confirm zu spät erfolgt
+
+Konfiguration:
+
+community_offers.confirm_window
+
+Typischer Wert:
+
+30 Sekunden
+(abhängig von Projektkonfiguration)
+
+---
+
+# Logging-Verhalten
+
+Während der Laufzeit werden typischerweise folgende Events geloggt:
+
+- door_open
+- device_poll
+- door_dispatch
+- device_confirm
+- door_expired
+
+Diese Logs enthalten:
+
+- jobId
+- deviceId
+- mode
+- channel
+- correlationId
+
+Dadurch wird vollständige Nachverfolgbarkeit ermöglicht.
+
+---
+
+# Zusammenfassung
+
+Das System arbeitet in beiden Modi mit identischem Workflow.
+
+Unterschied:
+
+live      → reale Hardware
+emulator  → simulierte Hardware
+
+Der Workflow selbst bleibt gleich.
+
+Das erhöht:
+
+- Testbarkeit
+- Stabilität
+- Diagnosefähigkeit
+- Sicherheit

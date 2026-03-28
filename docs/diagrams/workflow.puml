@@ -1,9 +1,38 @@
 @startuml
 
+title Door Job Workflow State Machine
+
 [*] --> pending
-pending --> dispatched : device poll
-dispatched --> executed : confirm
-dispatched --> failed : error
-pending --> expired : timeout
+
+pending --> dispatched : device poll (job claimed)
+
+dispatched --> executed : confirm ok=true
+
+dispatched --> failed : confirm ok=false
+
+pending --> expired : confirm window exceeded
+
+dispatched --> expired : confirm too late
+
+executed --> [*]
+
+failed --> [*]
+
+expired --> [*]
+
+note right of pending
+Job created after:
+POST /api/door/open/{area}
+end note
+
+note right of dispatched
+Job assigned to device
+after poll
+end note
+
+note right of expired
+Confirm not received
+within confirmWindow
+end note
 
 @enduml

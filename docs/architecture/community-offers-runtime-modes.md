@@ -134,6 +134,24 @@ Bedeutung:
 | physical | reale Hardware |
 | emulator | Emulator-Device |
 
+Der Channel wird beim Dispatch anhand des verwendeten Gateways gesetzt.
+
+---
+
+# Gateway Selection
+
+Der konkrete Ausführungspfad wird über den DoorGatewayResolver bestimmt.
+
+Mapping:
+
+mode = live  
+→ RaspberryDoorGateway  
+→ channel = physical  
+
+mode = emulator  
+→ EmulatorDoorGateway  
+→ channel = emulator
+
 ---
 
 # Datenmodell
@@ -157,8 +175,7 @@ emulator:
 mode = emulator
 channel = emulator  
 
- erzeugt keinen Job.
-
+Erzeugt einen normalen DoorJob, aber ohne physische Türöffnung.
 ---
 
 # Logging

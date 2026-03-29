@@ -22,6 +22,16 @@
     let isRunning = false;
     let runToken = 0;
 
+    function setInfo(text) {
+
+        const box = document.getElementById("info-box");
+
+        if (!box) return;
+
+        box.textContent = text;
+
+    }
+
     function setActiveStep(index) {
         steps.forEach((step, i) => step.classList.toggle("active", i === index));
     }
@@ -103,9 +113,7 @@
         audio.pause();
         audio.currentTime = 0;
 
-        audio.play().catch((err) => {
-            console.log("audio blocked", id, err);
-        });
+        audio.play().catch(() => { });
     }
 
     function primeSounds() {
@@ -129,9 +137,7 @@
                     audio.pause();
                     audio.currentTime = 0;
                 })
-                .catch((err) => {
-                    console.log("enable sound failed", id, err);
-                });
+                .catch(() => { });
         });
     }
 
@@ -175,13 +181,7 @@
         }
 
         return new Promise((resolve) => {
-            pauseResolver = () => {
-                if (token === runToken) {
-                    resolve();
-                } else {
-                    resolve();
-                }
-            };
+            pauseResolver = () => resolve();
         });
     }
 
@@ -229,6 +229,15 @@
         }
     }
 
+    function getDefaultDoorState(area) {
+        if (area === "depot") return "Kein Zugang";
+        if (area === "swap-house") return "Freigegeben";
+        if (area === "workshop") return "Freigegeben";
+        if (area === "sharing") return "Noch nicht freigegeben";
+
+        return "";
+    }
+
     function resetPresentationState() {
         paused = false;
         pauseResolver = null;
@@ -260,11 +269,7 @@
             const person = getPersonForDoor(door);
 
             resetDoor(door, person);
-
-            if (area === "depot") setDoorState(door, "Gesperrt");
-            if (area === "swap-house") setDoorState(door, "Bereit");
-            if (area === "workshop") setDoorState(door, "Bereit");
-            if (area === "sharing") setDoorState(door, "Später");
+            setDoorState(door, getDefaultDoorState(area));
         });
     }
 
@@ -340,8 +345,8 @@
         if (token !== runToken) return;
 
         resetDoor(door, person);
-        setDoorState(door, "Demo abgeschlossen.");
-        simStatus.textContent = `${door.dataset.label} abgeschlossen.`;
+        setDoorState(door, getDefaultDoorState(area));
+        simStatus.textContent = `${door.dataset.label} geschlossen.`;
     }
 
     async function clickElement(el, token) {
@@ -371,6 +376,8 @@
         runToken += 1;
         const token = runToken;
 
+        setInfo("Hallo Emma Musterfrau");
+
         resetPresentationState();
 
         await clickElement(enableSoundBtn, token);
@@ -391,40 +398,45 @@
 
         await clickElement(document.getElementById("btn-submit-request"), token);
         setActiveStep(2);
+        simStatus.textContent = "Anfrage abgesendet.";
 
         await wait(pace(1200), token);
         await waitIfPaused(token);
         if (token !== runToken) return;
 
         setActiveStep(3);
+        simStatus.textContent = "DOI-E-Mail eingetroffen.";
 
         await wait(pace(900), token);
         await waitIfPaused(token);
         if (token !== runToken) return;
 
-        await clickElement(document.getElementById("btn-mail-open-app"), token);
+        await clickElement(document.getElementById("btn-mail-confirm-doi"), token);
         setActiveStep(4);
+        simStatus.textContent = "E-Mail bestätigt. Passwort wird festgelegt.";
 
         await wait(pace(900), token);
         await waitIfPaused(token);
         if (token !== runToken) return;
 
-        await clickElement(document.getElementById("link-open-reset"), token);
+        await clickElement(document.getElementById("btn-set-password"), token);
         setActiveStep(5);
+        simStatus.textContent = "Konto angelegt, wartet auf Freigabe.";
 
-        await wait(pace(900), token);
+        await wait(pace(1200), token);
         await waitIfPaused(token);
         if (token !== runToken) return;
 
-        await clickElement(document.getElementById("btn-send-reset-mail"), token);
         setActiveStep(6);
+        simStatus.textContent = "Freigabe-E-Mail eingetroffen.";
 
         await wait(pace(900), token);
         await waitIfPaused(token);
         if (token !== runToken) return;
 
-        await clickElement(document.getElementById("btn-mail-open-password"), token);
+        await clickElement(document.getElementById("btn-mail-open-login"), token);
         setActiveStep(7);
+        simStatus.textContent = "Login geöffnet.";
 
         await wait(pace(900), token);
         await waitIfPaused(token);
@@ -432,6 +444,7 @@
 
         await clickElement(document.getElementById("btn-final-login"), token);
         setActiveStep(8);
+        simStatus.textContent = "Zugänge geöffnet.";
 
         await wait(pace(900), token);
         await waitIfPaused(token);
@@ -441,17 +454,25 @@
         workshopButton?.classList.add("opened");
         await playDoorAnimation("workshop", token);
 
+        setInfo("Tür geöffnet ✅");
+
         await wait(pace(700), token);
         await waitIfPaused(token);
         if (token !== runToken) return;
+
+        setInfo("");
 
         await clickElement(swapButton, token);
         swapButton?.classList.add("opened");
         await playDoorAnimation("swap-house", token);
 
+        setInfo("Tür geöffnet ✅");
+
         await wait(pace(900), token);
         await waitIfPaused(token);
         if (token !== runToken) return;
+
+        setInfo("");
 
         hideCursor();
         simStatus.textContent = "Ablauf beendet.";

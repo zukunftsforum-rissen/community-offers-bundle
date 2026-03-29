@@ -10,7 +10,19 @@
     --sim-text: #f8fafc;
     --sim-muted: #cbd5e1;
     --sim-line: #27406f;
-    --cursor-y-offset: 32px;
+    --status-blue-strong: #2f81f7;
+    --status-blue-soft: #3083f8;
+    --status-green-strong: #38c95e;
+    --mail-glass-light: #fff;
+    --mail-glass-border: #fff;
+    --info-green-text: #caffda;
+    --door-state-no-access: #ffb3b3;
+    --door-state-open: #a8ffcf;
+    --door-state-pending: #ffe6a8;
+    --mail-bg-top: #ffffff0d;
+    --mail-bg-bottom: #ffffff05;
+    --mail-border: #ffffff1a;
+    --mail-shadow: #00000040;
 }
 
 * {
@@ -100,16 +112,6 @@ body {
 .door-card,
 .request-submit {
     border-radius: 14px;
-}
-
-.info-box {
-    background: var(--input-bg);
-    border: 2px solid var(--panel-border);
-    padding: 16px 14px;
-    text-align: center;
-    font-size: 25px;
-    font-weight: 700;
-    margin-bottom: 24px;
 }
 
 .fake-button,
@@ -273,14 +275,6 @@ body {
     line-height: 1.16;
     color: #555;
     margin-top: 8px;
-}
-
-.mail-card {
-    background: #f4f7fb;
-    border: 2px solid var(--panel-border);
-    border-radius: 16px;
-    padding: 16px;
-    margin-top: 18px;
 }
 
 .mail-subject {
@@ -585,7 +579,7 @@ body {
 .door__caption {
     position: absolute;
     left: 50%;
-    bottom: 10px;
+    bottom: -4px;
     transform: translateX(-50%);
     font-weight: 700;
     white-space: normal;
@@ -600,14 +594,16 @@ body {
 .door__state {
     position: absolute;
     left: 50%;
-    bottom: -22px;
+    bottom: -42px;
     transform: translateX(-50%);
-    font-size: 14px;
     color: #26435c;
     white-space: normal;
     text-align: center;
     max-width: 110px;
     line-height: 1.1;
+    font-size: 12px;
+    margin-top: 4px;
+    opacity: .9;
 }
 
 .door.is-unlocking .door__leaf {
@@ -1015,4 +1011,76 @@ body {
         font-size: 17px;
         padding: 14px 12px;
     }
+}
+
+
+/* =========================
+   Status-Box (Wartephase)
+   ========================= */
+
+.status-box {
+    margin-top: 22px;
+    padding: 18px 16px;
+    border-radius: 12px;
+    background: var(--panel-bg);
+    border: 1px solid #2f81f72e;
+    line-height: 1.45;
+    color: var(--text);
+    text-align: center;
+    box-shadow:
+        inset 0 0 0 1px #ffffff08;
+}
+
+
+/* =========================
+   Mail-Karten optisch ruhiger
+   ========================= */
+
+.mail-card {
+    border-radius: 14px;
+    background:
+        linear-gradient(180deg,
+            var(--mail-bg-top),
+            var(--mail-bg-bottom));
+    border: 1px solid var(--mail-border);
+    padding: 16px;
+    box-shadow:
+        0 6px 18px var(--mail-shadow);
+}
+
+/* =========================
+   Info-Box bei Tür geöffnet
+   ========================= */
+
+.info-box {
+    margin-top: 16px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background:
+        linear-gradient(180deg,
+            #38c95e2e,
+            #38c95e14);
+    border: 1px solid #38c95e59;
+    color: var(--info-green-text);
+    font-weight: 600;
+    text-align: center;
+}
+
+/* =========================
+   Feinschliff Türstatus
+   ========================= */
+
+/* Farbliche Bedeutung der Zustände */
+
+.door[data-area="depot"] .door__state {
+    color: var(--door-state-no-access);
+}
+
+.door[data-area="swap-house"] .door__state,
+.door[data-area="workshop"] .door__state {
+    color: var(--door-state-open);
+}
+
+.door[data-area="sharing"] .door__state {
+    color: var(--door-state-pending);
 }

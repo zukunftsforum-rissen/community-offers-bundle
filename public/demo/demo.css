@@ -928,6 +928,27 @@ body {
     }
 }
 
+@media (width <=768px) {
+    .wrap {
+        grid-template-columns: 1fr;
+    }
+
+    .demo-column--doors {
+        width: 100%;
+    }
+
+    ;
+
+    .sim {
+        width: 100%;
+    }
+
+    .scene-inner {
+        transform: scale(0.78);
+        transform-origin: top center;
+    }
+}
+
 @media (width <=560px) {
     .co-header {
         padding: 10px 12px;
@@ -976,7 +997,7 @@ body {
     /* ONLY scale scene */
     .scene-inner {
         min-height: 620px;
-        transform: scale(0.48);
+        transform: scale(0.55);
         transform-origin: top center;
     }
 

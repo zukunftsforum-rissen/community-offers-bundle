@@ -69,73 +69,91 @@ api_post_json() {
 }
 
 whoami() {
-	mapfile -t response < <(api_get "${BASE_URL}/api/device/whoami")
-	local status="${response[0]}"
-	local body="${response[@]:1}"
+        local tmp_file
+        tmp_file="$(mktemp)"
 
-	echo "WHOAMI HTTP ${status}"
-	echo "$body"
+        api_get "${BASE_URL}/api/device/whoami" > "$tmp_file"
 
-	if [[ "$status" != "200" ]]; then
-		echo "ERROR: whoami failed."
-		exit 1
-	fi
+        local status
+        status="$(sed -n '1p' "$tmp_file")"
+
+        local body
+        body="$(sed '1d' "$tmp_file")"
+
+        rm -f "$tmp_file"
+
+        echo "WHOAMI HTTP ${status}"
+        echo "$body"
+
+        if [[ "$status" != "200" ]]; then
+                echo "ERROR: whoami failed."
+                exit 1
+        fi
 }
 
 poll_once() {
-	mapfile -t response < <(api_post_json "${BASE_URL}/api/device/poll" '{"limit":1}')
-	local status="${response[0]}"
-	local body="${response[@]:1}"
+        local tmp_file
+        tmp_file="$(mktemp)"
 
-	[[ "$VERBOSE" == "1" ]] && echo "POLL HTTP ${status}: $body"
+        api_post_json "${BASE_URL}/api/device/poll" '{"limit":1}' > "$tmp_file"
 
-	case "$status" in
-	200) ;;
-	400)
-		echo "Polling not available in current mode. Exiting."
-		exit 0
-		;;
-	403)
-		echo "Emulator not allowed in current mode. Exiting."
-		exit 0
-		;;
-	429)
-		echo "Rate limited while polling. Sleeping ${POLL_INTERVAL_SECONDS}s."
-		sleep "$POLL_INTERVAL_SECONDS"
-		return
-		;;
-	*)
-		echo "Unexpected poll status ${status}. Exiting."
-		exit 1
-		;;
-	esac
+        local status
+        status="$(sed -n '1p' "$tmp_file")"
 
-	local job_count
-	job_count="$(echo "$body" | jq '.jobs | length')"
+        local body
+        body="$(sed '1d' "$tmp_file")"
 
-	if [[ "$job_count" -eq 0 ]]; then
-		return
-	fi
+        rm -f "$tmp_file"
 
-	local job_id nonce correlation_id area
-	job_id="$(echo "$body" | jq -r '.jobs[0].jobId')"
-	nonce="$(echo "$body" | jq -r '.jobs[0].nonce')"
-	correlation_id="$(echo "$body" | jq -r '.jobs[0].correlationId // ""')"
-	area="$(echo "$body" | jq -r '.jobs[0].area')"
+        [[ "$VERBOSE" == "1" ]] && echo "POLL HTTP ${status}: $body"
 
-	echo "Job received: id=${job_id}, area=${area}, device=${DEVICE_ID}, cid=${correlation_id}"
+        case "$status" in
+        200) ;;
+        400)
+                echo "Polling not available in current mode. Exiting."
+                exit 0
+                ;;
+        403)
+                echo "Emulator not allowed in current mode. Exiting."
+                exit 0
+                ;;
+        429)
+                echo "Rate limited while polling. Sleeping ${POLL_INTERVAL_SECONDS}s."
+                sleep "$POLL_INTERVAL_SECONDS"
+                return
+                ;;
+        *)
+                echo "Unexpected poll status ${status}. Exiting."
+                exit 1
+                ;;
+        esac
 
-	confirm_job "$job_id" "$nonce" "$correlation_id"
+        local job_count
+        job_count="$(echo "$body" | jq '.jobs | length')"
+
+        if [[ "$job_count" -eq 0 ]]; then
+                return
+        fi
+
+        local job_id nonce correlation_id area
+        job_id="$(echo "$body" | jq -r '.jobs[0].jobId')"
+        nonce="$(echo "$body" | jq -r '.jobs[0].nonce')"
+        correlation_id="$(echo "$body" | jq -r '.jobs[0].correlationId // ""')"
+        area="$(echo "$body" | jq -r '.jobs[0].area')"
+
+        echo "Job received: id=${job_id}, area=${area}, device=${DEVICE_ID}, cid=${correlation_id}"
+
+        confirm_job "$job_id" "$nonce" "$correlation_id"
 }
 
 confirm_job() {
-	local job_id="$1"
-	local nonce="$2"
-	local correlation_id="$3"
+        local job_id="$1"
+        local nonce="$2"
+        local correlation_id="$3"
 
-	local payload
-	payload="$(
-		cat <<JSON
+        local payload
+        payload="$(
+                cat <<JSON
 {
   "jobId": ${job_id},
   "nonce": "${nonce}",
@@ -147,32 +165,41 @@ confirm_job() {
   }
 }
 JSON
-	)"
+        )"
 
-	mapfile -t response < <(api_post_json "${BASE_URL}/api/device/confirm" "$payload")
-	local status="${response[0]}"
-	local body="${response[@]:1}"
+        local tmp_file
+        tmp_file="$(mktemp)"
 
-	[[ "$VERBOSE" == "1" ]] && echo "CONFIRM HTTP ${status}: $body"
+        api_post_json "${BASE_URL}/api/device/confirm" "$payload" > "$tmp_file"
 
-	case "$status" in
-	200 | 202) ;;
-	400)
-		echo "Confirm not available in current mode. Exiting."
-		exit 1
-		;;
-	403)
-		echo "Emulator confirm forbidden in current mode. Exiting."
-		exit 1
-		;;
-	429)
-		echo "Rate limited while confirming."
-		;;
-	*)
-		echo "Unexpected confirm status ${status}. Exiting."
-		exit 1
-		;;
-	esac
+        local status
+        status="$(sed -n '1p' "$tmp_file")"
+
+        local body
+        body="$(sed '1d' "$tmp_file")"
+
+        rm -f "$tmp_file"
+
+        [[ "$VERBOSE" == "1" ]] && echo "CONFIRM HTTP ${status}: $body"
+
+        case "$status" in
+        200 | 202) ;;
+        400)
+                echo "Confirm not available in current mode. Exiting."
+                exit 1
+                ;;
+        403)
+                echo "Emulator confirm forbidden in current mode. Exiting."
+                exit 1
+                ;;
+        429)
+                echo "Rate limited while confirming."
+                ;;
+        *)
+                echo "Unexpected confirm status ${status}. Exiting."
+                exit 1
+                ;;
+        esac
 }
 
 echo "== PI Emulator starting =="

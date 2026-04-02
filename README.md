@@ -496,3 +496,12 @@ See docs/:
 ## License
 
 MIT
+
+---
+
+
+## Frontend / PWA
+
+See:
+
+docs/frontend/app-pwa.md

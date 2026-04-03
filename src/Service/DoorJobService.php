@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ZukunftsforumRissen\CommunityOffersBundle\Service;
 
+use Contao\Database;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Psr\Cache\CacheItemPoolInterface;
@@ -424,6 +425,58 @@ final class DoorJobService
             throw $e;
         }
     }
+
+
+    /**
+ * @param array<string, mixed> $deviceRow
+ *
+ * @return array{jobId:int, area:string, nonce:string, expiresInMs:int, correlationId:string}|null
+ */
+    public function dispatchNextJobForDevice(array $deviceRow): ?array
+    {
+        $deviceId = (string) ($deviceRow['deviceId'] ?? '');
+        $areas = $deviceRow['areas'] ?? null;
+
+        if ('' === $deviceId) {
+            return null;
+        }
+
+        $deviceAreas = $this->deserializeAreas($areas);
+
+        if ([] === $deviceAreas) {
+            return null;
+        }
+
+        $jobs = $this->dispatchJobs($deviceId, $deviceAreas, 1);
+
+        if ([] === $jobs) {
+            return null;
+        }
+
+        return $jobs[0];
+    }
+
+
+    /**
+     * @param mixed $areas
+     *
+     * @return list<string>
+     */
+    private function deserializeAreas(mixed $areas): array
+    {
+        if (\is_array($areas)) {
+            return array_values(array_filter(array_map('strval', $areas)));
+        }
+
+        $deserialized = \Contao\StringUtil::deserialize($areas, true);
+
+        if (!\is_array($deserialized)) {
+            return [];
+        }
+
+        return array_values(array_filter(array_map('strval', $deserialized)));
+    }
+
 
     /**
      * @param array<string, mixed> $meta

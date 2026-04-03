@@ -21,6 +21,18 @@ const AREAS = [
     { slug: 'swap-house', title: 'Tauschhaus' },
 ];
 
+function updateModeHint(mode) {
+    const hintEl = document.getElementById('modeHint');
+
+    if (!hintEl) return;
+
+    if (mode === 'emulator') {
+        hintEl.classList.remove('hidden');
+    } else {
+        hintEl.classList.add('hidden');
+    }
+}
+
 function memberDisplayName(me) {
     const fn = me?.member?.firstname ?? '';
     const ln = me?.member?.lastname ?? '';
@@ -235,6 +247,8 @@ async function initApp() {
 
                     try {
                         const result = await openDoor(slug);
+
+                        updateModeHint(result.mode);
 
                         if (result.status === 429) {
                             startCooldownOnButton(

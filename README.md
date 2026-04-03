@@ -118,6 +118,14 @@ The emulator behaves like a real device:
 
 This allows full workflow testing without hardware.
 
+## Hinweis zum Emulator-Modus
+
+Der Modus `emulator` ist ein temporärer Test- und Übergangsmodus für Umgebungen ohne reale Türöffner-Hardware.
+
+Die Verarbeitung erfolgt cronbasiert über einen geschützten Emulator-Endpunkt. Ein Cronlauf führt für bis zu ca. 55 Sekunden wiederholt Emulator-Ticks aus, sodass offene Jobs zeitnah verarbeitet werden können. Dennoch kann die Ausführung gegenüber dem Live-Modus verzögert sein.
+
+Der Emulator-Modus ist nicht als dauerhafte Produktionsbetriebsart vorgesehen.
+
 ---
 
 ## Visual Demo

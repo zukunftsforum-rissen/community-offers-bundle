@@ -35,6 +35,20 @@
 	<body>
 
 		<header class="co-header">
+
+			<a href="/" class="demo-back-button" onclick="return smartBack(event)">
+				← Zurück
+			</a>
+
+			<script>
+				function smartBack(event) {
+if (window.history.length > 1) {
+event.preventDefault();
+window.history.back();
+}
+}
+			</script>
+
 			<h1>Gemeinschaftsangebote –
 				{{ title|default('Demo') }}</h1>
 		</header>

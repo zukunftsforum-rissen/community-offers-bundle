@@ -42,18 +42,20 @@ body {
 }
 
 .wrap {
-    width: min(1380px, 100%);
-    margin: 0 auto;
     display: grid;
-    grid-template-columns: minmax(320px, 486px) minmax(0, 1fr);
-    gap: 28px;
+    grid-template-columns: 390px 1fr;
+    gap: 24px;
     align-items: start;
-    transform: scale(0.8);
-    transform-origin: top center;
 }
 
-.demo-column {
-    min-width: 0;
+.demo-column--app,
+.demo-column--doors {
+    display: flex;
+}
+
+.phone-shell,
+.sim {
+    height: 100%;
 }
 
 .section-title {
@@ -93,12 +95,12 @@ body {
 }
 
 .app-panel {
-    margin: 12px;
+    margin: 0;
     background: var(--panel-bg);
     border: 3px solid var(--panel-border);
     border-radius: 28px;
     padding: 24px 18px 26px;
-    min-height: 1040px;
+    min-height: auto;
     position: relative;
 }
 
@@ -386,6 +388,7 @@ body {
     color: var(--sim-text);
     box-shadow: 0 18px 60px rgb(0 0 0 / 22%);
     min-height: auto;
+    width: 100%;
 }
 
 .sim-top {
@@ -1078,16 +1081,15 @@ body {
 
 .info-box {
     margin-top: 16px;
+    margin-bottom: 1rem;
     padding: 10px 14px;
     border-radius: 10px;
-    background:
-        linear-gradient(180deg,
-            #38c95e2e,
-            #38c95e14);
+    background: #fff;
     border: 1px solid #38c95e59;
-    color: var(--info-green-text);
+    color: #000;
     font-weight: 600;
     text-align: center;
+    min-height: 2.5rem;
 }
 
 /* =========================
@@ -1107,4 +1109,23 @@ body {
 
 .door[data-area="sharing"] .door__state {
     color: var(--door-state-pending);
+}
+
+.demo-back-button {
+    display: inline-block;
+    margin-right: 16px;
+    margin-bottom: 0.5rem;
+    padding: 6px 12px;
+    background: #fff;
+    color: #5b2ca0;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+    box-shadow: 0 2px 6px rgb(0 0 0 / 15%);
+    transition: background 0.15s ease;
+}
+
+.demo-back-button:hover {
+    background: #f0f0f0;
 }

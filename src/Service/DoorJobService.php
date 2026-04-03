@@ -193,8 +193,9 @@ final class DoorJobService
             ];
         }
 
-        $ttlSeconds = 10;
+        $ttlSeconds = max(120, $this->confirmWindowSeconds);
         $expiresAt = $now + $ttlSeconds;
+
         $userAgent = substr($userAgent, 0, 255);
 
         if ('' === $correlationId) {

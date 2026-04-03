@@ -117,9 +117,12 @@ async function fetchDoorStatus(jobId) {
     };
 }
 
-async function waitForDoorConfirmation(jobId, statusEl) {
-    const maxAttempts = 10;
-    const delayMs = 1000;
+async function waitForDoorConfirmation(jobId, statusEl, mode = 'live') {
+    // Unterschiedliche Poll-Zeiten je nach Modus
+    const isEmulator = mode === 'emulator';
+
+    const maxAttempts = isEmulator ? 60 : 15;
+    const delayMs = isEmulator ? 2000 : 1000;
 
     for (let i = 0; i < maxAttempts; i++) {
         await new Promise((resolve) => setTimeout(resolve, delayMs));
@@ -143,13 +146,25 @@ async function waitForDoorConfirmation(jobId, statusEl) {
 
             if (result.status === 'pending') {
                 statusEl.textContent = 'Öffnung angefordert ⏳';
+                continue;
             }
+
+            if (result.status === 'failed') {
+                statusEl.textContent = 'Türöffnung fehlgeschlagen ❌';
+                return;
+            }
+
+            if (result.status === 'expired') {
+                statusEl.textContent = 'Zeitfenster abgelaufen ⌛';
+                return;
+            }
+
         } catch (err) {
             console.warn('Door status polling failed', err);
         }
     }
 
-    statusEl.textContent = 'Öffnung angefordert ⏳';
+    statusEl.textContent = 'Verarbeitung dauert länger als erwartet ⏳';
 }
 
 async function initApp() {
@@ -235,7 +250,7 @@ async function initApp() {
                         if (result.status === 202) {
                             statusEl.textContent = 'Öffnung angefordert ⏳';
                             if (result.jobId) {
-                                void waitForDoorConfirmation(result.jobId, statusEl);
+                                void waitForDoorConfirmation(result.jobId, statusEl, result.mode);
                             }
                         } else if (result.success) {
                             statusEl.textContent = 'Tür geöffnet ✅';

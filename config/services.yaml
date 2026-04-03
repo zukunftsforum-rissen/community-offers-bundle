@@ -1,114 +1,149 @@
 parameters:
-    community_offers.logging_enabled: "%env(bool:ENABLE_LOGGING)%"
-    community_offers.debug_logging_enabled: "%env(bool:ENABLE_DEBUG_LOGGING)%"
+  community_offers.logging_enabled: "%env(bool:ENABLE_LOGGING)%"
+  community_offers.debug_logging_enabled: "%env(bool:ENABLE_DEBUG_LOGGING)%"
 
-    community_offers.mode: "%env(COMMUNITY_OFFERS_MODE)%"
+  community_offers.mode: "%env(COMMUNITY_OFFERS_MODE)%"
 
-    community_offers.login_identifier: "%env(default::COMMUNITY_OFFERS_LOGIN_IDENTIFIER)%"
+  community_offers.login_identifier: "%env(default::COMMUNITY_OFFERS_LOGIN_IDENTIFIER)%"
 
-    community_offers.mail_from: "%env(COMMUNITY_OFFERS_MAIL_FROM)%"
-    community_offers.mail_reply_to: "%env(COMMUNITY_OFFERS_MAIL_REPLY_TO)%"
-    community_offers.info_address: "%env(COMMUNITY_OFFERS_INFO_ADDRESS)%"
+  community_offers.mail_from: "%env(COMMUNITY_OFFERS_MAIL_FROM)%"
+  community_offers.mail_reply_to: "%env(COMMUNITY_OFFERS_MAIL_REPLY_TO)%"
+  community_offers.info_address: "%env(COMMUNITY_OFFERS_INFO_ADDRESS)%"
 
-    community_offers.app_url: "%env(COMMUNITY_OFFERS_APP_URL)%"
-    community_offers.app.login_path: "/login"
-    community_offers.reset_password_url: "%env(COMMUNITY_OFFERS_RESET_PASSWORD_URL)%"
-    community_offers.app.logout_path: "/_contao/logout"
-    
-    community_offers.areas: "%env(json:COMMUNITY_OFFERS_AREAS)%"
-    community_offers.area_groups: "%env(json:COMMUNITY_OFFERS_AREA_GROUPS)%"
+  community_offers.app_url: "%env(COMMUNITY_OFFERS_APP_URL)%"
+  community_offers.app.login_path: "/login"
+  community_offers.reset_password_url: "%env(COMMUNITY_OFFERS_RESET_PASSWORD_URL)%"
+  community_offers.app.logout_path: "/_contao/logout"
 
-    community_offers.doi_ttl: "%env(int:COMMUNITY_OFFERS_DOI_TTL)%"
-    community_offers.password_ttl: "%env(int:COMMUNITY_OFFERS_PASSWORD_TTL)%"
-    community_offers.confirm_window: "%env(int:COMMUNITY_OFFERS_CONFIRM_WINDOW)%"
+  community_offers.areas: "%env(json:COMMUNITY_OFFERS_AREAS)%"
+  community_offers.area_groups: "%env(json:COMMUNITY_OFFERS_AREA_GROUPS)%"
+
+  community_offers.doi_ttl: "%env(int:COMMUNITY_OFFERS_DOI_TTL)%"
+  community_offers.password_ttl: "%env(int:COMMUNITY_OFFERS_PASSWORD_TTL)%"
+  community_offers.confirm_window: "%env(int:COMMUNITY_OFFERS_CONFIRM_WINDOW)%"
+
+  community_offers.cron_token: "%env(COMMUNITY_OFFERS_CRON_TOKEN)%"
 
 when@test:
-    imports:
-        - { resource: services_test.yaml }
+  imports:
+    - { resource: services_test.yaml }
 
 services:
-    _defaults:
-        autowire: true
-        autoconfigure: true
+  _defaults:
+    autowire: true
+    autoconfigure: true
 
-    ZukunftsforumRissen\CommunityOffersBundle\:
-        resource: ../src/
-        exclude: ../src/{DependencyInjection,Entity,Tests}
+  ZukunftsforumRissen\CommunityOffersBundle\:
+    resource: ../src/
+    exclude: ../src/{DependencyInjection,Entity,Tests}
 
-    ZukunftsforumRissen\CommunityOffersBundle\Service\SystemMode:
-        arguments:
-            $mode: "%community_offers.mode%"
+  ZukunftsforumRissen\CommunityOffersBundle\Service\SystemMode:
+    arguments:
+      $mode: "%community_offers.mode%"
 
-    ZukunftsforumRissen\CommunityOffersBundle\Backend\AccessRequestBackend:
-        tags:
-            - { name: contao.callback, table: tl_co_access_request, target: config.onload_callback, method: handleActions }
+  ZukunftsforumRissen\CommunityOffersBundle\Backend\AccessRequestBackend:
+    tags:
+      - {
+          name: contao.callback,
+          table: tl_co_access_request,
+          target: config.onload_callback,
+          method: handleActions,
+        }
 
-    ZukunftsforumRissen\CommunityOffersBundle\DataContainer\TlCoDeviceDataContainer:
-        tags:
-            - { name: contao.callback, table: tl_co_device, target: list.label.label_callback, method: formatLabel }
+  ZukunftsforumRissen\CommunityOffersBundle\DataContainer\TlCoDeviceDataContainer:
+    tags:
+      - {
+          name: contao.callback,
+          table: tl_co_device,
+          target: list.label.label_callback,
+          method: formatLabel,
+        }
 
-    ZukunftsforumRissen\CommunityOffersBundle\DataContainer\TlCoDoorLogCallback:
-        tags:
-            - { name: contao.callback, table: tl_co_door_log, target: list.label.label_callback, method: labelCallback }
-            - { name: contao.callback, table: tl_co_door_log, target: fields.memberId.options, method: getMemberOptions }
-            - { name: contao.callback, table: tl_co_door_log, target: list.operations.workflow.button, method: workflowButton }
+  ZukunftsforumRissen\CommunityOffersBundle\DataContainer\TlCoDoorLogCallback:
+    tags:
+      - {
+          name: contao.callback,
+          table: tl_co_door_log,
+          target: list.label.label_callback,
+          method: labelCallback,
+        }
+      - {
+          name: contao.callback,
+          table: tl_co_door_log,
+          target: fields.memberId.options,
+          method: getMemberOptions,
+        }
+      - {
+          name: contao.callback,
+          table: tl_co_door_log,
+          target: list.operations.workflow.button,
+          method: workflowButton,
+        }
 
-    ZukunftsforumRissen\CommunityOffersBundle\Service\ApprovalMailer:
-        arguments:
-            $from: "%community_offers.mail_from%"
-            $replyTo: "%community_offers.mail_reply_to%"
-            $appUrl: "%community_offers.app_url%"
-            $resetPasswordUrl: "%community_offers.reset_password_url%"
-            $loginPath: "%community_offers.app.login_path%"
-            $loginIdentifier: "%community_offers.login_identifier%"
+  ZukunftsforumRissen\CommunityOffersBundle\Service\ApprovalMailer:
+    arguments:
+      $from: "%community_offers.mail_from%"
+      $replyTo: "%community_offers.mail_reply_to%"
+      $appUrl: "%community_offers.app_url%"
+      $resetPasswordUrl: "%community_offers.reset_password_url%"
+      $loginPath: "%community_offers.app.login_path%"
+      $loginIdentifier: "%community_offers.login_identifier%"
 
-    ZukunftsforumRissen\CommunityOffersBundle\Service\InternalNotificationMailer:
-        arguments:
-            $infoAddress: "%community_offers.info_address%"
-            $from: "%community_offers.mail_from%"
+  ZukunftsforumRissen\CommunityOffersBundle\Service\InternalNotificationMailer:
+    arguments:
+      $infoAddress: "%community_offers.info_address%"
+      $from: "%community_offers.mail_from%"
 
-    ZukunftsforumRissen\CommunityOffersBundle\Service\AccessService:
-        arguments:
-            $areaGroups: "%community_offers.area_groups%"
+  ZukunftsforumRissen\CommunityOffersBundle\Service\AccessService:
+    arguments:
+      $areaGroups: "%community_offers.area_groups%"
 
-    ZukunftsforumRissen\CommunityOffersBundle\Service\DoorJobService:
-        arguments:
-            $doorJobStateMachine: "@state_machine.door_job"
-            $confirmWindowSeconds: "%community_offers.confirm_window%"
+  ZukunftsforumRissen\CommunityOffersBundle\Service\DoorJobService:
+    arguments:
+      $doorJobStateMachine: "@state_machine.door_job"
+      $confirmWindowSeconds: "%community_offers.confirm_window%"
 
-    ZukunftsforumRissen\CommunityOffersBundle\Workflow\DoorJobWorkflowSubscriber:
-        arguments:
-          $confirmWindowSeconds: "%community_offers.confirm_window%"
-        tags:
-            - { name: kernel.event_subscriber }
+  ZukunftsforumRissen\CommunityOffersBundle\Workflow\DoorJobWorkflowSubscriber:
+    arguments:
+      $confirmWindowSeconds: "%community_offers.confirm_window%"
+    tags:
+      - { name: kernel.event_subscriber }
 
-    _instanceof:
-        ZukunftsforumRissen\CommunityOffersBundle\Door\DoorGatewayInterface:
-            tags: ["community_offers.door_gateway"]
+  _instanceof:
+    ZukunftsforumRissen\CommunityOffersBundle\Door\DoorGatewayInterface:
+      tags: ["community_offers.door_gateway"]
 
-    ZukunftsforumRissen\CommunityOffersBundle\Door\DoorGatewayResolver:
-        arguments:
-            $gateways: !tagged_iterator "community_offers.door_gateway"
+  ZukunftsforumRissen\CommunityOffersBundle\Door\DoorGatewayResolver:
+    arguments:
+      $gateways: !tagged_iterator "community_offers.door_gateway"
 
-    ZukunftsforumRissen\CommunityOffersBundle\Service\DoorOpenObserverResolver:
-        arguments:
-            $workflowObserver: '@ZukunftsforumRissen\CommunityOffersBundle\Service\WorkflowDoorOpenObserver'
+  ZukunftsforumRissen\CommunityOffersBundle\Service\DoorOpenObserverResolver:
+    arguments:
+      $workflowObserver: '@ZukunftsforumRissen\CommunityOffersBundle\Service\WorkflowDoorOpenObserver'
 
-    ZukunftsforumRissen\CommunityOffersBundle\Service\MemberProvisioningService:
-        arguments:
-            $loginIdentifier: "%community_offers.login_identifier%"
+  ZukunftsforumRissen\CommunityOffersBundle\Service\MemberProvisioningService:
+    arguments:
+      $loginIdentifier: "%community_offers.login_identifier%"
 
-    ZukunftsforumRissen\CommunityOffersBundle\Service\MemberProvisioningServiceInterface:
-        alias: ZukunftsforumRissen\CommunityOffersBundle\Service\MemberProvisioningService
+  ZukunftsforumRissen\CommunityOffersBundle\Service\MemberProvisioningServiceInterface:
+    alias: ZukunftsforumRissen\CommunityOffersBundle\Service\MemberProvisioningService
 
-    ZukunftsforumRissen\CommunityOffersBundle\Service\PasswordSetupServiceInterface:
-        alias: ZukunftsforumRissen\CommunityOffersBundle\Service\PasswordSetupService
+  ZukunftsforumRissen\CommunityOffersBundle\Service\PasswordSetupServiceInterface:
+    alias: ZukunftsforumRissen\CommunityOffersBundle\Service\PasswordSetupService
 
-    ZukunftsforumRissen\CommunityOffersBundle\Service\AccessRequestService:
-        arguments:
-            $doiTtl: "%community_offers.doi_ttl%"
-            $mailFrom: "%community_offers.mail_from%"
+  ZukunftsforumRissen\CommunityOffersBundle\Service\AccessRequestService:
+    arguments:
+      $doiTtl: "%community_offers.doi_ttl%"
+      $mailFrom: "%community_offers.mail_from%"
 
-    ZukunftsforumRissen\CommunityOffersBundle\Service\PasswordSetupService:
-        arguments:
-            $passwordTtl: "%community_offers.password_ttl%"
+  ZukunftsforumRissen\CommunityOffersBundle\Service\PasswordSetupService:
+    arguments:
+      $passwordTtl: "%community_offers.password_ttl%"
+
+  ZukunftsforumRissen\CommunityOffersBundle\Controller\Cron\EmulatorCronController:
+    arguments:
+      $cronToken: "%community_offers.cron_token%"
+
+  ZukunftsforumRissen\CommunityOffersBundle\Service\EmulatorTickService:
+    arguments:
+      $mode: "%community_offers.mode%"

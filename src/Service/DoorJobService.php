@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ZukunftsforumRissen\CommunityOffersBundle\Service;
 
+use Contao\StringUtil;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Psr\Cache\CacheItemPoolInterface;
@@ -426,6 +427,35 @@ final class DoorJobService
     }
 
     /**
+     * @param array<string, mixed> $deviceRow
+     *
+     * @return array{jobId:int, area:string, nonce:string, expiresInMs:int, correlationId:string}|null
+     */
+    public function dispatchNextJobForDevice(array $deviceRow): array|null
+    {
+        $deviceId = (string) ($deviceRow['deviceId'] ?? '');
+        $areas = $deviceRow['areas'] ?? null;
+
+        if ('' === $deviceId) {
+            return null;
+        }
+
+        $deviceAreas = $this->deserializeAreas($areas);
+
+        if ([] === $deviceAreas) {
+            return null;
+        }
+
+        $jobs = $this->dispatchJobs($deviceId, $deviceAreas, 1);
+
+        if ([] === $jobs) {
+            return null;
+        }
+
+        return $jobs[0];
+    }
+
+    /**
      * @param array<string, mixed> $meta
      */
     public function confirmJob(string $deviceId, int $jobId, string $nonce, bool $ok, array $meta = []): bool
@@ -821,6 +851,20 @@ final class DoorJobService
             'area' => (string) $job['area'],
             'expiresAt' => (int) $job['expiresAt'],
         ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function deserializeAreas(mixed $areas): array
+    {
+        if (\is_array($areas)) {
+            return array_values(array_filter(array_map('strval', $areas)));
+        }
+
+        $deserialized = StringUtil::deserialize($areas, true);
+
+        return array_values(array_filter(array_map('strval', $deserialized)));
     }
 
     private function generateCorrelationId(): string

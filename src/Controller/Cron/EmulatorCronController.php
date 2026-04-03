@@ -30,10 +30,26 @@ final class EmulatorCronController
             return new Response('Forbidden', Response::HTTP_FORBIDDEN);
         }
 
-        $processed = $this->emulatorTickService->runTick();
+        $result = $this->emulatorTickService->runLoop(
+            maxSeconds: 55,
+            sleepMilliseconds: 1000,
+        );
+
+        if (!$result['acquiredLock']) {
+            return new Response(
+                'OK: skipped, lock active',
+                Response::HTTP_OK,
+                ['Content-Type' => 'text/plain; charset=UTF-8'],
+            );
+        }
 
         return new Response(
-            \sprintf('OK: processed %d job(s)', $processed),
+            \sprintf(
+                'OK: iterations=%d, processed=%d, durationMs=%d',
+                $result['iterations'],
+                $result['processed'],
+                $result['durationMs'],
+            ),
             Response::HTTP_OK,
             ['Content-Type' => 'text/plain; charset=UTF-8'],
         );

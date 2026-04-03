@@ -20,7 +20,7 @@ final class EmulatorCronController
     #[Route(
         path: '/_cron/emulator-tick',
         name: 'community_offers.cron.emulator_tick',
-        methods: ['GET']
+        methods: ['GET'],
     )]
     public function __invoke(Request $request): Response
     {
@@ -33,9 +33,9 @@ final class EmulatorCronController
         $processed = $this->emulatorTickService->runTick();
 
         return new Response(
-            sprintf('OK: processed %d job(s)', $processed),
+            \sprintf('OK: processed %d job(s)', $processed),
             Response::HTTP_OK,
-            ['Content-Type' => 'text/plain; charset=UTF-8']
+            ['Content-Type' => 'text/plain; charset=UTF-8'],
         );
     }
 }

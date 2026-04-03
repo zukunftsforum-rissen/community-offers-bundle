@@ -13,7 +13,6 @@ final class EmulatorTickService
         private readonly Connection $db,
         private readonly DoorJobService $doorJobService,
         private readonly DeviceHeartbeatService $heartbeatService,
-        private readonly DoorAuditLogger $audit,
         private readonly LoggingService $logging,
         private readonly string $mode,
     ) {
@@ -27,12 +26,13 @@ final class EmulatorTickService
 
         $processed = 0;
 
+        /** @var list<array{id:mixed, deviceId:mixed, name:mixed, areas:mixed, isEmulator:mixed, enabled:mixed}> $devices */
         $devices = $this->db->fetchAllAssociative(
-            "SELECT id, deviceId, name, areas, isEmulator, enabled
+            'SELECT id, deviceId, name, areas, isEmulator, enabled
              FROM tl_co_device
              WHERE enabled = 1
                AND isEmulator = 1
-             ORDER BY id ASC"
+             ORDER BY id ASC',
         );
 
         foreach ($devices as $device) {
@@ -51,19 +51,10 @@ final class EmulatorTickService
                     continue;
                 }
 
-                $jobId = (int) ($job['jobId'] ?? 0);
-                $nonce = (string) ($job['nonce'] ?? '');
-                $area = (string) ($job['area'] ?? '');
-                $correlationId = (string) ($job['correlationId'] ?? '');
-
-                if ($jobId < 1 || '' === $nonce) {
-                    $this->logging->warning('door_emulator.invalid_job_payload', [
-                        'deviceId' => $deviceId,
-                        'job' => $job,
-                    ]);
-
-                    continue;
-                }
+                $jobId = $job['jobId'];
+                $nonce = $job['nonce'];
+                $area = $job['area'];
+                $correlationId = $job['correlationId'];
 
                 $this->logging->info('door_emulator.execute', [
                     'cid' => $correlationId,
@@ -71,19 +62,6 @@ final class EmulatorTickService
                     'deviceId' => $deviceId,
                     'area' => $area,
                 ]);
-
-                $this->audit->audit(
-                    action: 'door_confirm',
-                    area: $area,
-                    result: 'attempt',
-                    message: 'Emulator cron confirming dispatched job',
-                    context: [
-                        'jobId' => $jobId,
-                        'deviceId' => $deviceId,
-                        'source' => 'emulator_cron',
-                    ],
-                    correlationId: $correlationId !== '' ? $correlationId : null,
-                );
 
                 $result = $this->doorJobService->confirmJobDetailed(
                     $deviceId,
@@ -96,18 +74,29 @@ final class EmulatorTickService
                     ],
                 );
 
-                if (($result['accepted'] ?? false) === true) {
+                if ($result['accepted']) {
                     ++$processed;
-                } else {
-                    $this->logging->warning('door_emulator.confirm_rejected', [
-                        'cid' => $correlationId,
-                        'jobId' => $jobId,
-                        'deviceId' => $deviceId,
-                        'httpStatus' => $result['httpStatus'] ?? null,
-                        'error' => $result['error'] ?? null,
-                        'status' => $result['status'] ?? null,
-                    ]);
+
+                    continue;
                 }
+
+                $warningContext = [
+                    'cid' => $correlationId,
+                    'jobId' => $jobId,
+                    'deviceId' => $deviceId,
+                ];
+
+                $warningContext['httpStatus'] = $result['httpStatus'];
+
+                if (\array_key_exists('error', $result)) {
+                    $warningContext['error'] = $result['error'];
+                }
+
+                if (\array_key_exists('status', $result)) {
+                    $warningContext['status'] = $result['status'];
+                }
+
+                $this->logging->warning('door_emulator.confirm_rejected', $warningContext);
             } catch (\Throwable $e) {
                 $this->logging->error('door_emulator.tick_failed', [
                     'deviceId' => $deviceId,

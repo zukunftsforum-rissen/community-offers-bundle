@@ -34,41 +34,26 @@ class LoggingServiceTest extends TestCase
      */
     public function testCanInstantiateService(): void
     {
-        $params = $this->createParameters('true', 'true', $this->projectDir);
-        $service = new LoggingService($params);
+        $logger = $this->createStub(\Psr\Log\LoggerInterface::class);
+        $service = new LoggingService($logger, true, true);
         $this->assertInstanceOf(LoggingService::class, $service);
     }
 
     /**
      * Verifies info-level entries are written to the configured log file.
      */
-    public function testWritesInfoMessagesToLogFileWhenLoggingIsEnabled(): void
+    public function testWritesInfoMessagesToLoggerWhenLoggingIsEnabled(): void
     {
-        $params = $this->createParameters('true', 'true', $this->projectDir);
-        $service = new LoggingService($params);
-
-        $service->initiateLogging('community-offers', 'phpunit-info');
+        $logger = $this->createMock(\Psr\Log\LoggerInterface::class);
+        $logger->expects($this->once())
+            ->method('info')
+            ->with(
+                $this->equalTo("Test info message\n    memberId: 123")
+            );
+        $service = new LoggingService($logger, true, true);
         $service->info('Test info message', [
             'memberId' => 123,
         ]);
-
-        $service = null;
-        gc_collect_cycles();
-        clearstatcache();
-
-        $files = glob($this->projectDir . '/var/logs/phpunit-info-*.log');
-        $this->assertIsArray($files);
-        $this->assertNotEmpty($files);
-
-        sort($files);
-        $logFile = end($files);
-        $this->assertNotFalse($logFile);
-
-        $content = file_get_contents((string) $logFile);
-
-        $this->assertIsString($content);
-        $this->assertStringContainsString('Test info message', $content);
-        $this->assertStringContainsString('memberId', $content);
     }
 
     /**
@@ -76,55 +61,13 @@ class LoggingServiceTest extends TestCase
      */
     public function testDoesNotWriteDebugMessagesWhenDebugLoggingIsDisabled(): void
     {
-        $params = $this->createParameters('true', 'false', $this->projectDir);
-        $service = new LoggingService($params);
-
-        $service->initiateLogging('community-offers', 'phpunit-debug-off');
+        $logger = $this->createMock(\Psr\Log\LoggerInterface::class);
+        $logger->expects($this->never())->method('debug');
+        $service = new LoggingService($logger, true, false);
         $service->debug('Debug should not be logged');
-
-        $service = null;
-        gc_collect_cycles();
-        clearstatcache();
-
-        $files = glob($this->projectDir . '/var/logs/phpunit-debug-off-*.log');
-        $this->assertIsArray($files);
-
-        if ([] === $files) {
-            $this->assertSame([], $files);
-
-            return;
-        }
-
-        sort($files);
-        $logFile = end($files);
-        $this->assertNotFalse($logFile);
-
-        $content = file_get_contents((string) $logFile);
-
-        $this->assertIsString($content);
-        $this->assertStringNotContainsString('Debug should not be logged', $content);
     }
 
-    private function createParameters(string $enableLogging, string $enableDebugLogging, string $projectDir): ParameterBagInterface
-    {
-        $params = $this->createStub(ParameterBagInterface::class);
-        $params
-            ->method('has')
-            ->willReturnCallback(static fn(string $name): bool => \in_array($name, [
-                'community_offers.logging_enabled',
-                'community_offers.debug_logging_enabled',
-                'kernel.project_dir',
-            ], true));
-        $params
-            ->method('get')
-            ->willReturnCallback(static fn(string $name): string => match ($name) {
-                'community_offers.logging_enabled' => $enableLogging,
-                'community_offers.debug_logging_enabled' => $enableDebugLogging,
-                'kernel.project_dir' => $projectDir,
-                default => '',
-            });
-        return $params;
-    }
+    // ...existing code...
 
     private function deleteDirectory(string $directory): void
     {

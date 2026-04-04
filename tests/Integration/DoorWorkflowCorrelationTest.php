@@ -207,12 +207,8 @@ final class DoorWorkflowCorrelationTest extends KernelTestCase
 
         $logging = $this->firstService($container, ['test.' . LoggingService::class, LoggingService::class]);
         if (!$logging instanceof LoggingService) {
-            $parameterBag = $this->firstService($container, ['parameter_bag']);
-            if ($parameterBag instanceof \Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface) {
-                $logging = new LoggingService($parameterBag);
-            } else {
-                $logging = $this->createMock(LoggingService::class);
-            }
+            $logger = $this->createStub(\Psr\Log\LoggerInterface::class);
+            $logging = new LoggingService($logger, true, true);
         }
 
         $audit = $this->firstService($container, ['test.' . DoorAuditLogger::class, DoorAuditLogger::class]);

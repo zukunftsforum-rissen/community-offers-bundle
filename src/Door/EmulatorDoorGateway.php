@@ -43,7 +43,6 @@ final class EmulatorDoorGateway implements DoorGatewayInterface
         $userAgent = isset($context['userAgent']) ? (string) $context['userAgent'] : '';
         $correlationId = isset($context['correlationId']) ? (string) $context['correlationId'] : '';
 
-        $this->logging->initiateLogging('door', 'community-offers');
         $this->logging->info('door.gateway.emulator_open_requested', [
             'area' => $area,
             'memberId' => $memberId,

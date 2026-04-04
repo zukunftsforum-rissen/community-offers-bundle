@@ -135,7 +135,6 @@ final class CleanupDoorDataCommand extends Command
             [$failedJobCutoff],
         );
 
-        $this->logging->initiateLogging('door', 'community-offers');
         $this->logging->info('door_cleanup.completed', [
             'expiredPending' => $expiredPending,
             'expiredDispatched' => $expiredDispatched,

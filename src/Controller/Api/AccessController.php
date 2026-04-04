@@ -34,7 +34,6 @@ final class AccessController
     #[Route('/whoami', name: 'community_offers_whoami', methods: ['GET'])]
     public function whoami(Request $request): JsonResponse
     {
-        $this->logging->initiateLogging('door', 'community-offers');
         $this->logging->start('whoami');
 
         $user = $this->security->getUser();
@@ -80,7 +79,6 @@ final class AccessController
     #[IsGranted('IS_AUTHENTICATED_REMEMBERED')]
     public function request(Request $request, string $slug): JsonResponse
     {
-        $this->logging->initiateLogging('door', 'community-offers');
         $this->logging->start('request_access', ['slug' => $slug]);
 
         $user = $this->security->getUser();
@@ -197,8 +195,6 @@ final class AccessController
     #[IsGranted('IS_AUTHENTICATED_REMEMBERED')]
     public function open(Request $request, string $slug): JsonResponse
     {
-        $this->logging->initiateLogging('door', 'community-offers');
-
         $cid = $this->correlationIds->create();
 
         $user = $this->security->getUser();

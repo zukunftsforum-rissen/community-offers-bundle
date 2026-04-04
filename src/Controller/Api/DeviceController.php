@@ -32,8 +32,6 @@ final class DeviceController extends AbstractController
     #[Route('/poll', name: 'co_device_poll', methods: ['POST'])]
     public function poll(Request $request): JsonResponse
     {
-        $this->logging->initiateLogging('door', 'community-offers');
-
         $user = $this->getUser();
         if (!$user instanceof DeviceApiUser) {
             $this->logging->warning('door_dispatch.unauthorized', [
@@ -139,8 +137,6 @@ final class DeviceController extends AbstractController
     #[Route('/confirm', name: 'co_device_confirm', methods: ['POST'])]
     public function confirm(Request $request): JsonResponse
     {
-        $this->logging->initiateLogging('door', 'community-offers');
-
         $user = $this->getUser();
         if (!$user instanceof DeviceApiUser) {
             $this->logging->warning('door_confirm.unauthorized', [
@@ -260,8 +256,6 @@ final class DeviceController extends AbstractController
     #[Route('/whoami', name: 'co_device_whoami', methods: ['GET'])]
     public function whoami(Request $request): JsonResponse
     {
-        $this->logging->initiateLogging('door', 'community-offers');
-
         $user = $this->getUser();
 
         if (!$user instanceof DeviceApiUser) {

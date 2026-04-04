@@ -20,6 +20,20 @@ final class CommunityOffersBundle extends AbstractBundle
         if (\is_array($config) && isset($config['framework']) && \is_array($config['framework'])) {
             $builder->prependExtensionConfig('framework', $config['framework']);
         }
+
+        $builder->prependExtensionConfig('monolog', [
+            'channels' => ['community_offers'],
+            'handlers' => [
+                'community_offers' => [
+                    'type' => 'rotating_file',
+                    'path' => '%kernel.logs_dir%/community-offers.log',
+                    'level' => 'debug',
+                    'max_files' => 30,
+                    'channels' => ['community_offers'],
+                    'formatter' => 'monolog.formatter.community_offers',
+                ],
+            ],
+        ]);
     }
 
     /**

@@ -147,3 +147,17 @@ services:
   ZukunftsforumRissen\CommunityOffersBundle\Service\EmulatorTickService:
     arguments:
       $mode: "%community_offers.mode%"
+
+  monolog.formatter.community_offers:
+    class: Monolog\Formatter\LineFormatter
+    arguments:
+      - "[%%datetime%%] %%channel%%.%%level_name%%: %%message%%\n"
+      - null
+      - true
+      - true
+
+  ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService:
+    arguments:
+      $logger: "@monolog.logger.community_offers"
+      $loggingEnabled: "%community_offers.logging_enabled%"
+      $debugLoggingEnabled: "%community_offers.debug_logging_enabled%"

@@ -21,6 +21,7 @@ use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorAuditLogger;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\OpenDoorService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\SystemMode;
+
 class ApiAccessControllerTest extends TestCase
 {
     /**
@@ -38,7 +39,6 @@ class ApiAccessControllerTest extends TestCase
         $accessRequestService->expects($this->never())->method('getPendingRequestsForEmail');
 
         $logging = $this->createMock(LoggingService::class);
-        $logging->expects($this->once())->method('initiateLogging')->with('door', 'community-offers');
         $logging->expects($this->once())->method('start')->with('whoami');
 
         $controller = $this->createController($security, $accessService, $accessRequestService, $logging);
@@ -71,7 +71,6 @@ class ApiAccessControllerTest extends TestCase
         ]);
 
         $logging = $this->createMock(LoggingService::class);
-        $logging->expects($this->once())->method('initiateLogging')->with('door', 'community-offers');
         $logging->expects($this->once())->method('start')->with('whoami');
 
         $controller = $this->createController($security, $accessService, $accessRequestService, $logging);
@@ -106,7 +105,6 @@ class ApiAccessControllerTest extends TestCase
         $accessRequestService->expects($this->never())->method('sendOrResendDoiForArea');
 
         $logging = $this->createMock(LoggingService::class);
-        $logging->expects($this->once())->method('initiateLogging')->with('door', 'community-offers');
         $logging->expects($this->once())->method('start')->with('request_access', ['slug' => 'workshop']);
 
         $controller = $this->createController($security, $accessService, $accessRequestService, $logging);
@@ -324,32 +322,32 @@ class ApiAccessControllerTest extends TestCase
         $this->assertLessThanOrEqual(9, (int) $retryAfter);
     }
 
-private function createController(
-    Security $security,
-    AccessService $accessService,
-    AccessRequestService $accessRequestService,
-    LoggingService $logging,
-    OpenDoorService|null $openDoorService = null,
-): AccessController {
-    $openDoorService ??= $this->createOpenDoorService(
-        $accessService,
-        DoorGatewayResult::success('queued', 'Job angenommen.', 202, 1, time() + 30),
-    );
+    private function createController(
+        Security $security,
+        AccessService $accessService,
+        AccessRequestService $accessRequestService,
+        LoggingService $logging,
+        OpenDoorService|null $openDoorService = null,
+    ): AccessController {
+        $openDoorService ??= $this->createOpenDoorService(
+            $accessService,
+            DoorGatewayResult::success('queued', 'Job angenommen.', 202, 1, time() + 30),
+        );
 
-    return new AccessController(
-        $security,
-        $accessService,
-        $accessRequestService,
-        $openDoorService,
-        $logging,
-        $this->createStub(DoorAuditLogger::class),
-        new CorrelationIdService(),
-    );
-}
+        return new AccessController(
+            $security,
+            $accessService,
+            $accessRequestService,
+            $openDoorService,
+            $logging,
+            $this->createStub(DoorAuditLogger::class),
+            new CorrelationIdService(),
+        );
+    }
 
     private function createOpenDoorService(AccessService $accessService, DoorGatewayResult $result): OpenDoorService
     {
-        $gateway = new class($result) implements DoorGatewayInterface {
+        $gateway = new class ($result) implements DoorGatewayInterface {
             public function __construct(private readonly DoorGatewayResult $result)
             {
             }

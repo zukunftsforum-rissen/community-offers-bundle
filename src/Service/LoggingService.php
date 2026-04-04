@@ -4,18 +4,10 @@ declare(strict_types=1);
 
 namespace ZukunftsforumRissen\CommunityOffersBundle\Service;
 
-use Monolog\Formatter\LineFormatter;
-use Monolog\Handler\RotatingFileHandler;
-use Monolog\Level;
-use Monolog\Logger;
-use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
+use Psr\Log\LoggerInterface;
 
 class LoggingService
 {
-    private const PARAM_LOGGING_ENABLED = 'community_offers.logging_enabled';
-
-    private const PARAM_DEBUG_LOGGING_ENABLED = 'community_offers.debug_logging_enabled';
-
     private const SENSITIVE_CONTEXT_KEYS = [
         'authorization',
         'cookie',
@@ -25,52 +17,11 @@ class LoggingService
         'x-api-key',
     ];
 
-    private Logger|null $logger = null;
-
-    private bool $loggingEnabled;
-
-    private bool $debugLoggingEnabled;
-
-    private string $logDir;
-
-    public function __construct(ParameterBagInterface $params)
-    {
-        $this->loggingEnabled = $this->readBoolParameter($params, self::PARAM_LOGGING_ENABLED);
-        $this->debugLoggingEnabled = $this->readBoolParameter($params, self::PARAM_DEBUG_LOGGING_ENABLED);
-
-        $projectDir = rtrim((string) $params->get('kernel.project_dir'), '/');
-        $this->logDir = $projectDir.'/var/logs/';
-    }
-
-    public function initiateLogging(string $moduleName, string $fileName = ''): void
-    {
-        if (null !== $this->logger) {
-            return;
-        }
-
-        if (!is_dir($this->logDir) && !mkdir($concurrentDirectory = $this->logDir, 0777, true) && !is_dir($concurrentDirectory)) {
-            throw new \RuntimeException(\sprintf('Log directory "%s" could not be created.', $this->logDir));
-        }
-
-        $logFileName = '' !== $fileName ? $fileName : 'app';
-        $logFile = $this->logDir.$logFileName.'.log';
-
-        $streamHandler = new RotatingFileHandler(
-            $logFile,
-            30,
-            Level::Debug,
-        );
-
-        $this->logger = new Logger($moduleName);
-
-        $output = "[%datetime%] %channel%.%level_name%: %message%\n%context%\n%extra%";
-        $formatter = new LineFormatter($output, null, true, true);
-        $formatter->includeStacktraces(true);
-        $formatter->ignoreEmptyContextAndExtra(true);
-        $formatter->allowInlineLineBreaks(true);
-
-        $streamHandler->setFormatter($formatter);
-        $this->logger->pushHandler($streamHandler);
+    public function __construct(
+        private readonly LoggerInterface $logger,
+        private readonly bool $loggingEnabled = false,
+        private readonly bool $debugLoggingEnabled = false,
+    ) {
     }
 
     /**
@@ -78,7 +29,7 @@ class LoggingService
      */
     public function start(string $message, array $context = []): void
     {
-        $this->log('info', $message.'.start', $context);
+        $this->info($message.'.start', $context);
     }
 
     /**
@@ -86,7 +37,12 @@ class LoggingService
      */
     public function debug(string $message, array $context = []): void
     {
-        $this->log('debug', $message, $context);
+        if (!$this->loggingEnabled || !$this->debugLoggingEnabled) {
+            return;
+        }
+
+        $context = $this->normalizeContext($context);
+        $this->logger->debug($this->buildLogMessage($message, $context));
     }
 
     /**
@@ -94,7 +50,12 @@ class LoggingService
      */
     public function info(string $message, array $context = []): void
     {
-        $this->log('info', $message, $context);
+        if (!$this->loggingEnabled) {
+            return;
+        }
+
+        $context = $this->normalizeContext($context);
+        $this->logger->info($this->buildLogMessage($message, $context));
     }
 
     /**
@@ -102,7 +63,12 @@ class LoggingService
      */
     public function warning(string $message, array $context = []): void
     {
-        $this->log('warning', $message, $context);
+        if (!$this->loggingEnabled) {
+            return;
+        }
+
+        $context = $this->normalizeContext($context);
+        $this->logger->warning($this->buildLogMessage($message, $context));
     }
 
     /**
@@ -110,7 +76,12 @@ class LoggingService
      */
     public function error(string $message, array $context = []): void
     {
-        $this->log('error', $message, $context);
+        if (!$this->loggingEnabled) {
+            return;
+        }
+
+        $context = $this->normalizeContext($context);
+        $this->logger->error($this->buildLogMessage($message, $context));
     }
 
     /**
@@ -118,22 +89,8 @@ class LoggingService
      */
     public function critical(string $message, array $context = []): void
     {
-        $this->log('critical', $message, $context);
-    }
-
-    public function logCurrentMethod(): void
-    {
-        $this->ensureInitialized();
-
-        $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
-        $currentMethod = $backtrace[1]['function'] ?? 'unknown';
-
-        $this->logger?->debug(
-            '    current_method',
-            [
-                'method' => $currentMethod,
-            ],
-        );
+        $context = $this->normalizeContext($context);
+        $this->logger->critical($this->buildLogMessage($message, $context));
     }
 
     /**
@@ -156,95 +113,31 @@ class LoggingService
         return $context;
     }
 
+    /**
+     * @param array<string, mixed> $context
+     */
+    private function buildLogMessage(string $message, array $context = []): string
+    {
+        if ([] === $context) {
+            return $message;
+        }
+
+        $lines = [$message];
+
+        foreach ($context as $key => $value) {
+            $encoded = json_encode(
+                $value,
+                JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE,
+            );
+
+            $lines[] = \sprintf('    %s: %s', $key, false === $encoded ? 'null' : $encoded);
+        }
+
+        return implode("\n", $lines);
+    }
+
     private function isSensitiveKey(string $key): bool
     {
         return \in_array(strtolower($key), self::SENSITIVE_CONTEXT_KEYS, true);
-    }
-
-    /**
-     * @param array<string, mixed> $context
-     */
-    private function formatContext(array $context): string
-    {
-        $formattedContext = [];
-
-        foreach ($context as $key => $value) {
-            $encoded = json_encode($value, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-            $formattedContext[] = \sprintf('    %s: %s', $key, false === $encoded ? 'null' : $encoded);
-        }
-
-        return implode("\n", $formattedContext);
-    }
-
-    /**
-     * @param array<string, mixed> $context
-     */
-    private function log(string $level, string $message, array $context = []): void
-    {
-        if (!$this->loggingEnabled && 'critical' !== $level) {
-            return;
-        }
-
-        $this->ensureInitialized();
-        $context = $this->normalizeContext($context);
-
-        $formattedContext = $this->formatContext($context);
-        $logMessage = '    '.$message;
-
-        if ('' !== $formattedContext) {
-            $logMessage .= "\n".$formattedContext;
-        }
-
-        switch ($level) {
-            case 'debug':
-                if ($this->debugLoggingEnabled) {
-                    $this->logger?->debug($logMessage);
-                }
-                break;
-
-            case 'info':
-                $this->logger?->info($logMessage);
-                break;
-
-            case 'warning':
-                $this->logger?->warning($logMessage);
-                break;
-
-            case 'error':
-                $this->logger?->error($logMessage);
-                break;
-
-            case 'critical':
-                $this->logger?->critical($logMessage);
-                break;
-
-            default:
-                $this->logger?->notice($logMessage);
-                break;
-        }
-    }
-
-    private function ensureInitialized(): void
-    {
-        if (null === $this->logger) {
-            $this->initiateLogging('door', 'community-offers');
-        }
-    }
-
-    private function readBoolParameter(ParameterBagInterface $params, string $name): bool
-    {
-        if (!$params->has($name)) {
-            return false;
-        }
-
-        $value = $params->get($name);
-
-        if (\is_bool($value)) {
-            return $value;
-        }
-
-        $normalized = strtolower(trim((string) $value));
-
-        return \in_array($normalized, ['1', 'true', 'yes', 'on'], true);
     }
 }

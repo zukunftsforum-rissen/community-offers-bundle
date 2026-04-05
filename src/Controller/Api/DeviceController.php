@@ -113,17 +113,20 @@ final class DeviceController extends AbstractController
             ];
         }
 
-        $this->logging->debug('door_dispatch.poll_result', [
-            'deviceId' => $deviceId,
-            'areas' => $areas,
-            'limit' => $limit,
-            'jobsReturned' => \count($jobs),
-            'jobIds' => array_map(static fn (array $job): int => (int) $job['jobId'], $jobs),
-            'correlationIds' => array_values(array_filter(array_map(
-                static fn (array $job): string => (string) $job['correlationId'],
-                $jobs,
-            ))),
-        ]);
+        $jobsReturned = \count($jobs);
+        if ($jobsReturned > 0) {
+            $this->logging->debug('door_dispatch.poll_result', [
+                'deviceId' => $deviceId,
+                'areasCount' => \count($areas),
+                'limit' => $limit,
+                'jobsReturned' => $jobsReturned,
+                'jobIds' => array_map(static fn (array $job): int => (int) $job['jobId'], $jobs),
+                'correlationIds' => array_values(array_filter(array_map(
+                    static fn (array $job): string => (string) $job['correlationId'],
+                    $jobs,
+                ))),
+            ]);
+        }
 
         $now = time();
 
@@ -232,7 +235,7 @@ final class DeviceController extends AbstractController
             $this->deviceConfirmRateLimitService->registerFailure($deviceId);
         }
 
-        $level = (bool) $result['accepted'] ? 'info' : 'warning';
+        $level = (bool) $result['accepted'] ? 'debug' : 'warning';
         $this->logging->{$level}('door_confirm.result', [
             'deviceId' => $deviceId,
             'jobId' => $jobId,

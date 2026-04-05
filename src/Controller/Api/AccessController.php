@@ -14,6 +14,7 @@ use ZukunftsforumRissen\CommunityOffersBundle\Service\AccessRequestService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\AccessService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\CorrelationIdService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorAuditLogger;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorWorkflowLogger;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\OpenDoorService;
 
@@ -27,6 +28,7 @@ final class AccessController
         private readonly OpenDoorService $openDoorService,
         private readonly LoggingService $logging,
         private readonly DoorAuditLogger $audit,
+        private readonly DoorWorkflowLogger $doorWorkflowLogger,
         private readonly CorrelationIdService $correlationIds,
     ) {
     }
@@ -199,7 +201,7 @@ final class AccessController
 
         $user = $this->security->getUser();
         if (!$user instanceof FrontendUser) {
-            $this->logging->warning('open.unauthenticated', [
+            $this->doorWorkflowLogger->openForbidden([
                 'cid' => $cid,
                 'slug' => $slug,
                 'ip' => $request->getClientIp(),
@@ -219,12 +221,14 @@ final class AccessController
 
         $memberId = (int) $user->id;
 
-        $this->logging->info('door_open.attempt', [
-            'cid' => $cid,
-            'memberId' => $memberId,
-            'area' => $slug,
-            'ip' => $request->getClientIp(),
-        ]);
+        $this->doorWorkflowLogger->openAttempt(
+            [
+                'cid' => $cid,
+                'memberId' => $memberId,
+                'slug' => $slug,
+                'ip' => $request->getClientIp(),
+            ],
+        );
 
         $result = $this->openDoorService->open(
             memberId: $memberId,

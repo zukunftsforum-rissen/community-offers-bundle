@@ -26,6 +26,7 @@ final class DoorJobService
         private readonly LoggingService $logging,
         private readonly DoorAuditLogger $audit,
         private readonly int $confirmWindowSeconds,
+        private readonly DoorWorkflowLogger $doorWorkflowLogger,
     ) {
     }
 
@@ -76,7 +77,7 @@ final class DoorJobService
         if ((int) $data['count'] >= $rateLimitMaxAttempts) {
             $retryAfterSeconds = max(1, (int) $data['resetAt'] - $now);
 
-            $this->logging->warning('door_job.rate_rateLimitMaxAttemptsed', [
+            $this->doorWorkflowLogger->jobMaxAttemptsReached([
                 'cid' => $correlationId,
                 'memberId' => $memberId,
                 'area' => $area,
@@ -175,7 +176,7 @@ final class DoorJobService
             $expiresAt = 'pending' === $status ? (int) $active['expiresAt'] : 0;
             $existingCid = (string) ($active['correlationId'] ?? '');
 
-            $this->logging->info('door_job.reused', [
+            $this->doorWorkflowLogger->jobReused([
                 'cid' => $existingCid ?: $correlationId,
                 'jobId' => (int) $active['id'],
                 'memberId' => $memberId,
@@ -234,7 +235,7 @@ final class DoorJobService
         $areaLock->expiresAfter($lockSeconds);
         $this->cache->save($areaLock);
 
-        $this->logging->info('door_job.created', [
+        $this->doorWorkflowLogger->jobCreated([
             'cid' => $correlationId,
             'jobId' => $jobId,
             'memberId' => $memberId,
@@ -392,7 +393,7 @@ final class DoorJobService
                             'correlationId' => $jobCid,
                         ];
 
-                        $this->logging->info('door_dispatch.dispatched', [
+                        $this->doorWorkflowLogger->dispatchDispatched([
                             'cid' => $jobCid,
                             'jobId' => (int) $row2['id'],
                             'deviceId' => $deviceId,
@@ -417,7 +418,7 @@ final class DoorJobService
             return $claimed;
         } catch (\Throwable $e) {
             $this->db->rollBack();
-            $this->logging->error('door_job.dispatch_failed', [
+            $this->doorWorkflowLogger->jobDispatchFailed([
                 'deviceId' => $deviceId,
                 'areas' => $areas,
                 'exceptionClass' => $e::class,
@@ -795,7 +796,7 @@ final class DoorJobService
             memberId: $memberId,
         );
 
-        $this->logging->info('door_confirm.confirmed', [
+        $this->doorWorkflowLogger->confirmConfirmed([
             'cid' => $jobCorrelationId,
             'jobId' => $jobId,
             'deviceId' => $deviceId,

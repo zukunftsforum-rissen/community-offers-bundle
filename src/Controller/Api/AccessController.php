@@ -81,12 +81,12 @@ final class AccessController
     #[IsGranted('IS_AUTHENTICATED_REMEMBERED')]
     public function request(Request $request, string $slug): JsonResponse
     {
-        $this->logging->start('request_access', ['slug' => $slug]);
+        $this->logging->start('request_access', ['area' => $slug]);
 
         $user = $this->security->getUser();
         if (!$user instanceof FrontendUser) {
             $this->logging->info('request_access.unauthenticated', [
-                'slug' => $slug,
+                'area' => $slug,
                 'ip' => $request->getClientIp(),
             ]);
 
@@ -97,7 +97,7 @@ final class AccessController
         if (!\in_array($slug, $known, true)) {
             $this->logging->info('request_access.unknown_area', [
                 'memberId' => (int) $user->id,
-                'slug' => $slug,
+                'area' => $slug,
                 'ip' => $request->getClientIp(),
             ]);
 
@@ -110,7 +110,7 @@ final class AccessController
         if (\in_array($slug, $granted, true)) {
             $this->logging->info('request_access.already_granted', [
                 'memberId' => $memberId,
-                'slug' => $slug,
+                'area' => $slug,
             ]);
 
             return new JsonResponse(['success' => false, 'message' => 'Already granted'], 400);
@@ -126,7 +126,7 @@ final class AccessController
         } catch (\Throwable $e) {
             $this->logging->error('request_access.exception', [
                 'memberId' => $memberId,
-                'slug' => $slug,
+                'area' => $slug,
                 'error' => $e->getMessage(),
             ]);
 
@@ -137,7 +137,7 @@ final class AccessController
 
         $this->logging->info('request_access.result', [
             'memberId' => $memberId,
-            'slug' => $slug,
+            'area' => $slug,
             'code' => $code,
             'ip' => $request->getClientIp(),
         ]);
@@ -193,6 +193,9 @@ final class AccessController
         );
     }
 
+    /**
+     * slug -> area (1:1 mapping).
+     */
     #[Route('/open/{slug}', name: 'community_offers_open_door', methods: ['POST'])]
     #[IsGranted('IS_AUTHENTICATED_REMEMBERED')]
     public function open(Request $request, string $slug): JsonResponse
@@ -203,7 +206,7 @@ final class AccessController
         if (!$user instanceof FrontendUser) {
             $this->doorWorkflowLogger->openForbidden([
                 'cid' => $cid,
-                'slug' => $slug,
+                'area' => $slug,
                 'ip' => $request->getClientIp(),
             ]);
 
@@ -213,7 +216,7 @@ final class AccessController
                 result: 'unauthenticated',
                 message: 'Door open without authenticated frontend user',
                 correlationId: $cid,
-                context: ['slug' => $slug],
+                context: ['area' => $slug],
             );
 
             return new JsonResponse(['success' => false, 'message' => 'Not authenticated'], 401);
@@ -225,7 +228,7 @@ final class AccessController
             [
                 'cid' => $cid,
                 'memberId' => $memberId,
-                'slug' => $slug,
+                'area' => $slug,
                 'ip' => $request->getClientIp(),
             ],
         );

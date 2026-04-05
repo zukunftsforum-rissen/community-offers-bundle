@@ -38,8 +38,9 @@ final class DeviceController extends AbstractController
         if (!$user instanceof DeviceApiUser) {
             $this->doorWorkflowLogger->dispatchUnauthorized([
                 'ip' => $request->getClientIp(),
-                'userClass' => $user::class,
+                'userClass' => $user ? $user::class : null,
             ]);
+
             return new JsonResponse(['error' => 'unauthorized'], 401);
         }
 
@@ -65,6 +66,7 @@ final class DeviceController extends AbstractController
                 'deviceId' => $deviceId,
                 'ip' => $request->getClientIp(),
             ]);
+
             return new JsonResponse(
                 [
                     'error' => 'rate_limit_exceeded',
@@ -82,6 +84,7 @@ final class DeviceController extends AbstractController
                 'deviceId' => $deviceId,
                 'ip' => $request->getClientIp(),
             ]);
+
             return new JsonResponse(['error' => 'bad_request'], 400);
         }
 
@@ -90,6 +93,7 @@ final class DeviceController extends AbstractController
                 'deviceId' => $deviceId,
                 'ip' => $request->getClientIp(),
             ]);
+
             return new JsonResponse(['error' => 'bad_request'], 400);
         }
 
@@ -145,6 +149,7 @@ final class DeviceController extends AbstractController
             $this->doorWorkflowLogger->confirmUnauthorized([
                 'ip' => $request->getClientIp(),
             ]);
+
             return new JsonResponse(['error' => 'unauthorized'], 401);
         }
 
@@ -172,6 +177,7 @@ final class DeviceController extends AbstractController
                 'deviceId' => $deviceId,
                 'ip' => $request->getClientIp(),
             ]);
+
             return new JsonResponse(['error' => 'bad_request'], 400);
         }
 
@@ -180,6 +186,7 @@ final class DeviceController extends AbstractController
                 'deviceId' => $deviceId,
                 'ip' => $request->getClientIp(),
             ]);
+
             return new JsonResponse(['error' => 'bad_request'], 400);
         }
 
@@ -204,6 +211,7 @@ final class DeviceController extends AbstractController
                 'jobId' => $jobId,
                 'requestCid' => $requestCid,
             ]);
+
             return new JsonResponse(['error' => 'bad_request'], 400);
         }
 
@@ -220,6 +228,7 @@ final class DeviceController extends AbstractController
                 'ip' => $request->getClientIp(),
                 'requestCid' => $requestCid,
             ]);
+
             return new JsonResponse(['error' => 'rate_limit_exceeded'], 429);
         }
 

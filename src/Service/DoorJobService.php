@@ -423,6 +423,7 @@ final class DoorJobService
                 'exceptionClass' => $e::class,
                 'message' => $e->getMessage(),
             ]);
+
             throw $e;
         }
     }

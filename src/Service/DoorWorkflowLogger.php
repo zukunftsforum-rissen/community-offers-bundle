@@ -11,10 +11,8 @@ final class DoorWorkflowLogger
     ) {
     }
 
-    // =========================================================
-    // OPEN PHASE
-    // User presses button
-    // =========================================================
+    // ========================================================= OPEN PHASE User
+    // presses button =========================================================
 
     /**
      * @param array<string, mixed> $context
@@ -56,11 +54,8 @@ final class DoorWorkflowLogger
         $this->logging->error('door_open.error', $context);
     }
 
-
-    // =========================================================
-    // JOB PHASE
-    // Job lifecycle
-    // =========================================================
+    // ========================================================= JOB PHASE Job
+    // lifecycle =========================================================
 
     /**
      * @param array<string, mixed> $context
@@ -113,11 +108,8 @@ final class DoorWorkflowLogger
         $this->logging->warning('door_job.area_locked', $context);
     }
 
-
-    // =========================================================
-    // DISPATCH PHASE
-    // Device polling
-    // =========================================================
+    // ========================================================= DISPATCH PHASE
+    // Device polling =========================================================
 
     /**
      * @param array<string, mixed> $context
@@ -162,11 +154,8 @@ final class DoorWorkflowLogger
         $this->logging->debug('door_dispatch.poll_result', $context);
     }
 
-
-    // =========================================================
-    // CONFIRM PHASE
-    // Device confirms execution
-    // =========================================================
+    // ========================================================= CONFIRM PHASE Device
+    // confirms execution =========================================================
 
     /**
      * @param array<string, mixed> $context
@@ -235,10 +224,8 @@ final class DoorWorkflowLogger
         $this->logging->warning('door_confirm.bad_request', $context);
     }
 
-
-    // =========================================================
-    // CONFIRM VALIDATION / EDGE CASES
-    // Workflow validation failures
+    // ========================================================= CONFIRM
+    // VALIDATION / EDGE CASES Workflow validation failures
     // =========================================================
 
     /**
@@ -328,5 +315,4 @@ final class DoorWorkflowLogger
     {
         $this->logging->warning('door_job.confirm_update_conflict', $context);
     }
-
 }

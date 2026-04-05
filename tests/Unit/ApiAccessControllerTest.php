@@ -21,6 +21,7 @@ use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorAuditLogger;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\OpenDoorService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\SystemMode;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorWorkflowLogger;
 
 class ApiAccessControllerTest extends TestCase
 {
@@ -105,7 +106,7 @@ class ApiAccessControllerTest extends TestCase
         $accessRequestService->expects($this->never())->method('sendOrResendDoiForArea');
 
         $logging = $this->createMock(LoggingService::class);
-        $logging->expects($this->once())->method('start')->with('request_access', ['slug' => 'workshop']);
+        $logging->expects($this->once())->method('start')->with('request_access', ['area' => 'workshop']);
 
         $controller = $this->createController($security, $accessService, $accessRequestService, $logging);
 
@@ -341,6 +342,9 @@ class ApiAccessControllerTest extends TestCase
             $openDoorService,
             $logging,
             $this->createStub(DoorAuditLogger::class),
+            new \ZukunftsforumRissen\CommunityOffersBundle\Service\DoorWorkflowLogger(
+                $this->createStub(\ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService::class)
+            ),
             new CorrelationIdService(),
         );
     }

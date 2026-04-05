@@ -43,7 +43,6 @@ use ZukunftsforumRissen\CommunityOffersBundle\Device\Service\DeviceRateLimitServ
 use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorWorkflowTimelineService;
 use ZukunftsforumRissen\CommunityOffersBundle\Workflow\DoorJobWorkflowSubscriber;
 
-
 /**
  * Unit tests for device API controller behavior.
  *
@@ -499,8 +498,8 @@ class DeviceControllerTest extends TestCase
             ->method('fetchAllAssociative')
             ->with(
                 $this->stringContains('SELECT id, area, status'),
-                $this->callback(static fn(array $params): bool => ['depot'] === ($params['areas'] ?? []) && isset($params['now'])),
-                $this->callback(static fn(array $types): bool => isset($types['areas'])),
+                $this->callback(static fn (array $params): bool => ['depot'] === ($params['areas'] ?? []) && isset($params['now'])),
+                $this->callback(static fn (array $types): bool => isset($types['areas'])),
             )
             ->willReturn([
                 ['id' => 11, 'area' => 'depot', 'status' => 'pending', 'requestedByMemberId' => 42, 'correlationId' => 'cid-11'],
@@ -795,19 +794,23 @@ class DeviceControllerTest extends TestCase
         DoorJobService $jobs,
         UserInterface|null $user,
         SystemMode|null $systemMode = null,
-    ): DeviceController
-    {
-        $heartbeat = new class() implements DeviceHeartbeatInterface {
-            public function registerPoll(int|string $deviceId, array $areas = []): void {}
+    ): DeviceController {
+        $heartbeat = new class () implements DeviceHeartbeatInterface {
+            public function registerPoll(int|string $deviceId, array $areas = []): void
+            {
+            }
         };
 
         $controller = new DeviceController(
             $jobs,
-            $this->createStub(LoggingService::class),
+            new \ZukunftsforumRissen\CommunityOffersBundle\Service\DoorWorkflowLogger(
+                $this->createStub(\ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService::class)
+            ),
             $heartbeat,
             $this->createAlwaysAllowingDeviceRateLimitService(),
             $this->createAlwaysAllowingDeviceConfirmRateLimitService(),
             new DeviceAccessPolicy($systemMode ?? new SystemMode('live')),
+            $this->createStub(LoggingService::class),
         );
 
         $tokenStorage = $this->createMock(TokenStorageInterface::class);
@@ -820,10 +823,11 @@ class DeviceControllerTest extends TestCase
             $tokenStorage->method('getToken')->willReturn($token);
         }
 
-        $container = new class($tokenStorage) implements ContainerInterface {
+        $container = new class ($tokenStorage) implements ContainerInterface {
             public function __construct(
                 private readonly TokenStorageInterface $tokenStorage,
-            ) {}
+            ) {
+            }
 
             public function has(string $id): bool
             {
@@ -851,9 +855,11 @@ class DeviceControllerTest extends TestCase
             $db,
             $cache,
             $this->createDoorJobStateMachine(),
-            $this->createStub(LoggingService::class),
             $this->createStub(DoorAuditLogger::class),
             30,
+            new \ZukunftsforumRissen\CommunityOffersBundle\Service\DoorWorkflowLogger(
+                $this->createStub(\ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService::class)
+            )
         );
     }
 
@@ -886,13 +892,16 @@ class DeviceControllerTest extends TestCase
             $openDoorService,
             $logging,
             $this->createStub(DoorAuditLogger::class),
+            new \ZukunftsforumRissen\CommunityOffersBundle\Service\DoorWorkflowLogger(
+                $this->createStub(\ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService::class)
+            ),
             new CorrelationIdService(),
         );
     }
 
     private function createOpenDoorServiceForWorkflow(DoorJobService $doorJobs, AccessService $accessService): OpenDoorService
     {
-        $gateway = new class($doorJobs) implements DoorGatewayInterface {
+        $gateway = new class ($doorJobs) implements DoorGatewayInterface {
             public function __construct(private readonly DoorJobService $doorJobs)
             {
             }
@@ -976,7 +985,7 @@ class DeviceControllerTest extends TestCase
             return 1;
         });
 
-        $db->method('lastInsertId')->willReturnCallback(static fn(): string => (string) ($state->nextId - 1));
+        $db->method('lastInsertId')->willReturnCallback(static fn (): string => (string) ($state->nextId - 1));
 
         $db->method('fetchAllAssociative')->willReturnCallback(static function (string $query, array $params = [], array $types = []) use ($state): array {
             if (!str_contains($query, 'FROM tl_co_door_job') || !str_contains($query, "status='pending'")) {
@@ -1059,7 +1068,7 @@ class DeviceControllerTest extends TestCase
                 }
 
                 /** @var list<array<string, mixed>> $candidates */
-                usort($candidates, static fn(array $left, array $right): int => ((int) ($right['createdAt'] ?? 0)) <=> ((int) ($left['createdAt'] ?? 0)));
+                usort($candidates, static fn (array $left, array $right): int => ((int) ($right['createdAt'] ?? 0)) <=> ((int) ($left['createdAt'] ?? 0)));
                 $active = $candidates[0];
 
                 return [
@@ -1268,7 +1277,7 @@ class DeviceControllerTest extends TestCase
     {
         $cache = $this->createStub(\Psr\Cache\CacheItemPoolInterface::class);
 
-        $cache->method('getItem')->willReturn(new class() implements \Psr\Cache\CacheItemInterface {
+        $cache->method('getItem')->willReturn(new class () implements \Psr\Cache\CacheItemInterface {
             public function getKey(): string
             {
                 return 'test';
@@ -1398,7 +1407,8 @@ final class InMemoryCacheItem implements CacheItemInterface
         private mixed $value,
         private bool $hit,
         private int $expiresAt = 0,
-    ) {}
+    ) {
+    }
 
     public function getKey(): string
     {

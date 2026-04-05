@@ -9,7 +9,6 @@ use ZukunftsforumRissen\CommunityOffersBundle\Door\DoorGatewayResult;
 final class WorkflowDoorOpenObserver implements DoorOpenObserverInterface
 {
     public function __construct(
-        private readonly LoggingService $logging,
         private readonly DoorAuditLogger $audit,
         private readonly DoorWorkflowLogger $doorWorkflowLogger,
     ) {

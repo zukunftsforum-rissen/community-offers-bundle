@@ -68,7 +68,7 @@ final class DeviceAuthService
 
         $isEmulator = (bool) $device['isEmulator'];
 
-        $this->logging->info('device_auth.lookup_success', [
+        $this->logging->debug('device_auth.lookup_success', [
             'deviceId' => $deviceId,
             'areas' => $areas,
             'isEmulator' => $isEmulator,

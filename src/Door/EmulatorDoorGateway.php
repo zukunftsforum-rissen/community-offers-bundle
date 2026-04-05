@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace ZukunftsforumRissen\CommunityOffersBundle\Door;
 
 use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorJobService;
-use ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService;
 
 final class EmulatorDoorGateway implements DoorGatewayInterface
 {
@@ -13,7 +12,6 @@ final class EmulatorDoorGateway implements DoorGatewayInterface
 
     public function __construct(
         private readonly DoorJobService $doorJobs,
-        private readonly LoggingService $logging,
     ) {
     }
 
@@ -42,13 +40,6 @@ final class EmulatorDoorGateway implements DoorGatewayInterface
         $ip = isset($context['ip']) ? (string) $context['ip'] : '';
         $userAgent = isset($context['userAgent']) ? (string) $context['userAgent'] : '';
         $correlationId = isset($context['correlationId']) ? (string) $context['correlationId'] : '';
-
-        $this->logging->info('door.gateway.emulator_open_requested', [
-            'area' => $area,
-            'memberId' => $memberId,
-            'ip' => $ip,
-            'correlationId' => $correlationId,
-        ]);
 
         $this->doorJobs->expireOldJobs();
 

@@ -14,6 +14,7 @@ use ZukunftsforumRissen\CommunityOffersBundle\Device\Service\DeviceConfirmRateLi
 use ZukunftsforumRissen\CommunityOffersBundle\Device\Service\DeviceHeartbeatInterface;
 use ZukunftsforumRissen\CommunityOffersBundle\Device\Service\DeviceRateLimitService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorJobService;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorWorkflowLogger;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService;
 
 #[Route('/api/device')]
@@ -21,11 +22,12 @@ final class DeviceController extends AbstractController
 {
     public function __construct(
         private readonly DoorJobService $jobs,
-        private readonly LoggingService $logging,
+        private readonly DoorWorkflowLogger $doorWorkflowLogger,
         private readonly DeviceHeartbeatInterface $deviceHeartbeatService,
         private readonly DeviceRateLimitService $deviceRateLimitService,
         private readonly DeviceConfirmRateLimitService $deviceConfirmRateLimitService,
         private readonly DeviceAccessPolicy $deviceAccessPolicy,
+        private readonly LoggingService $logging, // Only if still needed for non-door events
     ) {
     }
 
@@ -34,8 +36,9 @@ final class DeviceController extends AbstractController
     {
         $user = $this->getUser();
         if (!$user instanceof DeviceApiUser) {
-            $this->logging->warning('door_dispatch.unauthorized', [
+            $this->doorWorkflowLogger->dispatchUnauthorized([
                 'ip' => $request->getClientIp(),
+                'userClass' => $user ? $user::class : null,
             ]);
 
             return new JsonResponse(['error' => 'unauthorized'], 401);
@@ -58,6 +61,7 @@ final class DeviceController extends AbstractController
         $areas = $user->getAreas();
 
         if (!$this->deviceRateLimitService->isPollAllowed($deviceId, 2)) {
+            // device_poll.rate_limited is NOT a door event, leave as-is
             $this->logging->warning('device_poll.rate_limited', [
                 'deviceId' => $deviceId,
                 'ip' => $request->getClientIp(),
@@ -76,7 +80,7 @@ final class DeviceController extends AbstractController
         try {
             $payload = json_decode((string) $request->getContent(), true, 512, JSON_THROW_ON_ERROR);
         } catch (\JsonException) {
-            $this->logging->warning('door_dispatch.bad_json', [
+            $this->doorWorkflowLogger->dispatchBadJson([
                 'deviceId' => $deviceId,
                 'ip' => $request->getClientIp(),
             ]);
@@ -85,7 +89,7 @@ final class DeviceController extends AbstractController
         }
 
         if (!\is_array($payload)) {
-            $this->logging->warning('door_dispatch.bad_json_shape', [
+            $this->doorWorkflowLogger->dispatchBadJsonShape([
                 'deviceId' => $deviceId,
                 'ip' => $request->getClientIp(),
             ]);
@@ -113,17 +117,20 @@ final class DeviceController extends AbstractController
             ];
         }
 
-        $this->logging->debug('door_dispatch.poll_result', [
-            'deviceId' => $deviceId,
-            'areas' => $areas,
-            'limit' => $limit,
-            'jobsReturned' => \count($jobs),
-            'jobIds' => array_map(static fn (array $job): int => (int) $job['jobId'], $jobs),
-            'correlationIds' => array_values(array_filter(array_map(
-                static fn (array $job): string => (string) $job['correlationId'],
-                $jobs,
-            ))),
-        ]);
+        $jobsReturned = \count($jobs);
+        if ($jobsReturned > 0) {
+            $this->doorWorkflowLogger->dispatchPollResult([
+                'deviceId' => $deviceId,
+                'areasCount' => \count($areas),
+                'limit' => $limit,
+                'jobsReturned' => $jobsReturned,
+                'jobIds' => array_map(static fn (array $job): int => (int) $job['jobId'], $jobs),
+                'correlationIds' => array_values(array_filter(array_map(
+                    static fn (array $job): string => (string) $job['correlationId'],
+                    $jobs,
+                ))),
+            ]);
+        }
 
         $now = time();
 
@@ -139,7 +146,7 @@ final class DeviceController extends AbstractController
     {
         $user = $this->getUser();
         if (!$user instanceof DeviceApiUser) {
-            $this->logging->warning('door_confirm.unauthorized', [
+            $this->doorWorkflowLogger->confirmUnauthorized([
                 'ip' => $request->getClientIp(),
             ]);
 
@@ -166,7 +173,7 @@ final class DeviceController extends AbstractController
         try {
             $payload = json_decode((string) $request->getContent(), true, 512, JSON_THROW_ON_ERROR);
         } catch (\JsonException) {
-            $this->logging->warning('door_confirm.bad_json', [
+            $this->doorWorkflowLogger->confirmBadJson([
                 'deviceId' => $deviceId,
                 'ip' => $request->getClientIp(),
             ]);
@@ -175,7 +182,7 @@ final class DeviceController extends AbstractController
         }
 
         if (!\is_array($payload)) {
-            $this->logging->warning('door_confirm.bad_json_shape', [
+            $this->doorWorkflowLogger->confirmBadJsonShape([
                 'deviceId' => $deviceId,
                 'ip' => $request->getClientIp(),
             ]);
@@ -199,7 +206,7 @@ final class DeviceController extends AbstractController
             || 64 !== \strlen($nonce)
             || !preg_match('/^[a-f0-9]{64}$/', $nonce)
         ) {
-            $this->logging->warning('door_confirm.bad_request', [
+            $this->doorWorkflowLogger->confirmBadRequest([
                 'deviceId' => $deviceId,
                 'jobId' => $jobId,
                 'requestCid' => $requestCid,
@@ -208,7 +215,7 @@ final class DeviceController extends AbstractController
             return new JsonResponse(['error' => 'bad_request'], 400);
         }
 
-        $this->logging->info('door_confirm.request_received', [
+        $this->doorWorkflowLogger->confirmRequestReceived([
             'deviceId' => $deviceId,
             'jobId' => $jobId,
             'requestCid' => $requestCid,
@@ -216,9 +223,10 @@ final class DeviceController extends AbstractController
         ]);
 
         if (!$this->deviceConfirmRateLimitService->isAllowed($deviceId)) {
-            $this->logging->warning('door_confirm.rate_limited', [
+            $this->doorWorkflowLogger->confirmRateLimited([
                 'deviceId' => $deviceId,
                 'ip' => $request->getClientIp(),
+                'requestCid' => $requestCid,
             ]);
 
             return new JsonResponse(['error' => 'rate_limit_exceeded'], 429);
@@ -232,7 +240,7 @@ final class DeviceController extends AbstractController
             $this->deviceConfirmRateLimitService->registerFailure($deviceId);
         }
 
-        $level = (bool) $result['accepted'] ? 'info' : 'warning';
+        $level = (bool) $result['accepted'] ? 'debug' : 'warning';
         $this->logging->{$level}('door_confirm.result', [
             'deviceId' => $deviceId,
             'jobId' => $jobId,

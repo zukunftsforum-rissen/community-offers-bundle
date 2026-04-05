@@ -23,9 +23,9 @@ final class DoorJobService
         private readonly Connection $db,
         private readonly CacheItemPoolInterface $cache,
         private readonly WorkflowInterface $doorJobStateMachine,
-        private readonly LoggingService $logging,
         private readonly DoorAuditLogger $audit,
         private readonly int $confirmWindowSeconds,
+        private readonly DoorWorkflowLogger $doorWorkflowLogger,
     ) {
     }
 
@@ -76,7 +76,7 @@ final class DoorJobService
         if ((int) $data['count'] >= $rateLimitMaxAttempts) {
             $retryAfterSeconds = max(1, (int) $data['resetAt'] - $now);
 
-            $this->logging->warning('door_job.rate_rateLimitMaxAttemptsed', [
+            $this->doorWorkflowLogger->jobMaxAttemptsReached([
                 'cid' => $correlationId,
                 'memberId' => $memberId,
                 'area' => $area,
@@ -115,7 +115,7 @@ final class DoorJobService
             $payload = $memberLock->get();
             $retry = \is_array($payload) && isset($payload['until']) ? (int) $payload['until'] - $now : $lockSeconds;
 
-            $this->logging->warning('door_job.member_locked', [
+            $this->doorWorkflowLogger->jobMemberLocked([
                 'cid' => $correlationId,
                 'memberId' => $memberId,
                 'area' => $area,
@@ -136,7 +136,7 @@ final class DoorJobService
             $payload = $areaLock->get();
             $retry = \is_array($payload) && isset($payload['until']) ? (int) $payload['until'] - $now : $lockSeconds;
 
-            $this->logging->warning('door_job.area_locked', [
+            $this->doorWorkflowLogger->jobAreaLocked([
                 'cid' => $correlationId,
                 'memberId' => $memberId,
                 'area' => $area,
@@ -175,7 +175,7 @@ final class DoorJobService
             $expiresAt = 'pending' === $status ? (int) $active['expiresAt'] : 0;
             $existingCid = (string) ($active['correlationId'] ?? '');
 
-            $this->logging->info('door_job.reused', [
+            $this->doorWorkflowLogger->jobReused([
                 'cid' => $existingCid ?: $correlationId,
                 'jobId' => (int) $active['id'],
                 'memberId' => $memberId,
@@ -234,7 +234,7 @@ final class DoorJobService
         $areaLock->expiresAfter($lockSeconds);
         $this->cache->save($areaLock);
 
-        $this->logging->info('door_job.created', [
+        $this->doorWorkflowLogger->jobCreated([
             'cid' => $correlationId,
             'jobId' => $jobId,
             'memberId' => $memberId,
@@ -392,7 +392,7 @@ final class DoorJobService
                             'correlationId' => $jobCid,
                         ];
 
-                        $this->logging->info('door_dispatch.dispatched', [
+                        $this->doorWorkflowLogger->dispatchDispatched([
                             'cid' => $jobCid,
                             'jobId' => (int) $row2['id'],
                             'deviceId' => $deviceId,
@@ -417,10 +417,11 @@ final class DoorJobService
             return $claimed;
         } catch (\Throwable $e) {
             $this->db->rollBack();
-            $this->logging->error('door_job.dispatch_failed', [
+            $this->doorWorkflowLogger->jobDispatchFailed([
                 'deviceId' => $deviceId,
                 'areas' => $areas,
                 'exceptionClass' => $e::class,
+                'message' => $e->getMessage(),
             ]);
 
             throw $e;
@@ -481,7 +482,7 @@ final class DoorJobService
         );
 
         if (!$job) {
-            $this->logging->warning('door_job.confirm_not_found', [
+            $this->doorWorkflowLogger->jobConfirmNotFound([
                 'jobId' => $jobId,
                 'deviceId' => $deviceId,
             ]);
@@ -496,7 +497,7 @@ final class DoorJobService
         $memberId = (int) ($job['requestedByMemberId'] ?? 0);
         $jobCorrelationId = (string) ($job['correlationId'] ?? '');
 
-        $this->logging->info('door_confirm.attempt', [
+        $this->doorWorkflowLogger->confirmAttempt([
             'cid' => $jobCorrelationId,
             'jobId' => $jobId,
             'deviceId' => $deviceId,
@@ -516,7 +517,7 @@ final class DoorJobService
 
         if (\in_array($status, ['executed', 'failed'], true)) {
             if ($jobDevice === $deviceId && '' !== $jobNonce && hash_equals($jobNonce, $nonce)) {
-                $this->logging->info('door_job.confirm_idempotent', [
+                $this->doorWorkflowLogger->jobConfirmIdempotent([
                     'cid' => $jobCorrelationId,
                     'jobId' => $jobId,
                     'deviceId' => $deviceId,
@@ -526,7 +527,7 @@ final class DoorJobService
                 return ['accepted' => true, 'httpStatus' => 200, 'status' => $status];
             }
 
-            $this->logging->warning('door_job.confirm_forbidden_final_state', [
+            $this->doorWorkflowLogger->jobConfirmForbiddenFinalState([
                 'cid' => $jobCorrelationId,
                 'jobId' => $jobId,
                 'deviceId' => $deviceId,
@@ -538,7 +539,7 @@ final class DoorJobService
 
         if ('expired' === $status) {
             if ($jobDevice === $deviceId && '' !== $jobNonce && hash_equals($jobNonce, $nonce)) {
-                $this->logging->warning('door_job.confirm_expired', [
+                $this->doorWorkflowLogger->jobConfirmExpired([
                     'cid' => $jobCorrelationId,
                     'jobId' => $jobId,
                     'deviceId' => $deviceId,
@@ -547,7 +548,7 @@ final class DoorJobService
                 return ['accepted' => false, 'httpStatus' => 410, 'error' => 'confirm_timeout', 'status' => 'expired'];
             }
 
-            $this->logging->warning('door_job.confirm_forbidden_final_state', [
+            $this->doorWorkflowLogger->jobConfirmForbiddenFinalState([
                 'cid' => $jobCorrelationId,
                 'jobId' => $jobId,
                 'deviceId' => $deviceId,
@@ -557,7 +558,7 @@ final class DoorJobService
             return ['accepted' => false, 'httpStatus' => 403, 'error' => 'forbidden', 'status' => $status];
         }
         if ('dispatched' !== $status) {
-            $this->logging->warning('door_job.confirm_invalid_state', [
+            $this->doorWorkflowLogger->jobConfirmInvalidState([
                 'cid' => $jobCorrelationId,
                 'jobId' => $jobId,
                 'status' => $status,
@@ -568,7 +569,7 @@ final class DoorJobService
         }
 
         if ($jobDevice !== $deviceId) {
-            $this->logging->warning('door_job.confirm_wrong_device', [
+            $this->doorWorkflowLogger->jobConfirmWrongDevice([
                 'cid' => $jobCorrelationId,
                 'jobId' => $jobId,
                 'deviceId' => $deviceId,
@@ -579,7 +580,7 @@ final class DoorJobService
         }
 
         if ('' === $jobNonce || !hash_equals($jobNonce, $nonce)) {
-            $this->logging->warning('door_job.confirm_wrong_nonce', [
+            $this->doorWorkflowLogger->jobConfirmWrongNonce([
                 'cid' => $jobCorrelationId,
                 'jobId' => $jobId,
                 'deviceId' => $deviceId,
@@ -641,7 +642,7 @@ final class DoorJobService
 
                 $freshStatus = (string) ($freshJob['status'] ?? 'expired');
 
-                $this->logging->warning('door_job.confirm_timeout_conflict', [
+                $this->doorWorkflowLogger->jobConfirmTimeoutConflict([
                     'cid' => $jobCorrelationId,
                     'jobId' => $jobId,
                     'deviceId' => $deviceId,
@@ -679,7 +680,7 @@ final class DoorJobService
                 memberId: $memberId,
             );
 
-            $this->logging->warning('door_job.confirm_timeout', [
+            $this->doorWorkflowLogger->jobConfirmTimeout([
                 'cid' => $jobCorrelationId,
                 'jobId' => $jobId,
                 'deviceId' => $deviceId,
@@ -699,7 +700,7 @@ final class DoorJobService
         $transition = $ok ? 'execute' : 'fail';
 
         if (!$this->doorJobStateMachine->can($doorJob, $transition)) {
-            $this->logging->warning('door_job.confirm_transition_blocked', [
+            $this->doorWorkflowLogger->jobConfirmTransitionBlocked([
                 'cid' => $jobCorrelationId,
                 'jobId' => $jobId,
                 'transition' => $transition,
@@ -751,7 +752,7 @@ final class DoorJobService
 
             $freshStatus = (string) ($freshJob['status'] ?? $status);
 
-            $this->logging->warning('door_job.confirm_update_conflict', [
+            $this->doorWorkflowLogger->jobConfirmUpdateConflict([
                 'cid' => $jobCorrelationId,
                 'jobId' => $jobId,
                 'deviceId' => $deviceId,
@@ -795,7 +796,7 @@ final class DoorJobService
             memberId: $memberId,
         );
 
-        $this->logging->info('door_confirm.confirmed', [
+        $this->doorWorkflowLogger->confirmConfirmed([
             'cid' => $jobCorrelationId,
             'jobId' => $jobId,
             'deviceId' => $deviceId,

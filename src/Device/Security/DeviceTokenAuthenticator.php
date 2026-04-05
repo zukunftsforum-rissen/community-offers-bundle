@@ -32,7 +32,7 @@ final class DeviceTokenAuthenticator extends AbstractAuthenticator
     {
         $token = $this->extractToken($request);
 
-        $this->logging->info('device_auth.authenticate_start', [
+        $this->logging->debug('device_auth.authenticate_start', [
             'path' => $request->getPathInfo(),
             'hasAuthorizationHeader' => null !== $request->headers->get('Authorization'),
             'hasXDeviceTokenHeader' => null !== $request->headers->get('X-Device-Token'),
@@ -57,7 +57,7 @@ final class DeviceTokenAuthenticator extends AbstractAuthenticator
         $areas = $ctx['areas'];
         $isEmulator = $ctx['isEmulator'];
 
-        $this->logging->info('device_auth.authenticate_success', [
+        $this->logging->debug('device_auth.authenticate_success', [
             'deviceId' => $deviceId,
             'areas' => $areas,
             'isEmulator' => $isEmulator,

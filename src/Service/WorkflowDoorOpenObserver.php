@@ -9,14 +9,14 @@ use ZukunftsforumRissen\CommunityOffersBundle\Door\DoorGatewayResult;
 final class WorkflowDoorOpenObserver implements DoorOpenObserverInterface
 {
     public function __construct(
-        private readonly LoggingService $logging,
         private readonly DoorAuditLogger $audit,
+        private readonly DoorWorkflowLogger $doorWorkflowLogger,
     ) {
     }
 
     public function onForbidden(int $memberId, string $area, string $ip, string $correlationId, string $mode): void
     {
-        $this->logging->warning('door_open.forbidden', [
+        $this->doorWorkflowLogger->openForbidden([
             'cid' => $correlationId,
             'memberId' => $memberId,
             'area' => $area,
@@ -57,7 +57,7 @@ final class WorkflowDoorOpenObserver implements DoorOpenObserverInterface
         );
 
         if ($result->isOk()) {
-            $this->logging->info('door_open.success', [
+            $this->doorWorkflowLogger->openSuccess([
                 'cid' => $correlationId,
                 'memberId' => $memberId,
                 'area' => $area,
@@ -67,7 +67,7 @@ final class WorkflowDoorOpenObserver implements DoorOpenObserverInterface
                 'mode' => $mode,
             ]);
         } elseif (429 === $result->getHttpStatus()) {
-            $this->logging->warning('door_open.rate_limited', [
+            $this->doorWorkflowLogger->openRateLimited([
                 'cid' => $correlationId,
                 'memberId' => $memberId,
                 'area' => $area,
@@ -76,7 +76,7 @@ final class WorkflowDoorOpenObserver implements DoorOpenObserverInterface
                 'mode' => $mode,
             ]);
         } else {
-            $this->logging->error('door_open.error', [
+            $this->doorWorkflowLogger->openError([
                 'cid' => $correlationId,
                 'memberId' => $memberId,
                 'area' => $area,

@@ -10,6 +10,7 @@ use Psr\Cache\CacheItemInterface;
 use Psr\Cache\CacheItemPoolInterface;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorAuditLogger;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorJobService;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorWorkflowLogger;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService;
 use Symfony\Component\Workflow\Definition;
 use Symfony\Component\Workflow\MarkingStore\MethodMarkingStore;
@@ -17,7 +18,6 @@ use Symfony\Component\Workflow\StateMachine;
 use Symfony\Component\Workflow\Transition;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use ZukunftsforumRissen\CommunityOffersBundle\Workflow\DoorJobWorkflowSubscriber;
-
 
 /**
  * Unit tests for door job lifecycle and confirmation rules.
@@ -295,9 +295,11 @@ class DoorJobServiceTest extends TestCase
             $db,
             $cache ?? $this->createStub(CacheItemPoolInterface::class),
             $this->createDoorJobStateMachine(),
-            $this->createStub(LoggingService::class),
             $this->createStub(DoorAuditLogger::class),
             30,
+            new \ZukunftsforumRissen\CommunityOffersBundle\Service\DoorWorkflowLogger(
+                $this->createStub(\ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService::class)
+            ),
         );
     }
 

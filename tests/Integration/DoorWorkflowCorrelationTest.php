@@ -21,6 +21,7 @@ use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorAuditLogger;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorJobService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService;
 use ZukunftsforumRissen\CommunityOffersBundle\Workflow\DoorJobWorkflowSubscriber;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorWorkflowLogger;
 
 final class DoorWorkflowCorrelationTest extends KernelTestCase
 {
@@ -247,7 +248,16 @@ final class DoorWorkflowCorrelationTest extends KernelTestCase
             }
         }
 
-        return new DoorJobService($this->db, $cache, $workflow, $logging, $audit, 30);
+        return new DoorJobService(
+            $this->db,
+            $cache,
+            $workflow,
+            $audit,
+            30,
+            new \ZukunftsforumRissen\CommunityOffersBundle\Service\DoorWorkflowLogger(
+                $this->createStub(\ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService::class)
+            ),
+        );
     }
 
     /**

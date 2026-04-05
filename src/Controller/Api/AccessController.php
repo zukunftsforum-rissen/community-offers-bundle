@@ -14,6 +14,7 @@ use ZukunftsforumRissen\CommunityOffersBundle\Service\AccessRequestService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\AccessService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\CorrelationIdService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorAuditLogger;
+use ZukunftsforumRissen\CommunityOffersBundle\Service\DoorWorkflowLogger;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService;
 use ZukunftsforumRissen\CommunityOffersBundle\Service\OpenDoorService;
 
@@ -27,6 +28,7 @@ final class AccessController
         private readonly OpenDoorService $openDoorService,
         private readonly LoggingService $logging,
         private readonly DoorAuditLogger $audit,
+        private readonly DoorWorkflowLogger $doorWorkflowLogger,
         private readonly CorrelationIdService $correlationIds,
     ) {
     }
@@ -79,12 +81,12 @@ final class AccessController
     #[IsGranted('IS_AUTHENTICATED_REMEMBERED')]
     public function request(Request $request, string $slug): JsonResponse
     {
-        $this->logging->start('request_access', ['slug' => $slug]);
+        $this->logging->start('request_access', ['area' => $slug]);
 
         $user = $this->security->getUser();
         if (!$user instanceof FrontendUser) {
             $this->logging->info('request_access.unauthenticated', [
-                'slug' => $slug,
+                'area' => $slug,
                 'ip' => $request->getClientIp(),
             ]);
 
@@ -95,7 +97,7 @@ final class AccessController
         if (!\in_array($slug, $known, true)) {
             $this->logging->info('request_access.unknown_area', [
                 'memberId' => (int) $user->id,
-                'slug' => $slug,
+                'area' => $slug,
                 'ip' => $request->getClientIp(),
             ]);
 
@@ -108,7 +110,7 @@ final class AccessController
         if (\in_array($slug, $granted, true)) {
             $this->logging->info('request_access.already_granted', [
                 'memberId' => $memberId,
-                'slug' => $slug,
+                'area' => $slug,
             ]);
 
             return new JsonResponse(['success' => false, 'message' => 'Already granted'], 400);
@@ -124,7 +126,7 @@ final class AccessController
         } catch (\Throwable $e) {
             $this->logging->error('request_access.exception', [
                 'memberId' => $memberId,
-                'slug' => $slug,
+                'area' => $slug,
                 'error' => $e->getMessage(),
             ]);
 
@@ -135,7 +137,7 @@ final class AccessController
 
         $this->logging->info('request_access.result', [
             'memberId' => $memberId,
-            'slug' => $slug,
+            'area' => $slug,
             'code' => $code,
             'ip' => $request->getClientIp(),
         ]);
@@ -191,6 +193,9 @@ final class AccessController
         );
     }
 
+    /**
+     * slug -> area (1:1 mapping).
+     */
     #[Route('/open/{slug}', name: 'community_offers_open_door', methods: ['POST'])]
     #[IsGranted('IS_AUTHENTICATED_REMEMBERED')]
     public function open(Request $request, string $slug): JsonResponse
@@ -199,9 +204,9 @@ final class AccessController
 
         $user = $this->security->getUser();
         if (!$user instanceof FrontendUser) {
-            $this->logging->warning('open.unauthenticated', [
+            $this->doorWorkflowLogger->openForbidden([
                 'cid' => $cid,
-                'slug' => $slug,
+                'area' => $slug,
                 'ip' => $request->getClientIp(),
             ]);
 
@@ -211,7 +216,7 @@ final class AccessController
                 result: 'unauthenticated',
                 message: 'Door open without authenticated frontend user',
                 correlationId: $cid,
-                context: ['slug' => $slug],
+                context: ['area' => $slug],
             );
 
             return new JsonResponse(['success' => false, 'message' => 'Not authenticated'], 401);
@@ -219,12 +224,14 @@ final class AccessController
 
         $memberId = (int) $user->id;
 
-        $this->logging->info('door_open.attempt', [
-            'cid' => $cid,
-            'memberId' => $memberId,
-            'area' => $slug,
-            'ip' => $request->getClientIp(),
-        ]);
+        $this->doorWorkflowLogger->openAttempt(
+            [
+                'cid' => $cid,
+                'memberId' => $memberId,
+                'area' => $slug,
+                'ip' => $request->getClientIp(),
+            ],
+        );
 
         $result = $this->openDoorService->open(
             memberId: $memberId,

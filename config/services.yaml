@@ -161,3 +161,7 @@ services:
       $logger: "@monolog.logger.community_offers"
       $loggingEnabled: "%community_offers.logging_enabled%"
       $debugLoggingEnabled: "%community_offers.debug_logging_enabled%"
+
+  ZukunftsforumRissen\CommunityOffersBundle\Service\DoorWorkflowLogger:
+    arguments:
+      $logging: '@ZukunftsforumRissen\CommunityOffersBundle\Service\LoggingService'

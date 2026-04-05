@@ -135,7 +135,7 @@ final class EmulatorTickService
         $lock = $this->cache->getItem(self::LOOP_LOCK_KEY);
 
         if ($lock->isHit()) {
-            $this->logging->info('door_emulator.loop_skipped_lock_active', []);
+            $this->logging->debug('door_emulator.loop_skipped_lock_active', []);
 
             return [
                 'acquiredLock' => false,
@@ -156,7 +156,7 @@ final class EmulatorTickService
         $iterations = 0;
         $processed = 0;
 
-        $this->logging->info('door_emulator.loop_started', [
+        $this->logging->debug('door_emulator.loop_started', [
             'maxSeconds' => $maxSeconds,
             'sleepMilliseconds' => $sleepMilliseconds,
         ]);
@@ -178,7 +178,7 @@ final class EmulatorTickService
 
         $durationMs = (int) round((microtime(true) - $startedAt) * 1000);
 
-        $this->logging->info('door_emulator.loop_finished', [
+        $this->logging->debug('door_emulator.loop_finished', [
             'iterations' => $iterations,
             'processed' => $processed,
             'durationMs' => $durationMs,

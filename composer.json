@@ -7,7 +7,7 @@
     "require": {
         "php": "^8.4",
         "contao/core-bundle": "^5.0",
-        "symfony/workflow": "^7.4"
+        "symfony/workflow": "^8.0"
     },
 
     "autoload": {

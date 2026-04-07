@@ -48,8 +48,10 @@ backup/
 bundle.zip
 /.idea
 
-# Q&A from Claude
+# AI
+AI/
 Q&A-claude/
+AI_in_VSCode
 
 # VSCode settings
 /.vscode
